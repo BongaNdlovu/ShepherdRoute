@@ -56,6 +56,10 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/settings") ||
     pathname.startsWith("/admin");
 
+  if (pathname === "/") {
+    return NextResponse.redirect(sameOriginUrl(request, user ? "/dashboard" : "/login"));
+  }
+
   if (!user && isDashboard) {
     const url = sameOriginUrl(request, "/login");
     url.searchParams.set("next", pathname);

@@ -8,6 +8,11 @@ export const metadata: Metadata = {
     template: "%s | ShepardRoute"
   },
   description: "The follow-up pathway for churches that care.",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg"
+  },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
