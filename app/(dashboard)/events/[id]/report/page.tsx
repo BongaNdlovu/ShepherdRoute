@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, ClipboardList, Heart, UsersRound } from "lucide-react";
+import { Activity, ClipboardList, Download, Heart, UsersRound } from "lucide-react";
 import { StatCard } from "@/components/app/stat-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,9 +47,17 @@ export default async function EventReportPage({
           <h2 className="text-2xl font-black tracking-tight">{event.name} report</h2>
           <p className="mt-1 text-sm text-muted-foreground">Summary of visitor capture, interests, and follow-up activity.</p>
         </div>
-        <Button asChild variant="outline">
-          <Link href={`/events/${event.id}`}>Back to event</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline">
+            <Link href={`/events/${event.id}/report/export`}>
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={`/events/${event.id}`}>Back to event</Link>
+          </Button>
+        </div>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

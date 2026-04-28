@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { MessageCircle } from "lucide-react";
-import { saveGeneratedMessageAction, updateContactAction } from "@/app/(dashboard)/actions";
+import { CalendarClock, MessageCircle, PlusCircle } from "lucide-react";
+import { addFollowUpNoteAction, saveGeneratedMessageAction, updateContactAction } from "@/app/(dashboard)/actions";
 import { InterestPills } from "@/components/app/interest-pills";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { statusLabels, statusOptions } from "@/lib/constants";
+import { Textarea } from "@/components/ui/textarea";
+import { followUpChannelLabels, followUpChannelOptions, statusLabels, statusOptions } from "@/lib/constants";
 import { getChurchContext, getContact } from "@/lib/data";
 import { generateMessage } from "@/lib/whatsapp";
 
@@ -15,11 +16,14 @@ export const metadata = {
 };
 
 export default async function ContactDetailPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
   const context = await getChurchContext();
   const { contact, prayer, team, followUps, messages } = await getContact(context.churchId, id);
   const interests = contact.contact_interests ?? [];
@@ -48,6 +52,7 @@ export default async function ContactDetailPage({
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
+          {query.error ? <p className="rounded-md bg-rose-50 p-3 text-sm text-rose-700">{query.error}</p> : null}
           <InterestPills interests={interests} />
           <div className="grid gap-4 rounded-lg bg-muted p-4 md:grid-cols-2">
             <div>
@@ -118,6 +123,13 @@ export default async function ContactDetailPage({
                     {assigned?.display_name ? <p className="mt-1 text-muted-foreground">Assigned to {assigned.display_name}</p> : null}
                     {item.notes ? <p className="mt-2 leading-6">{item.notes}</p> : null}
                     {item.next_action ? <p className="mt-2 text-muted-foreground">Next: {item.next_action}</p> : null}
+                    {item.due_at ? (
+                      <p className="mt-2 flex items-center gap-1 text-muted-foreground">
+                        <CalendarClock className="h-3.5 w-3.5" />
+                        Due {new Date(item.due_at).toLocaleString()}
+                      </p>
+                    ) : null}
+                    {item.completed_at ? <p className="mt-2 font-semibold text-emerald-700">Completed</p> : null}
                   </div>
                 );
               })}
@@ -168,6 +180,65 @@ export default async function ContactDetailPage({
             <Button asChild variant="outline">
               <Link href="/contacts">Back to contacts</Link>
             </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className="xl:col-start-2 xl:sticky xl:top-[460px] xl:self-start">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <PlusCircle className="h-5 w-5" />
+            Log follow-up note
+          </CardTitle>
+          <CardDescription>Record calls, WhatsApps, visits, next action, and due date.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form action={addFollowUpNoteAction} className="grid gap-4">
+            <input type="hidden" name="contactId" value={contact.id} />
+            <div className="grid gap-2">
+              <Label htmlFor="noteAssignedTo">Assign to</Label>
+              <select id="noteAssignedTo" name="assignedTo" defaultValue={contact.assigned_to ?? "unassigned"} className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
+                <option value="unassigned">Unassigned</option>
+                {team.map((member) => (
+                  <option key={member.id} value={member.id}>{member.display_name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="channel">Channel</Label>
+                <select id="channel" name="channel" defaultValue="whatsapp" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
+                  {followUpChannelOptions.map((channel) => (
+                    <option key={channel} value={channel}>{followUpChannelLabels[channel]}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="noteStatus">Status</Label>
+                <select id="noteStatus" name="status" defaultValue={contact.status} className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
+                  {statusOptions.map((status) => (
+                    <option key={status} value={status}>{statusLabels[status]}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea id="notes" name="notes" placeholder="What happened in the follow-up?" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="nextAction">Next action</Label>
+              <Textarea id="nextAction" name="nextAction" placeholder="What should happen next?" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="dueAt">Due date</Label>
+              <input id="dueAt" name="dueAt" type="datetime-local" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring" />
+            </div>
+            <label className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm font-semibold">
+              <input type="checkbox" name="markComplete" className="h-4 w-4" />
+              Mark this follow-up as completed
+            </label>
+            <Button type="submit">Save note</Button>
           </form>
         </CardContent>
       </Card>

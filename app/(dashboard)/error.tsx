@@ -1,10 +1,11 @@
 "use client";
 
 import { AlertTriangle } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function DashboardError({ reset }: { reset: () => void }) {
+export default function DashboardError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <Card>
       <CardHeader>
@@ -17,7 +18,16 @@ export default function DashboardError({ reset }: { reset: () => void }) {
         <p className="text-sm text-muted-foreground">
           ShepardRoute could not load this workspace view. Check that the Supabase schema has been run, then try again.
         </p>
-        <Button onClick={reset} className="mt-4">Try again</Button>
+        <div className="mt-4 rounded-md bg-muted p-3 text-sm text-muted-foreground">
+          {error.message || "No extra error detail was provided by the server."}
+          {error.digest ? <span className="block pt-1 text-xs">Digest: {error.digest}</span> : null}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button onClick={reset}>Try again</Button>
+          <Button asChild variant="outline">
+            <Link href="/settings/health">Open setup health check</Link>
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

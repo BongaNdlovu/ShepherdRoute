@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, MessageCircle, Search, UserPlus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, MessageCircle, Search, UserPlus } from "lucide-react";
 import { addQuickContactAction, updateContactAction } from "@/app/(dashboard)/actions";
 import { InterestPills } from "@/components/app/interest-pills";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
@@ -29,6 +29,19 @@ export default async function ContactsPage({
     getTeamMembers(context.churchId)
   ]);
   const { contacts, total, page, pageCount } = contactsPage;
+  const exportHref = () => {
+    const search = new URLSearchParams();
+
+    for (const key of ["q", "status", "interest", "event", "assignedTo"] as const) {
+      const value = params[key];
+      if (value && value !== "all") {
+        search.set(key, value);
+      }
+    }
+
+    const suffix = search.toString();
+    return suffix ? `/contacts/export?${suffix}` : "/contacts/export";
+  };
   const pageHref = (targetPage: number) => {
     const search = new URLSearchParams();
 
@@ -56,6 +69,12 @@ export default async function ContactsPage({
               <Link href="#add-contact">
                 <UserPlus className="h-4 w-4" />
                 Add contact
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href={exportHref()}>
+                <Download className="h-4 w-4" />
+                Export CSV
               </Link>
             </Button>
           </div>

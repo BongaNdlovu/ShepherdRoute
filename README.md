@@ -28,7 +28,7 @@ ShepardRoute is a production-ready MVP for church visitor capture and follow-up.
 3. The contents of `supabase/schema.sql` pasted and run in the Supabase SQL editor.
 4. Environment variables copied from `.env.example` into `.env.local`.
 5. A deployed URL in `NEXT_PUBLIC_SITE_URL` when you deploy to Vercel.
-6. For QR code usage, print or display the public event URL shown in the Events page.
+6. For QR code usage, use the QR card on the Dashboard or Event detail page. It can download PNG/SVG, print a QR sheet, copy the link, or preview the public form.
 
 ## Local Setup
 
@@ -107,6 +107,25 @@ For automatic messaging later, ShepardRoute would need:
 ## Deployment
 
 Deploy to Vercel, set the same environment variables, and update `NEXT_PUBLIC_SITE_URL` to the production domain. The app is Vercel-ready and uses Supabase as the hosted database/auth provider.
+
+After deployment, open **Setup** in the app sidebar to run environment and database health checks.
+
+## Smoke Tests
+
+Run the public page smoke test with:
+
+```bash
+npm run test:e2e
+```
+
+Authenticated smoke tests are skipped unless these variables are present:
+
+```bash
+E2E_EMAIL=admin@example.com
+E2E_PASSWORD=your-password
+```
+
+Those tests create an event, verify QR actions, submit the public form, and confirm the new contact appears in the dashboard.
 
 ## Security Notes
 

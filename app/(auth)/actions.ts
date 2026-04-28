@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { friendlyAuthError } from "@/lib/app-errors";
 import { createClient } from "@/lib/supabase/server";
 import { absoluteUrl } from "@/lib/utils";
 
@@ -29,7 +30,7 @@ export async function loginAction(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+    redirect(`/login?error=${encodeURIComponent(friendlyAuthError(error.message))}`);
   }
 
   redirect("/dashboard");
@@ -61,7 +62,7 @@ export async function signupAction(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/signup?error=${encodeURIComponent(error.message)}`);
+    redirect(`/signup?error=${encodeURIComponent(friendlyAuthError(error.message))}`);
   }
 
   redirect("/dashboard");

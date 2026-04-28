@@ -35,6 +35,15 @@ https://shepardroute.com
 
 In Supabase Auth URL settings, add the Vercel production domain and preview domain pattern you use.
 
+After Vercel redeploys, sign in and open **Setup** from the ShepardRoute sidebar. The health page checks environment variables, Supabase Auth, church membership rows, the contacts search RPC, and the public event view.
+
+## Logs
+
+- Vercel runtime errors: **Vercel > Deployments > latest deployment > Runtime Logs**
+- Supabase Auth errors: **Supabase > Logs > Auth**
+- Supabase database/RLS errors: **Supabase > Logs > Postgres**
+- More detail: `docs/observability.md`
+
 ## Performance Watchlist
 
 - Use Vercel Speed Insights after connecting the project.

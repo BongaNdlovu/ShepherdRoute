@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { eventTypeOptions, interestOptions, roleOptions, statusOptions } from "@/lib/constants";
+import { eventTypeOptions, followUpChannelOptions, interestOptions, roleOptions, statusOptions } from "@/lib/constants";
 import { getChurchContext } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/utils";
@@ -42,6 +42,22 @@ const generatedMessageSchema = z.object({
   contactId: z.string().uuid(),
   phone: z.string().min(6).max(40),
   message: z.string().min(2).max(2000)
+});
+
+const followUpNoteSchema = z.object({
+  contactId: z.string().uuid(),
+  assignedTo: z.string().uuid().or(z.literal("unassigned")),
+  channel: z.enum(followUpChannelOptions),
+  status: z.enum(statusOptions),
+  notes: z.string().max(2000).optional(),
+  nextAction: z.string().max(500).optional(),
+  dueAt: z.string().optional(),
+  markComplete: z.literal("on").optional()
+});
+
+const eventStatusSchema = z.object({
+  eventId: z.string().uuid(),
+  isActive: z.enum(["true", "false"])
 });
 
 export async function createEventAction(formData: FormData) {
@@ -115,6 +131,85 @@ export async function updateContactAction(formData: FormData) {
 
   revalidatePath("/contacts");
   revalidatePath(`/contacts/${parsed.data.contactId}`);
+}
+
+export async function addFollowUpNoteAction(formData: FormData) {
+  const context = await getChurchContext();
+  const parsed = followUpNoteSchema.safeParse({
+    contactId: formData.get("contactId"),
+    assignedTo: formData.get("assignedTo"),
+    channel: formData.get("channel"),
+    status: formData.get("status"),
+    notes: formData.get("notes") || undefined,
+    nextAction: formData.get("nextAction") || undefined,
+    dueAt: formData.get("dueAt") || undefined,
+    markComplete: formData.get("markComplete") || undefined
+  });
+
+  if (!parsed.success) {
+    redirect("/contacts?error=Could%20not%20save%20the%20follow-up%20note.");
+  }
+
+  const assignedTo = parsed.data.assignedTo === "unassigned" ? null : parsed.data.assignedTo;
+  const completedAt = parsed.data.markComplete ? new Date().toISOString() : null;
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("follow_ups").insert({
+    church_id: context.churchId,
+    contact_id: parsed.data.contactId,
+    assigned_to: assignedTo,
+    author_id: context.userId,
+    channel: parsed.data.channel,
+    status: parsed.data.status,
+    notes: parsed.data.notes || null,
+    next_action: parsed.data.nextAction || null,
+    due_at: parsed.data.dueAt ? new Date(parsed.data.dueAt).toISOString() : null,
+    completed_at: completedAt
+  });
+
+  if (error) {
+    redirect(`/contacts/${parsed.data.contactId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await supabase
+    .from("contacts")
+    .update({
+      assigned_to: assignedTo,
+      status: parsed.data.status
+    })
+    .eq("church_id", context.churchId)
+    .eq("id", parsed.data.contactId);
+
+  revalidatePath("/contacts");
+  revalidatePath(`/contacts/${parsed.data.contactId}`);
+  redirect(`/contacts/${parsed.data.contactId}`);
+}
+
+export async function updateEventStatusAction(formData: FormData) {
+  const context = await getChurchContext();
+  const parsed = eventStatusSchema.safeParse({
+    eventId: formData.get("eventId"),
+    isActive: formData.get("isActive")
+  });
+
+  if (!parsed.success) {
+    redirect("/events?error=Could%20not%20update%20the%20event.");
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("events")
+    .update({ is_active: parsed.data.isActive === "true" })
+    .eq("church_id", context.churchId)
+    .eq("id", parsed.data.eventId);
+
+  if (error) {
+    redirect(`/events/${parsed.data.eventId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/events");
+  revalidatePath(`/events/${parsed.data.eventId}`);
+  redirect(`/events/${parsed.data.eventId}`);
 }
 
 export async function addQuickContactAction(formData: FormData) {

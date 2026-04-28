@@ -79,7 +79,19 @@ export const roleLabels = {
 
 export const roleOptions = Object.keys(roleLabels) as [keyof typeof roleLabels, ...(keyof typeof roleLabels)[]];
 
+export const followUpChannelOptions = ["call", "whatsapp", "sms", "email", "visit", "note"] as const;
+
+export const followUpChannelLabels: Record<FollowUpChannel, string> = {
+  call: "Call",
+  whatsapp: "WhatsApp",
+  sms: "SMS",
+  email: "Email",
+  visit: "Visit",
+  note: "Note"
+};
+
 export type Interest = (typeof interestOptions)[number];
 export type FollowUpStatus = (typeof statusOptions)[number];
 export type EventType = (typeof eventTypeOptions)[number];
 export type TeamRole = keyof typeof roleLabels;
+export type FollowUpChannel = (typeof followUpChannelOptions)[number];

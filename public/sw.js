@@ -1,5 +1,12 @@
 const CACHE_NAME = "shepardroute-v1";
-const STATIC_ASSETS = ["/login", "/manifest.webmanifest", "/icon.svg"];
+const STATIC_ASSETS = [
+  "/login",
+  "/manifest.webmanifest",
+  "/icon.svg",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+  "/icons/apple-touch-icon.png"
+];
 const CACHEABLE_DESTINATIONS = new Set(["style", "script", "image", "font"]);
 
 self.addEventListener("install", (event) => {
@@ -26,6 +33,7 @@ self.addEventListener("fetch", (event) => {
     url.pathname.startsWith("/_next/static/") ||
     url.pathname === "/manifest.webmanifest" ||
     url.pathname === "/icon.svg" ||
+    url.pathname.startsWith("/icons/") ||
     CACHEABLE_DESTINATIONS.has(event.request.destination);
 
   if (!isStaticAsset) {

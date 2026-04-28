@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, Church, ClipboardList, LogOut, QrCode, ShieldCheck, UserCog, UsersRound } from "lucide-react";
+import { BarChart3, Church, ClipboardList, LogOut, QrCode, Settings2, ShieldCheck, UserCog, UsersRound } from "lucide-react";
 import { logoutAction } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
 import { getChurchContext } from "@/lib/data";
@@ -9,7 +9,8 @@ const navItems: Array<{ href: string; label: string; icon: typeof Church }> = [
   { href: "/events", label: "Events", icon: QrCode },
   { href: "/contacts", label: "Contacts", icon: UsersRound },
   { href: "/reports", label: "Reports", icon: BarChart3 },
-  { href: "/settings/team", label: "Team", icon: UserCog }
+  { href: "/settings/team", label: "Team", icon: UserCog },
+  { href: "/settings/health", label: "Setup", icon: Settings2 }
 ];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {

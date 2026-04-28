@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { CalendarDays, MapPin, QrCode, UsersRound } from "lucide-react";
+import { CalendarDays, Lock, MapPin, QrCode, Unlock, UsersRound } from "lucide-react";
+import { updateEventStatusAction } from "@/app/(dashboard)/actions";
 import { InterestPills } from "@/components/app/interest-pills";
 import { QrCard } from "@/components/app/qr-card";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
@@ -15,11 +16,14 @@ export const metadata = {
 };
 
 export default async function EventDetailPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
   const context = await getChurchContext();
   const { event, contacts } = await getEvent(context.churchId, id);
   const publicUrl = absoluteUrl(`/public/e/${event.slug}`);
@@ -28,6 +32,7 @@ export default async function EventDetailPage({
     <section className="space-y-4">
       <Card>
         <CardHeader>
+          {query.error ? <p className="mb-4 rounded-md bg-rose-50 p-3 text-sm text-rose-700">{query.error}</p> : null}
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2">
@@ -38,12 +43,22 @@ export default async function EventDetailPage({
               <CardDescription>{event.description ?? "QR registration and team follow-up for this outreach event."}</CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
+              <form action={updateEventStatusAction}>
+                <input type="hidden" name="eventId" value={event.id} />
+                <input type="hidden" name="isActive" value={event.is_active ? "false" : "true"} />
+                <Button type="submit" variant="outline">
+                  {event.is_active ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                  {event.is_active ? "Close event" : "Reopen event"}
+                </Button>
+              </form>
               <Button asChild variant="outline">
                 <Link href={`/events/${event.id}/report`}>View report</Link>
               </Button>
-              <Button asChild>
-                <a href={publicUrl} target="_blank" rel="noreferrer">Open public form</a>
-              </Button>
+              {event.is_active ? (
+                <Button asChild>
+                  <a href={publicUrl} target="_blank" rel="noreferrer">Open public form</a>
+                </Button>
+              ) : null}
             </div>
           </div>
         </CardHeader>
@@ -106,7 +121,16 @@ export default async function EventDetailPage({
           </CardContent>
         </Card>
 
-        <QrCard eventName={event.name} url={publicUrl} />
+        {event.is_active ? (
+          <QrCard eventName={event.name} url={publicUrl} />
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Registration closed</CardTitle>
+              <CardDescription>The public registration page is disabled. Reopen the event to restore the QR form.</CardDescription>
+            </CardHeader>
+          </Card>
+        )}
       </div>
     </section>
   );
