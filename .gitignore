@@ -1,0 +1,9 @@
+node_modules
+.next
+.vercel
+.env*.local
+.env
+dist
+coverage
+*.tsbuildinfo
+/ShepardRoute/

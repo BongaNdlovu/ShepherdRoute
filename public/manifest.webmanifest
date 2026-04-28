@@ -1,0 +1,31 @@
+{
+  "name": "ShepardRoute",
+  "short_name": "ShepardRoute",
+  "description": "The follow-up pathway for churches that care.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f3eb",
+  "theme_color": "#f7f3eb",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Contacts",
+      "url": "/contacts",
+      "description": "Open the contact dashboard"
+    },
+    {
+      "name": "Create Event",
+      "url": "/events/new",
+      "description": "Create a QR registration event"
+    }
+  ]
+}
