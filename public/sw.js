@@ -29,7 +29,10 @@ self.addEventListener("fetch", (event) => {
     CACHEABLE_DESTINATIONS.has(event.request.destination);
 
   if (!isStaticAsset) {
-    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  if (url.pathname.startsWith("/_next/static/") && event.request.cache === "only-if-cached" && event.request.mode !== "same-origin") {
     return;
   }
 
@@ -44,6 +47,8 @@ self.addEventListener("fetch", (event) => {
         }
 
         return response;
+      }).catch(() => {
+        return caches.match("/login");
       });
     })
   );
