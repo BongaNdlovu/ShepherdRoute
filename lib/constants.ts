@@ -12,7 +12,7 @@ export const interestLabels: Record<Interest, string> = {
   prayer: "Prayer",
   bible_study: "Bible Study",
   health: "Health",
-  baptism: "Baptism",
+  baptism: "Baptismal Request",
   pastoral_visit: "Pastoral Visit",
   youth: "Youth",
   cooking_class: "Cooking Class"
@@ -71,7 +71,7 @@ export const statusLabels: Record<FollowUpStatus, string> = {
   interested: "Interested",
   bible_study_started: "Bible Study Started",
   attended_church: "Attended Church",
-  baptism_interest: "Baptism Interest",
+  baptism_interest: "Baptismal Interest",
   closed: "Closed"
 };
 

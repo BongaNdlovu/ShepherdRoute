@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { classifyContact } from "@/lib/classifyContact";
-import { getEventTemplate } from "@/lib/eventTemplates";
+import { eventTemplates, getEventTemplate } from "@/lib/eventTemplates";
 import { generateMessage } from "@/lib/whatsapp";
 
 test.describe("event templates", () => {
@@ -70,7 +70,7 @@ test.describe("event templates", () => {
     expect(result.recommended_assigned_role).toBe("health_leader");
   });
 
-  test("prophecy seminar baptism interest routes to pastor", () => {
+  test("prophecy seminar baptism interest routes to bible_worker", () => {
     const result = classifyContact({
       selectedInterests: ["baptism"],
       templateType: "prophecy_seminar",
@@ -78,7 +78,7 @@ test.describe("event templates", () => {
     });
 
     expect(result.recommended_tags).toContain("baptism");
-    expect(result.recommended_assigned_role).toBe("pastor");
+    expect(result.recommended_assigned_role).toBe("bible_worker");
   });
 
   test("empty custom event falls back to general visitor logic", () => {
@@ -92,5 +92,44 @@ test.describe("event templates", () => {
     expect(getEventTemplate("regular_member").name).toBe("Regular Member");
     expect(getEventTemplate("baptized_member").name).toBe("Baptized Member");
     expect(getEventTemplate("health_seminar").name).toBe("Health Seminar");
+  });
+
+  test("every event template includes a baptism interest option", () => {
+    const templateTypes = Object.keys(eventTemplates) as Array<keyof typeof eventTemplates>;
+
+    for (const templateType of templateTypes) {
+      const template = eventTemplates[templateType];
+      const values = template.interestOptions.map((option) => option.value);
+      expect(values).toContain("baptism");
+    }
+  });
+
+  test("every event template with a baptism option has a baptism-specific message template", () => {
+    const templateTypes = Object.keys(eventTemplates) as Array<keyof typeof eventTemplates>;
+
+    for (const templateType of templateTypes) {
+      const template = eventTemplates[templateType];
+      const values = template.interestOptions.map((option) => option.value);
+      if (values.includes("baptism")) {
+        expect(template.messageTemplates.baptism).toBeDefined();
+        expect(template.messageTemplates.baptism).toContain("baptismal request");
+        expect(template.messageTemplates.baptism).toContain("Bible worker");
+      }
+    }
+  });
+
+  test("every event template with a baptism option exposes a baptismal report section", () => {
+    const templateTypes = Object.keys(eventTemplates) as Array<keyof typeof eventTemplates>;
+
+    for (const templateType of templateTypes) {
+      const template = eventTemplates[templateType];
+      const values = template.interestOptions.map((option) => option.value);
+      if (values.includes("baptism")) {
+        const hasBaptismSection = template.reportSections.some(
+          section => section.interest === "baptism" || section.label.toLowerCase().includes("baptism")
+        );
+        expect(hasBaptismSection).toBe(true);
+      }
+    }
   });
 });

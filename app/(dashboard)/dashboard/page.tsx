@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, AlertTriangle, CalendarClock, ClipboardList, Heart, HeartPulse, Plus, UserRoundCheck, UsersRound } from "lucide-react";
+import { Activity, AlertTriangle, CalendarClock, ClipboardList, Droplets, Heart, HeartPulse, Plus, UserRoundCheck, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InterestPills } from "@/components/app/interest-pills";
@@ -58,7 +58,7 @@ export default async function DashboardPage() {
         <StatCard icon={ClipboardList} title="Bible study requests" value={summary.bible_study_count} note="Ready for Bible worker assignment." />
         <StatCard icon={Heart} title="Prayer requests" value={summary.prayer_count} note="Stored with privacy controls." />
         <StatCard icon={HeartPulse} title="Health interests" value={summary.health_count} note="Ready for health ministry follow-up." />
-        <StatCard icon={UserRoundCheck} title="Do not contact" value={summary.do_not_contact_count} note="Respect opt-out preferences." />
+        <StatCard icon={Droplets} title="Baptismal requests" value={summary.baptism_count} note="Bible worker to begin preparation." />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">

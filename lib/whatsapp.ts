@@ -30,7 +30,7 @@ export function generateMessage(contact: MessageContact) {
   }
 
   if (contact.interests.includes("baptism")) {
-    return withOptOut(`Good day ${firstName}, thank you for reaching out to ${churchName}${eventLine}. We saw your interest in baptism and would be glad to listen, answer questions, and support you at your pace. Would a short conversation this week be okay?`, contact);
+    return withOptOut(`Good day ${firstName}, thank you for reaching out to ${churchName}${eventLine}. We received your baptismal request and can connect you with a Bible worker to begin preparation. Would it be okay if we also share Bible study options with you?`, contact);
   }
 
   if (contact.interests.includes("prayer")) {

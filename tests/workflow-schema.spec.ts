@@ -25,6 +25,11 @@ test.describe("accountability and privacy workflow schema", () => {
     expect(schema).toContain("due_today_count bigint");
     expect(schema).toContain("overdue_count bigint");
     expect(schema).toContain("unassigned_count bigint");
+    expect(schema).toContain("baptism_count bigint");
+  });
+
+  test("schema due-date logic includes baptism in the 2-day follow-up set", () => {
+    expect(schema).toContain("array['bible_study','prayer','baptism']");
   });
 
   test("schema includes prayer visibility and consent workflow fields", () => {
@@ -144,5 +149,31 @@ test.describe("workflow helpers", () => {
     });
 
     expect(message).not.toContain("Reply STOP");
+  });
+
+  test("WhatsApp baptism message includes baptismal preparation wording and opt-out", () => {
+    const message = generateMessage({
+      name: "Thandi M.",
+      phone: "+27820000000",
+      interests: ["baptism"],
+      churchName: "Pinetown SDA"
+    });
+
+    expect(message).toContain("baptismal request");
+    expect(message).toContain("Bible worker");
+    expect(message).toContain("preparation");
+    expect(message).toContain("Bible study");
+    expect(message).toContain("Reply STOP");
+  });
+
+  test("report RPC type definitions match report summary table returns", () => {
+    const dbTypes = readFileSync("lib/supabase/database.types.ts", "utf8");
+
+    expect(dbTypes).toMatch(
+      /outreach_report_summary:\s*\{[\s\S]*?Returns: Array<\{[\s\S]*?baptism_count: number;[\s\S]*?waiting_reply_count: number;[\s\S]*?no_consent_count: number;[\s\S]*?events: Json;[\s\S]*?\}>;/
+    );
+    expect(dbTypes).toMatch(
+      /event_report_summary:\s*\{[\s\S]*?Returns: Array<\{[\s\S]*?baptism_count: number;[\s\S]*?follow_up_count: number;[\s\S]*?status_counts: Json;[\s\S]*?interest_counts: Json;[\s\S]*?\}>;/
+    );
   });
 });

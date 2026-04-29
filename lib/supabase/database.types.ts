@@ -669,6 +669,42 @@ export type Database = {
         };
         Returns: string;
       };
+      outreach_report_summary: {
+        Args: { p_church_id: string };
+        Returns: Array<{
+          total_contacts: number;
+          followed_up_count: number;
+          bible_study_count: number;
+          prayer_count: number;
+          health_count: number;
+          baptism_count: number;
+          high_priority_count: number;
+          unassigned_count: number;
+          due_today_count: number;
+          overdue_count: number;
+          waiting_reply_count: number;
+          no_consent_count: number;
+          do_not_contact_count: number;
+          events: Json;
+        }>;
+      };
+      event_report_summary: {
+        Args: {
+          p_church_id: string;
+          p_event_id: string;
+        };
+        Returns: Array<{
+          total_contacts: number;
+          followed_up_count: number;
+          bible_study_count: number;
+          prayer_count: number;
+          baptism_count: number;
+          high_priority_count: number;
+          follow_up_count: number;
+          status_counts: Json;
+          interest_counts: Json;
+        }>;
+      };
     };
     Enums: {
       app_admin_role: "owner" | "support_admin" | "billing_admin";

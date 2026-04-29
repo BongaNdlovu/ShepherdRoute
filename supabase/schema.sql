@@ -486,7 +486,7 @@ as $$
   select case
     when p_urgency = 'high' then now() + interval '8 hours'
     when coalesce(p_classification_payload->>'recommended_assigned_role', '') = 'pastor' then now() + interval '1 day'
-    when coalesce(p_classification_payload->'recommended_tags', '[]'::jsonb) ?| array['bible_study','prayer'] then now() + interval '2 days'
+    when coalesce(p_classification_payload->'recommended_tags', '[]'::jsonb) ?| array['bible_study','prayer','baptism'] then now() + interval '2 days'
     else now() + interval '5 days'
   end;
 $$;
@@ -2025,6 +2025,7 @@ returns table (
   bible_study_count bigint,
   prayer_count bigint,
   health_count bigint,
+  baptism_count bigint,
   high_priority_count bigint,
   unassigned_count bigint,
   due_today_count bigint,
@@ -2087,6 +2088,14 @@ as $$
       where contacts.church_id = p_church_id
         and contact_interests.interest in ('health', 'cooking_class')
     ) as health_count,
+    (
+      select count(distinct contacts.id)
+      from public.contacts
+      join public.contact_interests on contact_interests.contact_id = contacts.id
+        and contact_interests.church_id = contacts.church_id
+      where contacts.church_id = p_church_id
+        and contact_interests.interest = 'baptism'
+    ) as baptism_count,
     (
       select count(*)
       from public.contacts
@@ -2170,6 +2179,7 @@ returns table (
   followed_up_count bigint,
   bible_study_count bigint,
   prayer_count bigint,
+  baptism_count bigint,
   high_priority_count bigint,
   follow_up_count bigint,
   status_counts jsonb,
@@ -2202,6 +2212,13 @@ as $$
         and contact_interests.church_id = event_contacts.church_id
       where contact_interests.interest = 'prayer'
     ) as prayer_count,
+    (
+      select count(distinct event_contacts.id)
+      from event_contacts
+      join public.contact_interests on contact_interests.contact_id = event_contacts.id
+        and contact_interests.church_id = event_contacts.church_id
+      where contact_interests.interest = 'baptism'
+    ) as baptism_count,
     (select count(*) from event_contacts where urgency = 'high') as high_priority_count,
     (
       select count(*)

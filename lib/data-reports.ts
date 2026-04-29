@@ -15,6 +15,7 @@ export type OutreachReportSummary = {
   bible_study_count: number;
   prayer_count: number;
   health_count: number;
+  baptism_count: number;
   high_priority_count: number;
   unassigned_count: number;
   due_today_count: number;
@@ -30,6 +31,7 @@ export type EventReportSummary = {
   followed_up_count: number;
   bible_study_count: number;
   prayer_count: number;
+  baptism_count: number;
   high_priority_count: number;
   follow_up_count: number;
   status_counts: Record<string, number>;
@@ -42,6 +44,7 @@ const emptyOutreachSummary: OutreachReportSummary = {
   bible_study_count: 0,
   prayer_count: 0,
   health_count: 0,
+  baptism_count: 0,
   high_priority_count: 0,
   unassigned_count: 0,
   due_today_count: 0,
@@ -57,6 +60,7 @@ const emptyEventSummary: EventReportSummary = {
   followed_up_count: 0,
   bible_study_count: 0,
   prayer_count: 0,
+  baptism_count: 0,
   high_priority_count: 0,
   follow_up_count: 0,
   status_counts: {},
@@ -82,6 +86,7 @@ function parseOutreachSummary(row: Partial<OutreachReportSummary> | null | undef
     bible_study_count: Number(row.bible_study_count) || 0,
     prayer_count: Number(row.prayer_count) || 0,
     health_count: Number(row.health_count) || 0,
+    baptism_count: Number(row.baptism_count) || 0,
     high_priority_count: Number(row.high_priority_count) || 0,
     unassigned_count: Number(row.unassigned_count) || 0,
     due_today_count: Number(row.due_today_count) || 0,
@@ -101,6 +106,7 @@ function parseEventSummary(row: Partial<EventReportSummary> | null | undefined):
     followed_up_count: Number(row.followed_up_count) || 0,
     bible_study_count: Number(row.bible_study_count) || 0,
     prayer_count: Number(row.prayer_count) || 0,
+    baptism_count: Number(row.baptism_count) || 0,
     high_priority_count: Number(row.high_priority_count) || 0,
     follow_up_count: Number(row.follow_up_count) || 0,
     status_counts: asNumberRecord(row.status_counts),

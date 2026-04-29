@@ -264,9 +264,10 @@ export function chooseUrgency(tags: ContactTag[]): Urgency {
 }
 
 export function chooseAssignedRole(tags: ContactTag[], urgency: Urgency): AssignedRole {
-  if (urgency === "high" || tags.includes("urgent_follow_up") || tags.includes("pastoral_care") || tags.includes("baptism")) {
+  if (urgency === "high" || tags.includes("urgent_follow_up") || tags.includes("pastoral_care")) {
     return "pastor";
   }
+  if (tags.includes("baptism")) return "bible_worker";
   if (tags.includes("bible_study")) return "bible_worker";
   if (tags.includes("health")) return "health_leader";
   if (tags.includes("prayer")) return "prayer_team";
@@ -279,6 +280,9 @@ export function chooseNextAction(tags: ContactTag[], role: AssignedRole, urgency
   }
   if (role === "pastor") {
     return "Assign to the pastor for a warm personal follow-up and appropriate next conversation.";
+  }
+  if (tags.includes("baptism")) {
+    return "Assign to a Bible worker for baptism preparation and involve the pastor when ready.";
   }
   if (role === "bible_worker") {
     return "Assign to a Bible worker and send a warm WhatsApp follow-up with Bible study options.";

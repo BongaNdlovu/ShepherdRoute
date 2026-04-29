@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { classifyContact } from "@/lib/classifyContact";
+import { interestLabels } from "@/lib/constants";
 
 const unsafeAdvicePattern = /\b(counselling|counseling|diagnos(?:e|is)|medical advice|clinical advice|treatment|prescribe)\b/i;
 
@@ -11,11 +12,23 @@ test.describe("rule-based contact classifier", () => {
     expect(result.recommended_assigned_role).toBe("bible_worker");
   });
 
-  test("baptism message routes to a pastor", () => {
+  test("baptism message routes to a Bible worker", () => {
     const result = classifyContact({ message: "I want to ask about baptism and joining the church." });
 
     expect(result.recommended_tags).toContain("baptism");
+    expect(result.recommended_assigned_role).toBe("bible_worker");
+  });
+
+  test("urgent baptism message routes to a pastor", () => {
+    const result = classifyContact({ message: "This is urgent - I need to be baptized this week." });
+
+    expect(result.recommended_tags).toContain("baptism");
+    expect(result.urgency).toBe("high");
     expect(result.recommended_assigned_role).toBe("pastor");
+  });
+
+  test("interestLabels.baptism displays 'Baptismal Request'", () => {
+    expect(interestLabels.baptism).toBe("Baptismal Request");
   });
 
   test("health expo visitor with health wording routes to health leader", () => {
