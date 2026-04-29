@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { timingSafeEqual } from "node:crypto";
 import { friendlyAuthError } from "@/lib/app-errors";
 import { createClient } from "@/lib/supabase/server";
 import { absoluteUrl } from "@/lib/utils";
@@ -10,6 +11,11 @@ import { absoluteUrl } from "@/lib/utils";
 const optionalInviteTokenSchema = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
   z.string().trim().min(20).max(200).optional()
+);
+
+const optionalSignupCodeSchema = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  z.string().trim().max(160).optional()
 );
 
 const loginSchema = z.object({
@@ -23,13 +29,26 @@ const signupSchema = loginSchema.extend({
     (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
     z.string().trim().min(2).max(120).optional()
   ),
-  fullName: z.string().min(2).max(120)
+  fullName: z.string().min(2).max(120),
+  platformSignupCode: optionalSignupCodeSchema
 }).superRefine((value, context) => {
-  if (!value.inviteToken && !value.churchName) {
+  if (value.inviteToken) {
+    return;
+  }
+
+  if (!value.churchName) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       message: "Church name is required for normal signup.",
       path: ["churchName"]
+    });
+  }
+
+  if (!hasValidPlatformSignupCode(value.platformSignupCode)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "The signup code is not correct.",
+      path: ["platformSignupCode"]
     });
   }
 });
@@ -78,11 +97,12 @@ export async function signupAction(formData: FormData) {
     fullName: formData.get("fullName"),
     email: formData.get("email"),
     password: formData.get("password"),
-    inviteToken: rawInviteToken
+    inviteToken: rawInviteToken,
+    platformSignupCode: formData.get("platformSignupCode")
   });
 
   if (!parsed.success) {
-    redirect(withInvite("/signup?error=Please%20complete%20all%20fields.", rawInviteToken));
+    redirect(withInvite("/signup?error=Please%20check%20all%20fields%2C%20including%20the%20signup%20code.", rawInviteToken));
   }
 
   const supabase = await createClient();
@@ -121,6 +141,23 @@ function normalizeInviteToken(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed === "" ? undefined : trimmed;
+}
+
+function hasValidPlatformSignupCode(submittedCode: string | undefined) {
+  const configuredCode = process.env.SHEPARDROUTE_SIGNUP_CODE?.trim();
+
+  if (!configuredCode || !submittedCode) {
+    return false;
+  }
+
+  const submittedBuffer = Buffer.from(submittedCode.trim());
+  const configuredBuffer = Buffer.from(configuredCode);
+
+  if (submittedBuffer.length !== configuredBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(submittedBuffer, configuredBuffer);
 }
 
 function withInvite(path: string, inviteToken: string | undefined) {

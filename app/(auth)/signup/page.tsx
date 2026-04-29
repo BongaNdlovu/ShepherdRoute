@@ -27,7 +27,7 @@ export default async function SignupPage({
           </div>
           <CardTitle className="text-2xl">{params.invite ? "Create your team account" : "Start ShepardRoute"}</CardTitle>
           <CardDescription>
-            {params.invite ? "Use the invited email address to join the church workspace." : "Create your church workspace and first admin account."}
+            {params.invite ? "Use the invited email address to join the church workspace." : "Create your church workspace with the private platform signup code."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -39,10 +39,23 @@ export default async function SignupPage({
           <form action={signupAction} className="grid gap-4">
             {params.invite ? <input type="hidden" name="inviteToken" value={params.invite} /> : null}
             {!params.invite ? (
-              <div className="grid gap-2">
-                <Label htmlFor="churchName">Church name</Label>
-                <Input id="churchName" name="churchName" placeholder="Pinetown SDA Church" required />
-              </div>
+              <>
+                <div className="grid gap-2">
+                  <Label htmlFor="churchName">Church name</Label>
+                  <Input id="churchName" name="churchName" placeholder="Pinetown SDA Church" required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="platformSignupCode">Signup code</Label>
+                  <Input
+                    id="platformSignupCode"
+                    name="platformSignupCode"
+                    type="password"
+                    autoComplete="off"
+                    placeholder="Enter the platform code"
+                    required
+                  />
+                </div>
+              </>
             ) : null}
             <div className="grid gap-2">
               <Label htmlFor="fullName">Your name</Label>

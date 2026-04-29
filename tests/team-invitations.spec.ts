@@ -4,6 +4,10 @@ import { expect, test } from "@playwright/test";
 const schema = readFileSync("supabase/schema.sql", "utf8");
 const teamAction = readFileSync("app/(dashboard)/_actions/team.ts", "utf8");
 const authActions = readFileSync("app/(auth)/actions.ts", "utf8");
+const signupPage = readFileSync("app/(auth)/signup/page.tsx", "utf8");
+const envExample = readFileSync(".env.example", "utf8");
+const deploymentDocs = readFileSync("docs/deployment.md", "utf8");
+const setupDocs = readFileSync("docs/supabase-schema-setup.md", "utf8");
 
 test.describe("team invitation workflow", () => {
   test("schema stores hashed expiring invitations", () => {
@@ -32,5 +36,28 @@ test.describe("team invitation workflow", () => {
     expect(authActions).toContain("invite_token: parsed.data.inviteToken");
     expect(authActions).toContain("accept_team_invitation");
     expect(authActions).toContain("selected_church_id");
+  });
+
+  test("normal signup requires a private platform signup code", () => {
+    expect(signupPage).toContain("name=\"platformSignupCode\"");
+    expect(signupPage).toContain("Signup code");
+    expect(authActions).toContain("platformSignupCode: formData.get(\"platformSignupCode\")");
+    expect(authActions).toContain("SHEPARDROUTE_SIGNUP_CODE");
+    expect(authActions).toContain("timingSafeEqual");
+    expect(authActions).toContain("The signup code is not correct.");
+  });
+
+  test("invite signup bypasses the platform signup code", () => {
+    expect(authActions).toContain("if (value.inviteToken) {");
+    expect(authActions).toContain("return;");
+    expect(authActions).toContain("invite_token: parsed.data.inviteToken");
+    expect(signupPage).toContain("{!params.invite ? (");
+  });
+
+  test("signup code is documented as a server-only environment variable", () => {
+    expect(envExample).toContain("SHEPARDROUTE_SIGNUP_CODE=");
+    expect(deploymentDocs).toContain("SHEPARDROUTE_SIGNUP_CODE");
+    expect(deploymentDocs).toContain("Do not prefix it with `NEXT_PUBLIC_`");
+    expect(setupDocs).toContain("SHEPARDROUTE_SIGNUP_CODE");
   });
 });

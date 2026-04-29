@@ -52,6 +52,7 @@ Open `http://localhost:3000`.
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SHEPARDROUTE_SIGNUP_CODE=choose-a-long-private-code
 ```
 
 7. In Authentication settings, add these redirect URLs:
@@ -65,6 +66,8 @@ https://your-vercel-domain.vercel.app/dashboard
 For local testing, open the app at `http://localhost:3000/login`. Avoid switching between `localhost` and `127.0.0.1` in the same session because browsers treat them as different origins.
 
 The signup flow stores `church_name` and `full_name` in Supabase Auth metadata. The database trigger creates the church workspace and admin profile automatically.
+
+Normal new-church signup requires `SHEPARDROUTE_SIGNUP_CODE`. Team invitation signups do not require this code because invite links are already token-protected and tied to the invited email address.
 
 If you tried signing up before running the SQL, run the SQL now. It includes a backfill block that creates missing church profiles for existing auth users.
 

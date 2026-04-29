@@ -18,6 +18,7 @@ test("public auth pages load", async ({ page }) => {
 
   await page.goto("/signup");
   await expect(page.getByRole("heading", { name: /start shepardroute/i })).toBeVisible();
+  await expect(page.getByLabel("Signup code")).toBeVisible();
 });
 
 test.describe("authenticated smoke flow", () => {
