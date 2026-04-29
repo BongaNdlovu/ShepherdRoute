@@ -60,7 +60,7 @@ export default async function EventsPage() {
                   <Link href={`/events/${event.id}`}>View event</Link>
                 </Button>
                 <Button asChild>
-                  <Link href={`/public/e/${event.slug}`} target="_blank">Open form</Link>
+                  <Link href={`/e/${event.slug}`} target="_blank">Open form</Link>
                 </Button>
               </div>
             </CardContent>
@@ -68,7 +68,7 @@ export default async function EventsPage() {
         ))}
       </div>
 
-      {events[0] ? <QrCard eventName={events[0].name} url={absoluteUrl(`/public/e/${events[0].slug}`)} /> : null}
+      {events[0] ? <QrCard eventName={events[0].name} url={absoluteUrl(`/e/${events[0].slug}`)} /> : null}
     </section>
   );
 }

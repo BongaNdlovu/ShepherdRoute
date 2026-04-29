@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { interestLabels, interestOptions } from "@/lib/constants";
+import { prayerVisibilityLabels, prayerVisibilityOptions } from "@/lib/followUp";
 
 type QuickContactFormProps = {
   events: Array<{ id: string; name: string }>;
@@ -26,6 +27,10 @@ export function QuickContactForm({ events }: QuickContactFormProps) {
           <div className="grid gap-2">
             <Label htmlFor="phone">Phone / WhatsApp</Label>
             <Input id="phone" name="phone" placeholder="+27..." required />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" name="email" type="email" placeholder="Optional" />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="area">Area</Label>
@@ -55,6 +60,14 @@ export function QuickContactForm({ events }: QuickContactFormProps) {
             <Label htmlFor="prayerRequest">Prayer request or note</Label>
             <Textarea id="prayerRequest" name="prayerRequest" />
             <p className="text-xs text-muted-foreground">Prayer text is saved in the separate prayer request table.</p>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="prayerVisibility">Prayer visibility</Label>
+            <select id="prayerVisibility" name="prayerVisibility" defaultValue="general_prayer" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
+              {prayerVisibilityOptions.map((visibility) => (
+                <option key={visibility} value={visibility}>{prayerVisibilityLabels[visibility]}</option>
+              ))}
+            </select>
           </div>
           <Button type="submit">Add contact</Button>
         </form>

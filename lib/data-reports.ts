@@ -17,6 +17,11 @@ export type OutreachReportSummary = {
   health_count: number;
   high_priority_count: number;
   unassigned_count: number;
+  due_today_count: number;
+  overdue_count: number;
+  waiting_reply_count: number;
+  no_consent_count: number;
+  do_not_contact_count: number;
   events: OutreachReportEvent[];
 };
 
@@ -39,6 +44,11 @@ const emptyOutreachSummary: OutreachReportSummary = {
   health_count: 0,
   high_priority_count: 0,
   unassigned_count: 0,
+  due_today_count: 0,
+  overdue_count: 0,
+  waiting_reply_count: 0,
+  no_consent_count: 0,
+  do_not_contact_count: 0,
   events: []
 };
 
@@ -74,6 +84,11 @@ function parseOutreachSummary(row: Partial<OutreachReportSummary> | null | undef
     health_count: Number(row.health_count) || 0,
     high_priority_count: Number(row.high_priority_count) || 0,
     unassigned_count: Number(row.unassigned_count) || 0,
+    due_today_count: Number(row.due_today_count) || 0,
+    overdue_count: Number(row.overdue_count) || 0,
+    waiting_reply_count: Number(row.waiting_reply_count) || 0,
+    no_consent_count: Number(row.no_consent_count) || 0,
+    do_not_contact_count: Number(row.do_not_contact_count) || 0,
     events: Array.isArray(row.events) ? row.events : []
   };
 }

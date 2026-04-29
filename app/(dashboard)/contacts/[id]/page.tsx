@@ -1,5 +1,6 @@
 import { ContactSummaryPanel } from "@/components/app/contact-summary-panel";
 import { ContactClassificationPanel } from "@/components/app/contact-classification-panel";
+import { ContactJourneySection } from "@/components/app/contact-journey-section";
 import { FollowUpHistorySection } from "@/components/app/follow-up-history-section";
 import { FollowUpNoteCard } from "@/components/app/follow-up-note-card";
 import { FollowUpTrackerCard } from "@/components/app/follow-up-tracker-card";
@@ -25,14 +26,16 @@ export default async function ContactDetailPage({
   const { id } = await params;
   const query = await searchParams;
   const context = await getChurchContext();
-  const { contact, prayer, team, followUps, messages } = await getContact(context.churchId, id);
+  const { contact, prayer, journey, team, followUps, messages } = await getContact(context.churchId, id);
   const interests = contact.contact_interests ?? [];
   const message = generateMessage({
     name: contact.full_name,
     phone: contact.phone,
     interests: interests.map((item) => item.interest),
     churchName: context.churchName,
-    eventName: contact.events?.name
+    eventName: contact.events?.name,
+    templateType: contact.events?.event_type,
+    doNotContact: contact.do_not_contact
   });
 
   return (
@@ -53,7 +56,8 @@ export default async function ContactDetailPage({
         <CardContent className="space-y-5">
           <ContactSummaryPanel contact={contact} error={query.error} />
           <ContactClassificationPanel classification={contact.classification_payload} />
-          <WhatsappFollowUpCard contactId={contact.id} phone={contact.phone} message={message} />
+          <ContactJourneySection journey={journey} />
+          <WhatsappFollowUpCard contactId={contact.id} phone={contact.phone} message={message} doNotContact={contact.do_not_contact} />
           <PrayerRequestsSection prayer={prayer} />
           <FollowUpHistorySection followUps={followUps} />
           <GeneratedMessagesSection messages={messages} />

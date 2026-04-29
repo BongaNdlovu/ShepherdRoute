@@ -1,5 +1,9 @@
+import { AlertTriangle, ShieldCheck } from "lucide-react";
+import { updateContactLifecycleAction } from "@/app/(dashboard)/actions";
 import { InterestPills } from "@/components/app/interest-pills";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
+import { Button } from "@/components/ui/button";
+import { consentScopeLabels, formatDateTime } from "@/lib/followUp";
 import type { ContactDetailResult } from "@/lib/data";
 
 type ContactSummaryPanelProps = {
@@ -13,8 +17,42 @@ export function ContactSummaryPanel({ contact, error }: ContactSummaryPanelProps
   return (
     <>
       {error ? <p className="rounded-md bg-rose-50 p-3 text-sm text-rose-700">{error}</p> : null}
+      {contact.duplicate_of_contact_id ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4" />
+            <div>
+              <p className="font-bold">This person already exists. This event was added to their journey.</p>
+              <p className="mt-1">
+                {contact.duplicate_match_reason ?? "Matched to an existing person."}
+                {contact.duplicate_match_confidence ? ` Confidence ${Math.round(contact.duplicate_match_confidence * 100)}%.` : ""}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {contact.assigned_to ? null : (
+        <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+          <p className="font-bold">No one is assigned.</p>
+          <p className="mt-1">Assign this contact so follow-up has a clear owner.</p>
+        </div>
+      )}
+      {contact.do_not_contact ? (
+        <div className="rounded-lg border border-slate-300 bg-slate-100 p-4 text-sm text-slate-800">
+          <p className="font-bold">Do not contact</p>
+          <p className="mt-1">This person should not receive WhatsApp, phone, or email follow-up.</p>
+        </div>
+      ) : null}
       <InterestPills interests={contact.contact_interests ?? []} />
       <div className="grid gap-4 rounded-lg bg-muted p-4 md:grid-cols-2">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Email</p>
+          <p className="mt-1 font-semibold">{contact.email ?? "Not provided"}</p>
+        </div>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">WhatsApp</p>
+          <p className="mt-1 font-semibold">{contact.whatsapp_number ?? contact.phone}</p>
+        </div>
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Area</p>
           <p className="mt-1 font-semibold">{contact.area ?? "Not provided"}</p>
@@ -33,7 +71,13 @@ export function ContactSummaryPanel({ contact, error }: ContactSummaryPanelProps
         </div>
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Consent</p>
-          <p className="mt-1 font-semibold">{contact.consent_given ? "Given" : "Missing"}</p>
+          <p className="mt-1 font-semibold">{contact.consent_given ? `Given ${formatDateTime(contact.consent_at)}` : "Missing"}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Source: {contact.consent_source ?? "Unknown"}</p>
+          {contact.consent_scope?.length ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {contact.consent_scope.map((scope) => consentScopeLabels[scope] ?? scope).join(", ")}
+            </p>
+          ) : null}
         </div>
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Current status</p>
@@ -42,6 +86,27 @@ export function ContactSummaryPanel({ contact, error }: ContactSummaryPanelProps
             <StatusBadge status={contact.status} />
           </div>
         </div>
+      </div>
+      <div className="flex flex-wrap gap-2 rounded-lg border bg-white p-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2 text-sm text-muted-foreground">
+          <ShieldCheck className="h-4 w-4" />
+          Consent, opt-out, archive, and soft-delete controls.
+        </div>
+        <form action={updateContactLifecycleAction}>
+          <input type="hidden" name="contactId" value={contact.id} />
+          <input type="hidden" name="intent" value="do_not_contact" />
+          <Button type="submit" size="sm" variant="outline" disabled={contact.do_not_contact}>Do not contact</Button>
+        </form>
+        <form action={updateContactLifecycleAction}>
+          <input type="hidden" name="contactId" value={contact.id} />
+          <input type="hidden" name="intent" value="archive" />
+          <Button type="submit" size="sm" variant="outline">Archive</Button>
+        </form>
+        <form action={updateContactLifecycleAction}>
+          <input type="hidden" name="contactId" value={contact.id} />
+          <input type="hidden" name="intent" value="delete" />
+          <Button type="submit" size="sm" variant="destructive">Delete</Button>
+        </form>
       </div>
     </>
   );

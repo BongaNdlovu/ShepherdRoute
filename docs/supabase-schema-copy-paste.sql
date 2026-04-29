@@ -26,18 +26,33 @@ end $$;
 
 do $$ begin
   create type public.event_type as enum (
+    'sabbath_visitor',
     'church_service',
     'health_expo',
+    'evangelistic_campaign',
     'prophecy_seminar',
     'bible_study',
     'visitor_sabbath',
     'youth_event',
     'cooking_class',
+    'prayer_campaign',
+    'regular_member',
+    'baptized_member',
+    'health_seminar',
+    'custom',
     'community_outreach',
     'other'
   );
 exception when duplicate_object then null;
 end $$;
+
+alter type public.event_type add value if not exists 'sabbath_visitor';
+alter type public.event_type add value if not exists 'evangelistic_campaign';
+alter type public.event_type add value if not exists 'prayer_campaign';
+alter type public.event_type add value if not exists 'regular_member';
+alter type public.event_type add value if not exists 'baptized_member';
+alter type public.event_type add value if not exists 'health_seminar';
+alter type public.event_type add value if not exists 'custom';
 
 do $$ begin
   create type public.interest_tag as enum (
@@ -86,6 +101,13 @@ do $$ begin
   create type public.prayer_visibility as enum ('pastoral_prayer', 'pastors_only');
 exception when duplicate_object then null;
 end $$;
+
+alter type public.prayer_visibility add value if not exists 'general_prayer';
+alter type public.prayer_visibility add value if not exists 'pastor_only';
+alter type public.prayer_visibility add value if not exists 'private_contact';
+alter type public.prayer_visibility add value if not exists 'family_support';
+alter type public.prayer_visibility add value if not exists 'sensitive';
+alter type public.prayer_visibility add value if not exists 'health_related';
 
 create table if not exists public.churches (
   id uuid primary key default gen_random_uuid(),
@@ -149,13 +171,41 @@ create table if not exists public.events (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.people (
+  id uuid primary key default gen_random_uuid(),
+  church_id uuid not null references public.churches(id) on delete cascade,
+  full_name text not null,
+  normalized_name text,
+  phone text,
+  normalized_phone text,
+  whatsapp_number text,
+  normalized_whatsapp text,
+  email text,
+  normalized_email text,
+  area text,
+  normalized_area text,
+  do_not_contact boolean not null default false,
+  do_not_contact_at timestamptz,
+  archived_at timestamptz,
+  deleted_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.contacts (
   id uuid primary key default gen_random_uuid(),
   church_id uuid not null references public.churches(id) on delete cascade,
+  person_id uuid references public.people(id) on delete set null,
   event_id uuid references public.events(id) on delete set null,
   full_name text not null,
   phone text not null,
   email text,
+  whatsapp_number text,
+  normalized_name text,
+  normalized_phone text,
+  normalized_whatsapp text,
+  normalized_email text,
+  normalized_area text,
   area text,
   language text default 'English',
   best_time_to_contact text,
@@ -164,6 +214,15 @@ create table if not exists public.contacts (
   assigned_to uuid references public.team_members(id) on delete set null,
   consent_given boolean not null default false,
   consent_at timestamptz,
+  consent_source text,
+  consent_scope text[] not null default array[]::text[],
+  do_not_contact boolean not null default false,
+  do_not_contact_at timestamptz,
+  archived_at timestamptz,
+  deleted_at timestamptz,
+  duplicate_of_contact_id uuid references public.contacts(id) on delete set null,
+  duplicate_match_confidence numeric(4,3),
+  duplicate_match_reason text,
   source text not null default 'public_form',
   classification_payload jsonb not null default '{"ready_for_ai": true}'::jsonb,
   created_at timestamptz not null default now(),
@@ -172,6 +231,23 @@ create table if not exists public.contacts (
 
 alter table if exists public.contacts
   add column if not exists best_time_to_contact text;
+alter table if exists public.contacts
+  add column if not exists person_id uuid references public.people(id) on delete set null,
+  add column if not exists whatsapp_number text,
+  add column if not exists normalized_name text,
+  add column if not exists normalized_phone text,
+  add column if not exists normalized_whatsapp text,
+  add column if not exists normalized_email text,
+  add column if not exists normalized_area text,
+  add column if not exists consent_source text,
+  add column if not exists consent_scope text[] not null default array[]::text[],
+  add column if not exists do_not_contact boolean not null default false,
+  add column if not exists do_not_contact_at timestamptz,
+  add column if not exists archived_at timestamptz,
+  add column if not exists deleted_at timestamptz,
+  add column if not exists duplicate_of_contact_id uuid references public.contacts(id) on delete set null,
+  add column if not exists duplicate_match_confidence numeric(4,3),
+  add column if not exists duplicate_match_reason text;
 
 create table if not exists public.contact_interests (
   id uuid primary key default gen_random_uuid(),
@@ -181,6 +257,21 @@ create table if not exists public.contact_interests (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (contact_id, interest)
+);
+
+create table if not exists public.contact_journey_events (
+  id uuid primary key default gen_random_uuid(),
+  church_id uuid not null references public.churches(id) on delete cascade,
+  person_id uuid not null references public.people(id) on delete cascade,
+  contact_id uuid references public.contacts(id) on delete set null,
+  event_id uuid references public.events(id) on delete set null,
+  event_type public.event_type,
+  title text not null,
+  summary text,
+  selected_interests public.interest_tag[] not null default array[]::public.interest_tag[],
+  classification_payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 create table if not exists public.follow_ups (
@@ -228,17 +319,34 @@ create index if not exists church_memberships_church_idx on public.church_member
 create index if not exists team_members_church_active_idx on public.team_members(church_id, is_active);
 create index if not exists events_church_idx on public.events(church_id, starts_on desc);
 create index if not exists events_slug_idx on public.events(slug);
+create index if not exists people_church_phone_idx on public.people(church_id, normalized_phone) where normalized_phone is not null;
+create index if not exists people_church_whatsapp_idx on public.people(church_id, normalized_whatsapp) where normalized_whatsapp is not null;
+create index if not exists people_church_email_idx on public.people(church_id, normalized_email) where normalized_email is not null;
+create index if not exists people_church_name_trgm_idx on public.people using gin (normalized_name gin_trgm_ops);
+create index if not exists people_church_area_idx on public.people(church_id, normalized_area);
+create index if not exists people_church_contact_flags_idx on public.people(church_id, do_not_contact, archived_at, deleted_at);
 create index if not exists contacts_church_status_idx on public.contacts(church_id, status);
 create index if not exists contacts_church_event_idx on public.contacts(church_id, event_id);
 create index if not exists contacts_church_assigned_idx on public.contacts(church_id, assigned_to);
+create index if not exists contacts_church_due_flags_idx on public.contacts(church_id, assigned_to, status, urgency);
+create index if not exists contacts_church_person_idx on public.contacts(church_id, person_id);
+create index if not exists contacts_church_phone_norm_idx on public.contacts(church_id, normalized_phone) where normalized_phone is not null;
+create index if not exists contacts_church_whatsapp_norm_idx on public.contacts(church_id, normalized_whatsapp) where normalized_whatsapp is not null;
+create index if not exists contacts_church_email_norm_idx on public.contacts(church_id, normalized_email) where normalized_email is not null;
 create index if not exists contacts_church_created_at_idx on public.contacts(church_id, created_at desc);
 create index if not exists contacts_full_name_trgm_idx on public.contacts using gin (full_name gin_trgm_ops);
+create index if not exists contacts_normalized_name_trgm_idx on public.contacts using gin (normalized_name gin_trgm_ops);
 create index if not exists contacts_phone_trgm_idx on public.contacts using gin (phone gin_trgm_ops);
 create index if not exists contacts_area_trgm_idx on public.contacts using gin (area gin_trgm_ops);
 create index if not exists contact_interests_church_interest_idx on public.contact_interests(church_id, interest);
 create index if not exists follow_ups_contact_idx on public.follow_ups(contact_id, created_at desc);
+create index if not exists follow_ups_church_due_idx on public.follow_ups(church_id, due_at) where completed_at is null;
+create index if not exists follow_ups_church_status_idx on public.follow_ups(church_id, status, completed_at);
 create index if not exists prayer_requests_contact_idx on public.prayer_requests(contact_id, created_at desc);
+create index if not exists prayer_requests_visibility_idx on public.prayer_requests(church_id, visibility);
 create index if not exists generated_messages_contact_idx on public.generated_messages(contact_id, created_at desc);
+create index if not exists journey_person_created_idx on public.contact_journey_events(person_id, created_at desc);
+create index if not exists journey_church_event_idx on public.contact_journey_events(church_id, event_id, created_at desc);
 
 create or replace function public.touch_updated_at()
 returns trigger
@@ -247,6 +355,205 @@ set search_path = public
 as $$
 begin
   new.updated_at = now();
+  return new;
+end;
+$$;
+
+create or replace function private.normalize_contact_text(input text)
+returns text
+language sql
+immutable
+set search_path = public
+as $$
+  select nullif(regexp_replace(lower(trim(coalesce(input, ''))), '[^a-z0-9]+', ' ', 'g'), '');
+$$;
+
+create or replace function private.normalize_phone(input text)
+returns text
+language plpgsql
+immutable
+set search_path = public
+as $$
+declare
+  digits text := regexp_replace(coalesce(input, ''), '[^0-9]+', '', 'g');
+begin
+  if digits = '' then
+    return null;
+  end if;
+
+  if length(digits) = 10 and left(digits, 1) = '0' then
+    return '27' || substring(digits from 2);
+  end if;
+
+  return digits;
+end;
+$$;
+
+create or replace function private.default_follow_up_due_at(
+  p_urgency public.urgency_level,
+  p_classification_payload jsonb default '{}'::jsonb
+)
+returns timestamptz
+language sql
+stable
+set search_path = public
+as $$
+  select case
+    when p_urgency = 'high' then now() + interval '8 hours'
+    when coalesce(p_classification_payload->>'recommended_assigned_role', '') = 'pastor' then now() + interval '1 day'
+    when coalesce(p_classification_payload->'recommended_tags', '[]'::jsonb) ?| array['bible_study','prayer'] then now() + interval '2 days'
+    else now() + interval '5 days'
+  end;
+$$;
+
+create or replace function private.prepare_contact_identity()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  matched_person public.people%rowtype;
+  latest_contact_id uuid;
+  match_reason text;
+  match_confidence numeric(4,3) := 0;
+begin
+  new.whatsapp_number := coalesce(nullif(new.whatsapp_number, ''), new.phone);
+  new.normalized_name := private.normalize_contact_text(new.full_name);
+  new.normalized_phone := private.normalize_phone(new.phone);
+  new.normalized_whatsapp := private.normalize_phone(new.whatsapp_number);
+  new.normalized_email := nullif(lower(trim(coalesce(new.email, ''))), '');
+  new.normalized_area := private.normalize_contact_text(new.area);
+
+  if new.consent_given and new.consent_at is null then
+    new.consent_at := now();
+  end if;
+
+  if new.consent_source is null then
+    new.consent_source := new.source;
+  end if;
+
+  if new.consent_scope is null or coalesce(array_length(new.consent_scope, 1), 0) = 0 then
+    new.consent_scope := array['follow_up']::text[];
+  end if;
+
+  if new.person_id is null then
+    select *
+    into matched_person
+    from public.people
+    where people.church_id = new.church_id
+      and people.deleted_at is null
+      and (
+        (new.normalized_phone is not null and people.normalized_phone = new.normalized_phone)
+        or (new.normalized_whatsapp is not null and people.normalized_whatsapp = new.normalized_whatsapp)
+        or (new.normalized_email is not null and people.normalized_email = new.normalized_email)
+      )
+    order by people.updated_at desc
+    limit 1;
+
+    if matched_person.id is not null then
+      match_reason := 'Exact phone, WhatsApp, or email match';
+      match_confidence := 1.000;
+    elsif new.normalized_name is not null then
+      select *
+      into matched_person
+      from public.people
+      where people.church_id = new.church_id
+        and people.deleted_at is null
+        and people.normalized_name is not null
+        and similarity(people.normalized_name, new.normalized_name) >= 0.72
+        and (
+          new.normalized_area is null
+          or people.normalized_area is null
+          or people.normalized_area = new.normalized_area
+          or similarity(people.normalized_area, new.normalized_area) >= 0.65
+        )
+      order by similarity(people.normalized_name, new.normalized_name) desc, people.updated_at desc
+      limit 1;
+
+      if matched_person.id is not null then
+        match_reason := 'Similar name and area match';
+        match_confidence := greatest(0.720, similarity(matched_person.normalized_name, new.normalized_name))::numeric(4,3);
+      end if;
+    end if;
+
+    if matched_person.id is null then
+      insert into public.people (
+        church_id,
+        full_name,
+        normalized_name,
+        phone,
+        normalized_phone,
+        whatsapp_number,
+        normalized_whatsapp,
+        email,
+        normalized_email,
+        area,
+        normalized_area,
+        do_not_contact,
+        do_not_contact_at
+      )
+      values (
+        new.church_id,
+        new.full_name,
+        new.normalized_name,
+        new.phone,
+        new.normalized_phone,
+        new.whatsapp_number,
+        new.normalized_whatsapp,
+        new.email,
+        new.normalized_email,
+        new.area,
+        new.normalized_area,
+        new.do_not_contact,
+        new.do_not_contact_at
+      )
+      returning * into matched_person;
+    else
+      update public.people
+      set full_name = coalesce(nullif(new.full_name, ''), people.full_name),
+          normalized_name = coalesce(new.normalized_name, people.normalized_name),
+          phone = coalesce(nullif(new.phone, ''), people.phone),
+          normalized_phone = coalesce(new.normalized_phone, people.normalized_phone),
+          whatsapp_number = coalesce(nullif(new.whatsapp_number, ''), people.whatsapp_number),
+          normalized_whatsapp = coalesce(new.normalized_whatsapp, people.normalized_whatsapp),
+          email = coalesce(nullif(new.email, ''), people.email),
+          normalized_email = coalesce(new.normalized_email, people.normalized_email),
+          area = coalesce(nullif(new.area, ''), people.area),
+          normalized_area = coalesce(new.normalized_area, people.normalized_area),
+          do_not_contact = people.do_not_contact or new.do_not_contact,
+          do_not_contact_at = coalesce(people.do_not_contact_at, new.do_not_contact_at),
+          updated_at = now()
+      where people.id = matched_person.id
+      returning * into matched_person;
+    end if;
+
+    new.person_id := matched_person.id;
+  end if;
+
+  if new.do_not_contact then
+    update public.people
+    set do_not_contact = true,
+        do_not_contact_at = coalesce(do_not_contact_at, now()),
+        updated_at = now()
+    where id = new.person_id;
+  end if;
+
+  select contacts.id
+  into latest_contact_id
+  from public.contacts
+  where contacts.church_id = new.church_id
+    and contacts.person_id = new.person_id
+    and contacts.id is distinct from new.id
+  order by contacts.created_at desc
+  limit 1;
+
+  if latest_contact_id is not null and new.duplicate_of_contact_id is null then
+    new.duplicate_of_contact_id := latest_contact_id;
+    new.duplicate_match_confidence := coalesce(match_confidence, 0.900);
+    new.duplicate_match_reason := coalesce(match_reason, 'Existing person journey match');
+  end if;
+
   return new;
 end;
 $$;
@@ -272,8 +579,17 @@ create trigger events_touch_updated_at before update on public.events for each r
 drop trigger if exists contacts_touch_updated_at on public.contacts;
 create trigger contacts_touch_updated_at before update on public.contacts for each row execute function public.touch_updated_at();
 
+drop trigger if exists contacts_prepare_identity on public.contacts;
+create trigger contacts_prepare_identity before insert or update on public.contacts for each row execute function private.prepare_contact_identity();
+
 drop trigger if exists contact_interests_touch_updated_at on public.contact_interests;
 create trigger contact_interests_touch_updated_at before update on public.contact_interests for each row execute function public.touch_updated_at();
+
+drop trigger if exists people_touch_updated_at on public.people;
+create trigger people_touch_updated_at before update on public.people for each row execute function public.touch_updated_at();
+
+drop trigger if exists contact_journey_events_touch_updated_at on public.contact_journey_events;
+create trigger contact_journey_events_touch_updated_at before update on public.contact_journey_events for each row execute function public.touch_updated_at();
 
 drop trigger if exists follow_ups_touch_updated_at on public.follow_ups;
 create trigger follow_ups_touch_updated_at before update on public.follow_ups for each row execute function public.touch_updated_at();
@@ -430,8 +746,10 @@ alter table public.church_memberships enable row level security;
 alter table public.app_admins enable row level security;
 alter table public.team_members enable row level security;
 alter table public.events enable row level security;
+alter table public.people enable row level security;
 alter table public.contacts enable row level security;
 alter table public.contact_interests enable row level security;
+alter table public.contact_journey_events enable row level security;
 alter table public.follow_ups enable row level security;
 alter table public.prayer_requests enable row level security;
 alter table public.generated_messages enable row level security;
@@ -505,6 +823,22 @@ on public.events for all
 using (private.has_church_role(church_id, array['admin','pastor','elder','health_leader','youth_leader']::public.team_role[]))
 with check (private.has_church_role(church_id, array['admin','pastor','elder','health_leader','youth_leader']::public.team_role[]));
 
+drop policy if exists "Members can view church people" on public.people;
+create policy "Members can view church people"
+on public.people for select
+using (private.is_church_member(church_id) or private.is_app_admin());
+
+drop policy if exists "Members can create church people" on public.people;
+create policy "Members can create church people"
+on public.people for insert
+with check (private.is_church_member(church_id));
+
+drop policy if exists "Members can update church people" on public.people;
+create policy "Members can update church people"
+on public.people for update
+using (private.is_church_member(church_id))
+with check (private.is_church_member(church_id));
+
 drop policy if exists "Members can view church contacts" on public.contacts;
 create policy "Members can view church contacts"
 on public.contacts for select
@@ -537,6 +871,22 @@ on public.contact_interests for update
 using (private.is_church_member(church_id))
 with check (private.is_church_member(church_id));
 
+drop policy if exists "Members can view contact journeys" on public.contact_journey_events;
+create policy "Members can view contact journeys"
+on public.contact_journey_events for select
+using (private.is_church_member(church_id) or private.is_app_admin());
+
+drop policy if exists "Members can create contact journeys" on public.contact_journey_events;
+create policy "Members can create contact journeys"
+on public.contact_journey_events for insert
+with check (private.is_church_member(church_id));
+
+drop policy if exists "Members can update contact journeys" on public.contact_journey_events;
+create policy "Members can update contact journeys"
+on public.contact_journey_events for update
+using (private.is_church_member(church_id))
+with check (private.is_church_member(church_id));
+
 drop policy if exists "Members can view follow ups" on public.follow_ups;
 create policy "Members can view follow ups"
 on public.follow_ups for select
@@ -556,7 +906,25 @@ with check (private.is_church_member(church_id));
 drop policy if exists "Prayer roles can view prayer requests" on public.prayer_requests;
 create policy "Prayer roles can view prayer requests"
 on public.prayer_requests for select
-using (private.has_church_role(church_id, array['admin','pastor','prayer_team']::public.team_role[]));
+using (
+  private.is_app_admin()
+  or (
+    visibility in ('pastoral_prayer','general_prayer')
+    and private.has_church_role(church_id, array['admin','pastor','prayer_team']::public.team_role[])
+  )
+  or (
+    visibility in ('pastors_only','pastor_only','private_contact','sensitive')
+    and private.has_church_role(church_id, array['admin','pastor']::public.team_role[])
+  )
+  or (
+    visibility = 'family_support'
+    and private.has_church_role(church_id, array['admin','pastor','elder']::public.team_role[])
+  )
+  or (
+    visibility = 'health_related'
+    and private.has_church_role(church_id, array['admin','pastor','health_leader']::public.team_role[])
+  )
+);
 
 drop policy if exists "Members can create prayer requests" on public.prayer_requests;
 create policy "Members can create prayer requests"
@@ -566,8 +934,8 @@ with check (private.is_church_member(church_id));
 drop policy if exists "Prayer roles can update prayer requests" on public.prayer_requests;
 create policy "Prayer roles can update prayer requests"
 on public.prayer_requests for update
-using (private.has_church_role(church_id, array['admin','pastor','prayer_team']::public.team_role[]))
-with check (private.has_church_role(church_id, array['admin','pastor','prayer_team']::public.team_role[]));
+using (private.has_church_role(church_id, array['admin','pastor']::public.team_role[]))
+with check (private.has_church_role(church_id, array['admin','pastor']::public.team_role[]));
 
 drop policy if exists "Members can view generated messages" on public.generated_messages;
 create policy "Members can view generated messages"
@@ -654,14 +1022,20 @@ create or replace function public.search_contacts(
 )
 returns table (
   id uuid,
+  person_id uuid,
   full_name text,
   phone text,
+  email text,
   area text,
   language text,
   best_time_to_contact text,
   status public.follow_up_status,
   urgency public.urgency_level,
   assigned_to uuid,
+  do_not_contact boolean,
+  duplicate_of_contact_id uuid,
+  duplicate_match_confidence numeric,
+  duplicate_match_reason text,
   created_at timestamptz,
   event_id uuid,
   event_name text,
@@ -676,14 +1050,20 @@ as $$
   with filtered as (
     select
       contacts.id,
+      contacts.person_id,
       contacts.full_name,
       contacts.phone,
+      contacts.email,
       contacts.area,
       contacts.language,
       contacts.best_time_to_contact,
       contacts.status,
       contacts.urgency,
       contacts.assigned_to,
+      contacts.do_not_contact,
+      contacts.duplicate_of_contact_id,
+      contacts.duplicate_match_confidence,
+      contacts.duplicate_match_reason,
       contacts.created_at,
       events.id as event_id,
       events.name as event_name,
@@ -697,8 +1077,11 @@ as $$
         nullif(trim(coalesce(p_q, '')), '') is null
         or contacts.full_name ilike '%' || trim(p_q) || '%'
         or contacts.phone ilike '%' || trim(p_q) || '%'
+        or contacts.email ilike '%' || trim(p_q) || '%'
         or contacts.area ilike '%' || trim(p_q) || '%'
       )
+      and contacts.deleted_at is null
+      and contacts.archived_at is null
       and (p_status is null or contacts.status = p_status)
       and (p_event_id is null or contacts.event_id = p_event_id)
       and (
@@ -723,14 +1106,20 @@ as $$
   )
   select
     filtered.id,
+    filtered.person_id,
     filtered.full_name,
     filtered.phone,
+    filtered.email,
     filtered.area,
     filtered.language,
     filtered.best_time_to_contact,
     filtered.status,
     filtered.urgency,
     filtered.assigned_to,
+    filtered.do_not_contact,
+    filtered.duplicate_of_contact_id,
+    filtered.duplicate_match_confidence,
+    filtered.duplicate_match_reason,
     filtered.created_at,
     filtered.event_id,
     filtered.event_name,
@@ -782,14 +1171,20 @@ create or replace function public.export_contacts(
 )
 returns table (
   id uuid,
+  person_id uuid,
   full_name text,
   phone text,
+  email text,
   area text,
   language text,
   best_time_to_contact text,
   status public.follow_up_status,
   urgency public.urgency_level,
   assigned_to uuid,
+  do_not_contact boolean,
+  duplicate_of_contact_id uuid,
+  duplicate_match_confidence numeric,
+  duplicate_match_reason text,
   created_at timestamptz,
   event_id uuid,
   event_name text,
@@ -804,14 +1199,20 @@ as $$
   with filtered as (
     select
       contacts.id,
+      contacts.person_id,
       contacts.full_name,
       contacts.phone,
+      contacts.email,
       contacts.area,
       contacts.language,
       contacts.best_time_to_contact,
       contacts.status,
       contacts.urgency,
       contacts.assigned_to,
+      contacts.do_not_contact,
+      contacts.duplicate_of_contact_id,
+      contacts.duplicate_match_confidence,
+      contacts.duplicate_match_reason,
       contacts.created_at,
       events.id as event_id,
       events.name as event_name,
@@ -825,8 +1226,11 @@ as $$
         nullif(trim(coalesce(p_q, '')), '') is null
         or contacts.full_name ilike '%' || trim(p_q) || '%'
         or contacts.phone ilike '%' || trim(p_q) || '%'
+        or contacts.email ilike '%' || trim(p_q) || '%'
         or contacts.area ilike '%' || trim(p_q) || '%'
       )
+      and contacts.deleted_at is null
+      and contacts.archived_at is null
       and (p_status is null or contacts.status = p_status)
       and (p_event_id is null or contacts.event_id = p_event_id)
       and (
@@ -850,14 +1254,20 @@ as $$
   )
   select
     filtered.id,
+    filtered.person_id,
     filtered.full_name,
     filtered.phone,
+    filtered.email,
     filtered.area,
     filtered.language,
     filtered.best_time_to_contact,
     filtered.status,
     filtered.urgency,
     filtered.assigned_to,
+    filtered.do_not_contact,
+    filtered.duplicate_of_contact_id,
+    filtered.duplicate_match_confidence,
+    filtered.duplicate_match_reason,
     filtered.created_at,
     filtered.event_id,
     filtered.event_name,
@@ -903,6 +1313,11 @@ returns table (
   health_count bigint,
   high_priority_count bigint,
   unassigned_count bigint,
+  due_today_count bigint,
+  overdue_count bigint,
+  waiting_reply_count bigint,
+  no_consent_count bigint,
+  do_not_contact_count bigint,
   events jsonb
 )
 language sql
@@ -971,6 +1386,45 @@ as $$
         and contacts.assigned_to is null
         and contacts.status <> 'closed'
     ) as unassigned_count,
+    (
+      select count(distinct follow_ups.contact_id)
+      from public.follow_ups
+      join public.contacts on contacts.id = follow_ups.contact_id
+      where follow_ups.church_id = p_church_id
+        and contacts.status <> 'closed'
+        and follow_ups.completed_at is null
+        and follow_ups.due_at >= date_trunc('day', now())
+        and follow_ups.due_at < date_trunc('day', now()) + interval '1 day'
+    ) as due_today_count,
+    (
+      select count(distinct follow_ups.contact_id)
+      from public.follow_ups
+      join public.contacts on contacts.id = follow_ups.contact_id
+      where follow_ups.church_id = p_church_id
+        and contacts.status <> 'closed'
+        and follow_ups.completed_at is null
+        and follow_ups.due_at < now()
+    ) as overdue_count,
+    (
+      select count(*)
+      from public.contacts
+      where contacts.church_id = p_church_id
+        and contacts.status = 'waiting'
+        and contacts.status <> 'closed'
+    ) as waiting_reply_count,
+    (
+      select count(*)
+      from public.contacts
+      where contacts.church_id = p_church_id
+        and contacts.consent_given is distinct from true
+        and contacts.status <> 'closed'
+    ) as no_consent_count,
+    (
+      select count(*)
+      from public.contacts
+      where contacts.church_id = p_church_id
+        and contacts.do_not_contact = true
+    ) as do_not_contact_count,
     coalesce(
       (
         select jsonb_agg(
@@ -1098,10 +1552,14 @@ drop function if exists public.submit_event_registration(
   text,
   text,
   text,
+  text,
   public.interest_tag[],
   text,
   public.urgency_level,
   jsonb,
+  public.prayer_visibility,
+  text[],
+  text,
   boolean
 );
 
@@ -1124,10 +1582,14 @@ drop function if exists private.submit_event_registration_impl(
   text,
   text,
   text,
+  text,
   public.interest_tag[],
   text,
   public.urgency_level,
   jsonb,
+  public.prayer_visibility,
+  text[],
+  text,
   boolean
 );
 
@@ -1135,6 +1597,7 @@ create or replace function private.submit_event_registration_impl(
   p_slug text,
   p_full_name text,
   p_phone text,
+  p_email text,
   p_area text,
   p_language text,
   p_best_time_to_contact text,
@@ -1142,6 +1605,9 @@ create or replace function private.submit_event_registration_impl(
   p_message text,
   p_urgency public.urgency_level,
   p_classification_payload jsonb,
+  p_prayer_visibility public.prayer_visibility,
+  p_consent_scope text[],
+  p_consent_source text,
   p_consent_given boolean
 )
 returns uuid
@@ -1154,10 +1620,12 @@ declare
   new_contact_id uuid;
   interest public.interest_tag;
   computed_urgency public.urgency_level := coalesce(p_urgency, 'medium'::public.urgency_level);
+  computed_due_at timestamptz;
   computed_classification_payload jsonb := coalesce(
     p_classification_payload,
     jsonb_build_object('classification_version', 'rule_v1', 'rule_based', true, 'ready_for_ai', false)
   );
+  journey_title text;
 begin
   if p_consent_given is distinct from true then
     raise exception 'Consent is required before follow-up can be requested.';
@@ -1181,6 +1649,8 @@ begin
     event_id,
     full_name,
     phone,
+    email,
+    whatsapp_number,
     area,
     language,
     best_time_to_contact,
@@ -1188,6 +1658,8 @@ begin
     urgency,
     consent_given,
     consent_at,
+    consent_source,
+    consent_scope,
     source,
     classification_payload
   )
@@ -1196,6 +1668,8 @@ begin
     target_event.id,
     p_full_name,
     p_phone,
+    nullif(p_email, ''),
+    p_phone,
     nullif(p_area, ''),
     coalesce(nullif(p_language, ''), 'English'),
     nullif(p_best_time_to_contact, ''),
@@ -1203,6 +1677,8 @@ begin
     computed_urgency,
     true,
     now(),
+    coalesce(nullif(p_consent_source, ''), target_event.event_type::text),
+    coalesce(p_consent_scope, array['follow_up']::text[]),
     'public_form',
     computed_classification_payload
   )
@@ -1216,11 +1692,47 @@ begin
 
   if nullif(trim(coalesce(p_message, '')), '') is not null then
     insert into public.prayer_requests (church_id, contact_id, request_text, visibility)
-    values (target_event.church_id, new_contact_id, trim(p_message), 'pastoral_prayer');
+    values (target_event.church_id, new_contact_id, trim(p_message), coalesce(p_prayer_visibility, 'general_prayer'::public.prayer_visibility));
   end if;
 
-  insert into public.follow_ups (church_id, contact_id, channel, status, next_action)
-  values (target_event.church_id, new_contact_id, 'note', 'new', 'Assign first follow-up within 48 hours.');
+  computed_due_at := private.default_follow_up_due_at(computed_urgency, computed_classification_payload);
+
+  insert into public.follow_ups (church_id, contact_id, channel, status, next_action, due_at)
+  values (
+    target_event.church_id,
+    new_contact_id,
+    'note',
+    'new',
+    coalesce(computed_classification_payload->>'recommended_next_action', 'Assign first follow-up within 48 hours.'),
+    computed_due_at
+  );
+
+  journey_title := 'Submitted ' || target_event.name;
+
+  insert into public.contact_journey_events (
+    church_id,
+    person_id,
+    contact_id,
+    event_id,
+    event_type,
+    title,
+    summary,
+    selected_interests,
+    classification_payload
+  )
+  select
+    contacts.church_id,
+    contacts.person_id,
+    contacts.id,
+    target_event.id,
+    target_event.event_type,
+    journey_title,
+    computed_classification_payload->>'summary',
+    p_interests,
+    computed_classification_payload
+  from public.contacts
+  where contacts.id = new_contact_id
+    and contacts.person_id is not null;
 
   return new_contact_id;
 end;
@@ -1233,10 +1745,14 @@ revoke all on function private.submit_event_registration_impl(
   text,
   text,
   text,
+  text,
   public.interest_tag[],
   text,
   public.urgency_level,
   jsonb,
+  public.prayer_visibility,
+  text[],
+  text,
   boolean
 ) from public, anon, authenticated;
 
@@ -1247,10 +1763,14 @@ grant execute on function private.submit_event_registration_impl(
   text,
   text,
   text,
+  text,
   public.interest_tag[],
   text,
   public.urgency_level,
   jsonb,
+  public.prayer_visibility,
+  text[],
+  text,
   boolean
 ) to anon, authenticated;
 
@@ -1258,6 +1778,7 @@ create or replace function public.submit_event_registration(
   p_slug text,
   p_full_name text,
   p_phone text,
+  p_email text,
   p_area text,
   p_language text,
   p_best_time_to_contact text,
@@ -1265,6 +1786,9 @@ create or replace function public.submit_event_registration(
   p_message text,
   p_urgency public.urgency_level,
   p_classification_payload jsonb,
+  p_prayer_visibility public.prayer_visibility,
+  p_consent_scope text[],
+  p_consent_source text,
   p_consent_given boolean
 )
 returns uuid
@@ -1276,6 +1800,7 @@ as $$
     p_slug,
     p_full_name,
     p_phone,
+    p_email,
     p_area,
     p_language,
     p_best_time_to_contact,
@@ -1283,6 +1808,9 @@ as $$
     p_message,
     p_urgency,
     p_classification_payload,
+    p_prayer_visibility,
+    p_consent_scope,
+    p_consent_source,
     p_consent_given
   );
 $$;
@@ -1294,9 +1822,13 @@ grant execute on function public.submit_event_registration(
   text,
   text,
   text,
+  text,
   public.interest_tag[],
   text,
   public.urgency_level,
   jsonb,
+  public.prayer_visibility,
+  text[],
+  text,
   boolean
 ) to anon, authenticated;

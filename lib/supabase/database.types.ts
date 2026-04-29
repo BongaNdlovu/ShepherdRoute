@@ -86,10 +86,17 @@ export type Database = {
         Row: {
           id: string;
           church_id: string;
+          person_id: string | null;
           event_id: string | null;
           full_name: string;
           phone: string;
           email: string | null;
+          whatsapp_number: string | null;
+          normalized_name: string | null;
+          normalized_phone: string | null;
+          normalized_whatsapp: string | null;
+          normalized_email: string | null;
+          normalized_area: string | null;
           area: string | null;
           language: string | null;
           best_time_to_contact: string | null;
@@ -98,6 +105,15 @@ export type Database = {
           assigned_to: string | null;
           consent_given: boolean;
           consent_at: Timestamp | null;
+          consent_source: string | null;
+          consent_scope: string[];
+          do_not_contact: boolean;
+          do_not_contact_at: Timestamp | null;
+          archived_at: Timestamp | null;
+          deleted_at: Timestamp | null;
+          duplicate_of_contact_id: string | null;
+          duplicate_match_confidence: number | null;
+          duplicate_match_reason: string | null;
           source: string;
           classification_payload: Json;
           created_at: Timestamp;
@@ -106,10 +122,17 @@ export type Database = {
         Insert: {
           id?: string;
           church_id: string;
+          person_id?: string | null;
           event_id?: string | null;
           full_name: string;
           phone: string;
           email?: string | null;
+          whatsapp_number?: string | null;
+          normalized_name?: string | null;
+          normalized_phone?: string | null;
+          normalized_whatsapp?: string | null;
+          normalized_email?: string | null;
+          normalized_area?: string | null;
           area?: string | null;
           language?: string | null;
           best_time_to_contact?: string | null;
@@ -118,6 +141,15 @@ export type Database = {
           assigned_to?: string | null;
           consent_given?: boolean;
           consent_at?: Timestamp | null;
+          consent_source?: string | null;
+          consent_scope?: string[];
+          do_not_contact?: boolean;
+          do_not_contact_at?: Timestamp | null;
+          archived_at?: Timestamp | null;
+          deleted_at?: Timestamp | null;
+          duplicate_of_contact_id?: string | null;
+          duplicate_match_confidence?: number | null;
+          duplicate_match_reason?: string | null;
           source?: string;
           classification_payload?: Json;
           created_at?: Timestamp;
@@ -144,6 +176,38 @@ export type Database = {
           updated_at?: Timestamp;
         };
         Update: Partial<Database["public"]["Tables"]["contact_interests"]["Insert"]>;
+        Relationships: [];
+      };
+      contact_journey_events: {
+        Row: {
+          id: string;
+          church_id: string;
+          person_id: string;
+          contact_id: string | null;
+          event_id: string | null;
+          event_type: Database["public"]["Enums"]["event_type"] | null;
+          title: string;
+          summary: string | null;
+          selected_interests: Database["public"]["Enums"]["interest_tag"][];
+          classification_payload: Json;
+          created_at: Timestamp;
+          updated_at: Timestamp;
+        };
+        Insert: {
+          id?: string;
+          church_id: string;
+          person_id: string;
+          contact_id?: string | null;
+          event_id?: string | null;
+          event_type?: Database["public"]["Enums"]["event_type"] | null;
+          title: string;
+          summary?: string | null;
+          selected_interests?: Database["public"]["Enums"]["interest_tag"][];
+          classification_payload?: Json;
+          created_at?: Timestamp;
+          updated_at?: Timestamp;
+        };
+        Update: Partial<Database["public"]["Tables"]["contact_journey_events"]["Insert"]>;
         Relationships: [];
       };
       events: {
@@ -176,6 +240,50 @@ export type Database = {
           updated_at?: Timestamp;
         };
         Update: Partial<Database["public"]["Tables"]["events"]["Insert"]>;
+        Relationships: [];
+      };
+      people: {
+        Row: {
+          id: string;
+          church_id: string;
+          full_name: string;
+          normalized_name: string | null;
+          phone: string | null;
+          normalized_phone: string | null;
+          whatsapp_number: string | null;
+          normalized_whatsapp: string | null;
+          email: string | null;
+          normalized_email: string | null;
+          area: string | null;
+          normalized_area: string | null;
+          do_not_contact: boolean;
+          do_not_contact_at: Timestamp | null;
+          archived_at: Timestamp | null;
+          deleted_at: Timestamp | null;
+          created_at: Timestamp;
+          updated_at: Timestamp;
+        };
+        Insert: {
+          id?: string;
+          church_id: string;
+          full_name: string;
+          normalized_name?: string | null;
+          phone?: string | null;
+          normalized_phone?: string | null;
+          whatsapp_number?: string | null;
+          normalized_whatsapp?: string | null;
+          email?: string | null;
+          normalized_email?: string | null;
+          area?: string | null;
+          normalized_area?: string | null;
+          do_not_contact?: boolean;
+          do_not_contact_at?: Timestamp | null;
+          archived_at?: Timestamp | null;
+          deleted_at?: Timestamp | null;
+          created_at?: Timestamp;
+          updated_at?: Timestamp;
+        };
+        Update: Partial<Database["public"]["Tables"]["people"]["Insert"]>;
         Relationships: [];
       };
       follow_ups: {
@@ -358,14 +466,20 @@ export type Database = {
         };
         Returns: Array<{
           id: string;
+          person_id: string | null;
           full_name: string;
           phone: string;
+          email: string | null;
           area: string | null;
           language: string | null;
           best_time_to_contact: string | null;
           status: Database["public"]["Enums"]["follow_up_status"];
           urgency: Database["public"]["Enums"]["urgency_level"];
           assigned_to: string | null;
+          do_not_contact: boolean;
+          duplicate_of_contact_id: string | null;
+          duplicate_match_confidence: number | null;
+          duplicate_match_reason: string | null;
           created_at: Timestamp;
           event_id: string | null;
           event_name: string | null;
@@ -379,11 +493,17 @@ export type Database = {
           p_slug: string;
           p_full_name: string;
           p_phone: string;
+          p_email: string | null;
           p_area: string | null;
           p_language: string | null;
           p_best_time_to_contact: string | null;
           p_interests: Database["public"]["Enums"]["interest_tag"][];
           p_message: string | null;
+          p_urgency: Database["public"]["Enums"]["urgency_level"];
+          p_classification_payload: Json;
+          p_prayer_visibility: Database["public"]["Enums"]["prayer_visibility"];
+          p_consent_scope: string[];
+          p_consent_source: string;
           p_consent_given: boolean;
         };
         Returns: string;
@@ -391,13 +511,20 @@ export type Database = {
     };
     Enums: {
       event_type:
+        | "sabbath_visitor"
         | "church_service"
         | "health_expo"
+        | "evangelistic_campaign"
         | "prophecy_seminar"
         | "bible_study"
         | "visitor_sabbath"
         | "youth_event"
         | "cooking_class"
+        | "prayer_campaign"
+        | "regular_member"
+        | "baptized_member"
+        | "health_seminar"
+        | "custom"
         | "community_outreach"
         | "other";
       follow_up_channel: "call" | "whatsapp" | "sms" | "email" | "visit" | "note";
@@ -414,7 +541,15 @@ export type Database = {
       interest_tag: "prayer" | "bible_study" | "health" | "baptism" | "pastoral_visit" | "youth" | "cooking_class";
       membership_status: "active" | "invited" | "disabled";
       message_channel: "whatsapp" | "sms" | "email";
-      prayer_visibility: "pastoral_prayer" | "pastors_only";
+      prayer_visibility:
+        | "pastoral_prayer"
+        | "pastors_only"
+        | "general_prayer"
+        | "pastor_only"
+        | "private_contact"
+        | "family_support"
+        | "sensitive"
+        | "health_related";
       team_role: "admin" | "pastor" | "elder" | "bible_worker" | "health_leader" | "prayer_team" | "youth_leader" | "viewer";
       urgency_level: "low" | "medium" | "high";
     };

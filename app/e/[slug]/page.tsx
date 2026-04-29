@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CheckCircle2, Church, HeartHandshake } from "lucide-react";
 import { submitRegistrationAction } from "@/app/e/[slug]/actions";
 import { Button } from "@/components/ui/button";
@@ -5,16 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { interestLabels, interestOptions } from "@/lib/constants";
 import { getPublicEvent } from "@/lib/data";
-
-function visitorTypeFromEventType(eventType: string) {
-  if (eventType === "health_expo") return "health_expo";
-  if (eventType === "prophecy_seminar") return "prophecy_seminar";
-  if (eventType === "bible_study") return "bible_study";
-  if (eventType === "church_service" || eventType === "visitor_sabbath") return "sabbath_visitor";
-  return "general";
-}
+import { getEventTemplate } from "@/lib/eventTemplates";
+import { prayerVisibilityLabels, prayerVisibilityOptions } from "@/lib/followUp";
 
 export default async function PublicEventPage({
   params,
@@ -26,6 +20,7 @@ export default async function PublicEventPage({
   const { slug } = await params;
   const query = await searchParams;
   const event = await getPublicEvent(slug);
+  const template = getEventTemplate(event.event_type);
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#fde68a_0,#f7f3eb_34%,#f8fafc_100%)] px-4 py-6 md:py-10">
@@ -36,9 +31,9 @@ export default async function PublicEventPage({
               <Church className="h-8 w-8" />
             </div>
             <p className="mt-4 text-sm font-bold uppercase tracking-[0.18em] text-amber-700">{event.church_name}</p>
-            <CardTitle className="text-3xl">{event.name}</CardTitle>
+            <CardTitle className="text-3xl">{template.formHeading}</CardTitle>
             <CardDescription>
-              Complete this form if you would like prayer, Bible study resources, health program updates, or church follow-up.
+              {template.formDescription} {event.name ? `This form is for ${event.name}.` : ""}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -55,7 +50,8 @@ export default async function PublicEventPage({
                 {query.error ? <p className="mb-4 rounded-md bg-rose-50 p-3 text-sm text-rose-700">{query.error}</p> : null}
                 <form action={submitRegistrationAction} className="grid gap-5">
                   <input type="hidden" name="slug" value={event.slug} />
-                  <input type="hidden" name="visitorType" value={visitorTypeFromEventType(event.event_type)} />
+                  <input type="hidden" name="visitorType" value={template.type} />
+                  <input type="hidden" name="templateType" value={template.type} />
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="grid gap-2">
                       <Label htmlFor="fullName">Name</Label>
@@ -64,6 +60,10 @@ export default async function PublicEventPage({
                     <div className="grid gap-2">
                       <Label htmlFor="phone">Phone / WhatsApp</Label>
                       <Input id="phone" name="phone" placeholder="+27..." required />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input id="email" name="email" type="email" placeholder="Optional" />
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="area">Area / suburb</Label>
@@ -92,16 +92,31 @@ export default async function PublicEventPage({
                     </div>
                   </div>
 
+                  {template.topicOptions?.length ? (
+                    <div className="grid gap-2">
+                      <Label htmlFor="topic">Seminar topic</Label>
+                      <select id="topic" name="topic" defaultValue="" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
+                        <option value="">Select a topic</option>
+                        {template.topicOptions.map((topic) => (
+                          <option key={topic} value={topic}>{topic}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : null}
+
                   <div className="grid gap-2">
                     <Label className="flex items-center gap-2">
                       <HeartHandshake className="h-4 w-4 text-amber-700" />
                       How can we serve you?
                     </Label>
                     <div className="grid gap-2 sm:grid-cols-2">
-                      {interestOptions.map((interest) => (
-                        <label key={interest} className="flex items-center gap-2 rounded-md border bg-white px-3 py-3 text-sm font-semibold">
-                          <input type="checkbox" name="interests" value={interest} className="h-4 w-4" />
-                          {interestLabels[interest]}
+                      {template.interestOptions.map((option, index) => (
+                        <label key={`${option.value}-${index}`} className="flex items-start gap-2 rounded-md border bg-white px-3 py-3 text-sm font-semibold">
+                          <input type="checkbox" name="interests" value={option.value} className="mt-0.5 h-4 w-4" />
+                          <span>
+                            {option.label}
+                            {option.description ? <span className="block text-xs font-normal leading-5 text-muted-foreground">{option.description}</span> : null}
+                          </span>
                         </label>
                       ))}
                     </div>
@@ -113,10 +128,19 @@ export default async function PublicEventPage({
                     <p className="text-xs text-muted-foreground">Prayer requests are stored separately from your general contact details.</p>
                   </div>
 
+                  <div className="grid gap-2">
+                    <Label htmlFor="prayerVisibility">Who may view a prayer request?</Label>
+                    <select id="prayerVisibility" name="prayerVisibility" defaultValue="general_prayer" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
+                      {prayerVisibilityOptions.map((visibility) => (
+                        <option key={visibility} value={visibility}>{prayerVisibilityLabels[visibility]}</option>
+                      ))}
+                    </select>
+                  </div>
+
                   <label className="flex items-start gap-3 rounded-lg bg-muted p-4">
                     <input type="checkbox" name="consent" className="mt-1 h-4 w-4" required />
                     <span className="text-sm leading-6 text-slate-600">
-                      I consent to {event.church_name} contacting me about the interests I selected. I understand I can ask to be removed from follow-up at any time.
+                      I consent to {event.church_name} contacting me about the interests I selected by WhatsApp, phone, or email. I understand I can ask to be removed from follow-up at any time.
                     </span>
                   </label>
                   <Button type="submit" size="lg">Submit visitor form</Button>
@@ -125,6 +149,11 @@ export default async function PublicEventPage({
             )}
           </CardContent>
         </Card>
+        <footer className="mt-4 flex flex-col items-center justify-center gap-2 text-center text-xs text-slate-600 sm:flex-row">
+          <span>Copyright (c) {new Date().getFullYear()} ShepardRoute.</span>
+          <Link href="/privacy" className="font-semibold underline-offset-4 hover:underline">Privacy notice</Link>
+          <Link href="/copyright" className="font-semibold underline-offset-4 hover:underline">Copyright notice</Link>
+        </footer>
       </section>
     </main>
   );

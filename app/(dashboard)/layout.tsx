@@ -67,7 +67,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </form>
         </aside>
 
-        <main className="min-w-0 flex-1">{children}</main>
+        <main className="min-w-0 flex-1">
+          {children}
+          <footer className="mt-6 flex flex-col gap-2 rounded-lg border bg-white p-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+            <p>Copyright (c) {new Date().getFullYear()} ShepardRoute. All rights reserved.</p>
+            <div className="flex gap-3">
+              <Link href="/privacy" className="font-semibold underline-offset-4 hover:underline">Privacy notice</Link>
+              <Link href="/copyright" className="font-semibold underline-offset-4 hover:underline">Copyright notice</Link>
+            </div>
+          </footer>
+        </main>
       </div>
     </div>
   );

@@ -30,7 +30,8 @@ export function ContactList({ churchName, contacts, team }: ContactListProps) {
             phone: contact.phone,
             interests: contact.interests,
             churchName,
-            eventName: contact.event_name
+            eventName: contact.event_name,
+            doNotContact: contact.do_not_contact
           });
 
           return (
@@ -44,8 +45,10 @@ export function ContactList({ churchName, contacts, team }: ContactListProps) {
                     {contact.full_name}
                   </Link>
                   <UrgencyBadge urgency={contact.urgency} />
+                  {contact.do_not_contact ? <span className="rounded-md bg-slate-200 px-2 py-1 text-xs font-bold text-slate-700">Do not contact</span> : null}
+                  {contact.duplicate_of_contact_id ? <span className="rounded-md bg-amber-100 px-2 py-1 text-xs font-bold text-amber-800">Journey match</span> : null}
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">{contact.phone} {contact.area ? `- ${contact.area}` : ""}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{contact.phone} {contact.email ? `- ${contact.email}` : ""} {contact.area ? `- ${contact.area}` : ""}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {contact.event_name ?? "Manual contact"}
                   {contact.best_time_to_contact ? ` - ${contact.best_time_to_contact}` : ""}
@@ -84,10 +87,10 @@ export function ContactList({ churchName, contacts, team }: ContactListProps) {
                   <Button asChild size="sm" variant="outline">
                     <Link href={`/contacts/${contact.id}`}>Open detail</Link>
                   </Button>
-                  <Button asChild size="sm" variant="success">
-                    <a href={waLink(contact.phone, message)} target="_blank" rel="noreferrer">
+                  <Button asChild size="sm" variant={contact.do_not_contact ? "outline" : "success"}>
+                    <a href={contact.do_not_contact ? `/contacts/${contact.id}` : waLink(contact.phone, message)} target={contact.do_not_contact ? undefined : "_blank"} rel={contact.do_not_contact ? undefined : "noreferrer"}>
                       <MessageCircle className="h-4 w-4" />
-                      WhatsApp
+                      {contact.do_not_contact ? "Opted out" : "WhatsApp"}
                     </a>
                   </Button>
                 </div>

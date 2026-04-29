@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardList, Heart, UserCheck } from "lucide-react";
+import { AlertTriangle, BarChart3, CalendarClock, ClipboardList, Heart, UserCheck, UserX } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/app/stat-card";
 import { getChurchContext, getOutreachReportSummary } from "@/lib/data";
@@ -23,6 +23,13 @@ export default async function ReportsPage() {
         <StatCard icon={UserCheck} title="Followed up" value={summary.followed_up_count} note="Contacts no longer in new status." />
         <StatCard icon={ClipboardList} title="Bible study leads" value={summary.bible_study_count} note="Ready for study pathway." />
         <StatCard icon={Heart} title="Prayer care" value={summary.prayer_count} note="Prayer team and pastoral support." />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard icon={CalendarClock} title="Due today" value={summary.due_today_count} note="Open follow-ups due today." />
+        <StatCard icon={AlertTriangle} title="Overdue" value={summary.overdue_count} note="Follow-ups past their deadline." />
+        <StatCard icon={UserX} title="Unassigned" value={summary.unassigned_count} note="Contacts without an owner." />
+        <StatCard icon={UserX} title="Opted out" value={summary.do_not_contact_count} note="Do not contact records." />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_0.9fr]">

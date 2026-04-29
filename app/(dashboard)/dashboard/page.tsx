@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, ClipboardList, Heart, HeartPulse, Plus, UserRoundCheck, UsersRound } from "lucide-react";
+import { Activity, AlertTriangle, CalendarClock, ClipboardList, Heart, HeartPulse, Plus, UserRoundCheck, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InterestPills } from "@/components/app/interest-pills";
@@ -46,11 +46,18 @@ export default async function DashboardPage() {
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <StatCard icon={CalendarClock} title="Due today" value={summary.due_today_count} note="Follow-up tasks due before midnight." />
+        <StatCard icon={AlertTriangle} title="Overdue" value={summary.overdue_count} note="Needs accountability review." />
         <StatCard icon={Activity} title="High urgency" value={summary.high_priority_count} note="Route to a trusted pastor quickly." />
-        <StatCard icon={ClipboardList} title="Bible study requests" value={summary.bible_study_count} note="Ready for Bible worker assignment." />
-        <StatCard icon={Heart} title="Prayer requests" value={summary.prayer_count} note="Stored separately for pastoral and prayer care." />
-        <StatCard icon={HeartPulse} title="Health interests" value={summary.health_count} note="Ready for health ministry follow-up." />
         <StatCard icon={UserRoundCheck} title="Unassigned" value={summary.unassigned_count} note="Need an owner for follow-up." />
+        <StatCard icon={ClipboardList} title="Waiting reply" value={summary.waiting_reply_count} note="Contacts waiting for a response." />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard icon={ClipboardList} title="Bible study requests" value={summary.bible_study_count} note="Ready for Bible worker assignment." />
+        <StatCard icon={Heart} title="Prayer requests" value={summary.prayer_count} note="Stored with privacy controls." />
+        <StatCard icon={HeartPulse} title="Health interests" value={summary.health_count} note="Ready for health ministry follow-up." />
+        <StatCard icon={UserRoundCheck} title="Do not contact" value={summary.do_not_contact_count} note="Respect opt-out preferences." />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
@@ -89,7 +96,7 @@ export default async function DashboardPage() {
         </Card>
 
         {activeEvent ? (
-          <QrCard eventName={activeEvent.name} url={absoluteUrl(`/public/e/${activeEvent.slug}`)} />
+          <QrCard eventName={activeEvent.name} url={absoluteUrl(`/e/${activeEvent.slug}`)} />
         ) : (
           <Card>
             <CardHeader>

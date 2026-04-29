@@ -1,3 +1,5 @@
+import type { EventTemplateType } from "@/lib/eventTemplates";
+
 export type ContactTag =
   | "prayer"
   | "bible_study"
@@ -13,7 +15,14 @@ export type Urgency = "low" | "medium" | "high";
 
 export type AssignedRole = "pastor" | "elder" | "bible_worker" | "health_leader" | "prayer_team";
 
-export type VisitorType = "sabbath_visitor" | "health_expo" | "prophecy_seminar" | "bible_study" | "general";
+export type VisitorType =
+  | EventTemplateType
+  | "bible_study"
+  | "church_service"
+  | "visitor_sabbath"
+  | "community_outreach"
+  | "other"
+  | "general";
 
 export type ClassificationResult = {
   summary: string;
@@ -27,6 +36,8 @@ export type ClassifyInput = {
   selectedInterests?: string[];
   message?: string;
   visitorType?: VisitorType;
+  eventType?: VisitorType;
+  templateType?: VisitorType;
 };
 
 const allTags: ContactTag[] = [
@@ -181,8 +192,20 @@ const selectedInterestMap: Record<string, ContactTag[]> = {
 const visitorTypeTags: Record<VisitorType, ContactTag[]> = {
   sabbath_visitor: ["general_visit"],
   health_expo: ["health"],
+  evangelistic_campaign: ["bible_study"],
   prophecy_seminar: ["bible_study"],
+  cooking_class: ["health"],
+  youth_event: ["youth"],
+  prayer_campaign: ["prayer"],
+  regular_member: ["general_visit"],
+  baptized_member: ["general_visit"],
+  health_seminar: ["health"],
+  custom: ["general_visit"],
   bible_study: ["bible_study"],
+  church_service: ["general_visit"],
+  visitor_sabbath: ["general_visit"],
+  community_outreach: ["general_visit"],
+  other: ["general_visit"],
   general: ["general_visit"]
 };
 
@@ -292,7 +315,8 @@ export function classifyContact(input: ClassifyInput): ClassificationResult {
   const selectedTags = tagsFromSelectedInterests(input.selectedInterests ?? []);
   const keywordScores = scoreKeywords(input.message ?? "");
   const scoredTags = allTags.filter((tag) => keywordScores[tag] > 0);
-  const visitorTags = visitorTypeTags[input.visitorType ?? "general"] ?? [];
+  const classifierContext = input.templateType ?? input.eventType ?? input.visitorType ?? "general";
+  const visitorTags = visitorTypeTags[classifierContext] ?? [];
   const recommendedTags = uniqueTags([...selectedTags, ...scoredTags, ...visitorTags]).filter((tag) => {
     if (tag !== "general_visit") return true;
     return selectedTags.length === 0 && scoredTags.length === 0;

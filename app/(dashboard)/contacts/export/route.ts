@@ -22,6 +22,7 @@ export async function GET(request: Request) {
     return [
       contact.full_name,
       contact.phone,
+      contact.email ?? "",
       contact.area ?? "",
       contact.language ?? "",
       contact.event_name ?? "Manual contact",
@@ -29,6 +30,8 @@ export async function GET(request: Request) {
       statusLabels[contact.status as FollowUpStatus],
       contact.urgency,
       contact.assigned_name ?? "Unassigned",
+      contact.do_not_contact ? "Yes" : "No",
+      contact.duplicate_of_contact_id ? "Yes" : "No",
       contact.best_time_to_contact ?? "",
       contact.created_at
     ];
@@ -37,7 +40,7 @@ export async function GET(request: Request) {
   return csvResponse(
     "shepardroute-contacts.csv",
     toCsv(
-      ["Name", "Phone", "Area", "Language", "Event", "Interests", "Status", "Urgency", "Assigned To", "Best Time", "Created At"],
+      ["Name", "Phone", "Email", "Area", "Language", "Event", "Interests", "Status", "Urgency", "Assigned To", "Do Not Contact", "Journey Match", "Best Time", "Created At"],
       rows
     )
   );

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { interestLabels, statusLabels, type FollowUpStatus, type Interest } from "@/lib/constants";
 import { getChurchContext, getEventReportSummary } from "@/lib/data";
+import { getEventTemplate } from "@/lib/eventTemplates";
 
 export const metadata = {
   title: "Event Report"
@@ -18,6 +19,7 @@ export default async function EventReportPage({
   const { id } = await params;
   const context = await getChurchContext();
   const { event, summary } = await getEventReportSummary(context.churchId, id);
+  const template = getEventTemplate(event.event_type);
 
   return (
     <section className="space-y-4">
@@ -45,6 +47,34 @@ export default async function EventReportPage({
         <StatCard icon={ClipboardList} title="Bible studies" value={summary.bible_study_count} note="People requesting Bible study." />
         <StatCard icon={Heart} title="Prayer care" value={summary.prayer_count + summary.high_priority_count} note="Prayer and high-priority care." />
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{template.name} report focus</CardTitle>
+          <CardDescription>{template.description}</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          {template.reportSections.map((section) => {
+            const value = section.metric
+              ? summary[section.metric]
+              : section.interest
+                ? summary.interest_counts[section.interest] ?? 0
+                : null;
+
+            return (
+              <div key={section.key} className="rounded-lg border bg-muted/40 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-bold">{section.label}</p>
+                    <p className="mt-1 text-sm leading-5 text-muted-foreground">{section.description}</p>
+                  </div>
+                  {value !== null ? <span className="text-2xl font-black">{value}</span> : null}
+                </div>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

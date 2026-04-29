@@ -26,7 +26,7 @@ export default async function EventDetailPage({
   const query = await searchParams;
   const context = await getChurchContext();
   const { event, contacts, contactsLimit, contactsTotal } = await getEvent(context.churchId, id);
-  const publicUrl = absoluteUrl(`/public/e/${event.slug}`);
+  const publicUrl = absoluteUrl(`/e/${event.slug}`);
 
   return (
     <section className="space-y-4">

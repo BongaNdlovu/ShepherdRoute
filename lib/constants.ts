@@ -31,23 +31,32 @@ export const statusOptions = [
 ] as const;
 
 export const eventTypeOptions = [
-  "church_service",
+  "sabbath_visitor",
   "health_expo",
+  "evangelistic_campaign",
   "prophecy_seminar",
-  "bible_study",
-  "visitor_sabbath",
-  "youth_event",
   "cooking_class",
-  "community_outreach",
-  "other"
+  "youth_event",
+  "prayer_campaign",
+  "regular_member",
+  "baptized_member",
+  "health_seminar",
+  "custom"
 ] as const;
 
-export const eventTypeLabels: Record<EventType, string> = {
+export const eventTypeLabels: Record<string, string> = {
+  sabbath_visitor: "Sabbath Visitor",
+  evangelistic_campaign: "Evangelistic Campaign",
+  prayer_campaign: "Prayer Campaign",
+  regular_member: "Regular Member",
+  baptized_member: "Baptized Member",
+  health_seminar: "Health Seminar",
+  custom: "Custom",
+  visitor_sabbath: "Visitor Sabbath",
   church_service: "Church Service",
   health_expo: "Health Expo",
   prophecy_seminar: "Prophecy Seminar",
   bible_study: "Bible Study",
-  visitor_sabbath: "Visitor Sabbath",
   youth_event: "Youth Event",
   cooking_class: "Cooking Class",
   community_outreach: "Community Outreach",

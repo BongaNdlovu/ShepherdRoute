@@ -9,14 +9,20 @@ const CONTACT_DETAIL_MESSAGE_LIMIT = 3;
 
 export type ContactListItem = {
   id: string;
+  person_id: string | null;
   full_name: string;
   phone: string;
+  email: string | null;
   area: string | null;
   language: string | null;
   best_time_to_contact: string | null;
   status: FollowUpStatus;
   urgency: "low" | "medium" | "high";
   assigned_to: string | null;
+  do_not_contact: boolean;
+  duplicate_of_contact_id: string | null;
+  duplicate_match_confidence: number | null;
+  duplicate_match_reason: string | null;
   created_at: string;
   event_id: string | null;
   event_name: string | null;
@@ -50,8 +56,11 @@ type ContactFilters = {
 export type ContactDetailResult = {
   contact: {
     id: string;
+    person_id: string | null;
     full_name: string;
     phone: string;
+    email: string | null;
+    whatsapp_number: string | null;
     area: string | null;
     language: string | null;
     best_time_to_contact: string | null;
@@ -59,12 +68,29 @@ export type ContactDetailResult = {
     urgency: "low" | "medium" | "high";
     assigned_to: string | null;
     consent_given: boolean;
+    consent_at: string | null;
+    consent_source: string | null;
+    consent_scope: string[] | null;
+    do_not_contact: boolean;
+    do_not_contact_at: string | null;
+    archived_at: string | null;
+    duplicate_of_contact_id: string | null;
+    duplicate_match_confidence: number | null;
+    duplicate_match_reason: string | null;
     classification_payload: ContactClassificationPayload | null;
-    events: { name: string } | null;
+    events: { name: string; event_type: string } | null;
     team_members: { display_name: string } | { display_name: string }[] | null;
     contact_interests: Array<{ interest: Interest }>;
   };
   prayer: Array<{ request_text: string; visibility: string; created_at: string }>;
+  journey: Array<{
+    id: string;
+    title: string;
+    summary: string | null;
+    selected_interests: Interest[];
+    created_at: string;
+    events: { name: string; event_type: string } | { name: string; event_type: string }[] | null;
+  }>;
   team: Array<{ id: string; display_name: string; role: string }>;
   followUps: Array<{
     id: string;
@@ -81,7 +107,7 @@ export type ContactDetailResult = {
 };
 
 type ContactDetailRow = Omit<ContactDetailResult["contact"], "events"> & {
-  events: { name: string } | { name: string }[] | null;
+  events: { name: string; event_type: string } | { name: string; event_type: string }[] | null;
 };
 
 function cleanUuid(value?: string) {
@@ -150,7 +176,7 @@ export async function getContact(churchId: string, id: string): Promise<ContactD
   const [{ data: contact }, { data: prayer }, { data: team }, { data: followUps }, { data: messages }] = await Promise.all([
     supabase
       .from("contacts")
-      .select("id, full_name, phone, area, language, best_time_to_contact, status, urgency, assigned_to, consent_given, classification_payload, events(name), team_members(display_name), contact_interests(interest)")
+      .select("id, person_id, full_name, phone, email, whatsapp_number, area, language, best_time_to_contact, status, urgency, assigned_to, consent_given, consent_at, consent_source, consent_scope, do_not_contact, do_not_contact_at, archived_at, duplicate_of_contact_id, duplicate_match_confidence, duplicate_match_reason, classification_payload, events(name, event_type), team_members(display_name), contact_interests(interest)")
       .eq("church_id", churchId)
       .eq("id", id)
       .single(),
@@ -189,10 +215,20 @@ export async function getContact(churchId: string, id: string): Promise<ContactD
 
   const contactRow = contact as unknown as ContactDetailRow;
   const event = Array.isArray(contactRow.events) ? contactRow.events[0] ?? null : contactRow.events;
+  const { data: journey } = contactRow.person_id
+    ? await supabase
+      .from("contact_journey_events")
+      .select("id, title, summary, selected_interests, created_at, events(name, event_type)")
+      .eq("church_id", churchId)
+      .eq("person_id", contactRow.person_id)
+      .order("created_at", { ascending: false })
+      .limit(25)
+    : { data: [] };
 
   return {
     contact: { ...contactRow, events: event },
     prayer: prayer ?? [],
+    journey: (journey ?? []) as unknown as ContactDetailResult["journey"],
     team: team ?? [],
     followUps: followUps ?? [],
     messages: messages ?? []
