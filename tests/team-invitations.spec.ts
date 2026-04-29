@@ -9,6 +9,7 @@ test.describe("team invitation workflow", () => {
   test("schema stores hashed expiring invitations", () => {
     expect(schema).toContain("create type public.team_invitation_status as enum");
     expect(schema).toContain("create table if not exists public.team_invitations");
+    expect(schema).toContain("set search_path = public, extensions");
     expect(schema).toContain("token_hash text not null unique");
     expect(schema).toContain("expires_at timestamptz not null default now() + interval '14 days'");
   });

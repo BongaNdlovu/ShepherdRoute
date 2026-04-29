@@ -495,7 +495,7 @@ create or replace function private.hash_invite_token(input text)
 returns text
 language sql
 immutable
-set search_path = public
+set search_path = public, extensions
 as $$
   select encode(digest(coalesce(input, ''), 'sha256'), 'hex');
 $$;
@@ -603,7 +603,7 @@ create or replace function private.prepare_contact_identity()
 returns trigger
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   matched_person public.people%rowtype;
