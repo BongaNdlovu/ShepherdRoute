@@ -13,9 +13,10 @@ export const metadata = {
 export default async function LoginPage({
   searchParams
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; invite?: string }>;
 }) {
   const params = await searchParams;
+  const inviteQuery = params.invite ? `?invite=${encodeURIComponent(params.invite)}` : "";
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
@@ -24,8 +25,10 @@ export default async function LoginPage({
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Church className="h-6 w-6" />
           </div>
-          <CardTitle className="text-2xl">Welcome back to ShepardRoute</CardTitle>
-          <CardDescription>The follow-up pathway for churches that care.</CardDescription>
+          <CardTitle className="text-2xl">{params.invite ? "Login to accept invite" : "Welcome back to ShepardRoute"}</CardTitle>
+          <CardDescription>
+            {params.invite ? "Use the invited email address so the workspace can be linked safely." : "The follow-up pathway for churches that care."}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {params.error ? (
@@ -34,6 +37,7 @@ export default async function LoginPage({
             </div>
           ) : null}
           <form action={loginAction} className="grid gap-4">
+            {params.invite ? <input type="hidden" name="inviteToken" value={params.invite} /> : null}
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" name="email" type="email" autoComplete="email" required />
@@ -45,8 +49,8 @@ export default async function LoginPage({
             <Button size="lg" type="submit">Login</Button>
           </form>
           <p className="mt-5 text-center text-sm text-muted-foreground">
-            New church?{" "}
-            <Link className="font-semibold text-foreground underline-offset-4 hover:underline" href="/signup">
+            {params.invite ? "Need an account?" : "New church?"}{" "}
+            <Link className="font-semibold text-foreground underline-offset-4 hover:underline" href={`/signup${inviteQuery}`}>
               Create an account
             </Link>
           </p>

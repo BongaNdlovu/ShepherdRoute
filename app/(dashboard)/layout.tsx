@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { BarChart3, Church, ClipboardList, LogOut, QrCode, Settings2, ShieldCheck, UserCog, UsersRound } from "lucide-react";
 import { logoutAction } from "@/app/(auth)/actions";
+import { switchChurchAction } from "@/app/(dashboard)/actions";
 import { Button } from "@/components/ui/button";
+import { roleLabels } from "@/lib/constants";
 import { getChurchContext } from "@/lib/data";
 
 const navItems: Array<{ href: string; label: string; icon: typeof Church }> = [
@@ -29,6 +31,34 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <h1 className="text-base font-bold leading-tight">{context.churchName}</h1>
             </div>
           </Link>
+
+          {context.memberships.length > 1 ? (
+            <form action={switchChurchAction} className="mt-3 grid gap-2 rounded-lg border bg-muted p-3">
+              <label htmlFor="churchId" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Workspace
+              </label>
+              <select
+                id="churchId"
+                name="churchId"
+                defaultValue={context.churchId}
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold focus-ring"
+              >
+                {context.memberships.map((membership) => (
+                  <option key={membership.churchId} value={membership.churchId}>
+                    {membership.churchName}
+                  </option>
+                ))}
+              </select>
+              <Button type="submit" size="sm" variant="outline" className="justify-start">
+                <Church className="h-4 w-4" />
+                Switch church
+              </Button>
+            </form>
+          ) : (
+            <p className="mt-3 rounded-lg border bg-muted p-3 text-sm font-semibold text-slate-700">
+              {roleLabels[context.role as keyof typeof roleLabels] ?? context.role}
+            </p>
+          )}
 
           <nav className="mt-5 grid gap-2">
             {navItems.map((item) => (

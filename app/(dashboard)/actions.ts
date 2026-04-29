@@ -1,5 +1,6 @@
-export { updateOwnerMembershipStatusAction } from "@/app/(dashboard)/_actions/admin";
+export { updateOwnerMembershipRoleAction, updateOwnerMembershipStatusAction } from "@/app/(dashboard)/_actions/admin";
 export { addQuickContactAction, addFollowUpNoteAction, updateContactAction, updateContactLifecycleAction } from "@/app/(dashboard)/_actions/contacts";
+export { switchChurchAction } from "@/app/(dashboard)/_actions/context";
 export { createEventAction, deleteEventAction, updateEventArchiveAction, updateEventStatusAction } from "@/app/(dashboard)/_actions/events";
 export { saveGeneratedMessageAction } from "@/app/(dashboard)/_actions/messages";
-export { addTeamMemberAction } from "@/app/(dashboard)/_actions/team";
+export { addTeamMemberAction, revokeTeamInvitationAction } from "@/app/(dashboard)/_actions/team";

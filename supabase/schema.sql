@@ -25,6 +25,16 @@ exception when duplicate_object then null;
 end $$;
 
 do $$ begin
+  create type public.team_invitation_status as enum ('pending', 'accepted', 'revoked', 'expired');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type public.app_admin_role as enum ('owner', 'support_admin', 'billing_admin');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
   create type public.event_type as enum (
     'sabbath_visitor',
     'church_service',
@@ -150,9 +160,34 @@ create table if not exists public.church_memberships (
 
 create table if not exists public.app_admins (
   user_id uuid primary key references auth.users(id) on delete cascade,
+  role public.app_admin_role not null default 'owner',
+  is_protected_owner boolean not null default false,
+  created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table if exists public.app_admins
+  add column if not exists role public.app_admin_role not null default 'owner',
+  add column if not exists is_protected_owner boolean not null default false,
+  add column if not exists created_by uuid references auth.users(id) on delete set null;
+
+with first_owner as (
+  select user_id
+  from public.app_admins
+  order by created_at asc
+  limit 1
+)
+update public.app_admins
+set role = 'owner',
+    is_protected_owner = true,
+    updated_at = now()
+where user_id in (select user_id from first_owner)
+  and not exists (
+    select 1
+    from public.app_admins
+    where is_protected_owner = true
+  );
 
 create table if not exists public.team_members (
   id uuid primary key default gen_random_uuid(),
@@ -165,6 +200,35 @@ create table if not exists public.team_members (
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
+);
+
+create table if not exists public.team_invitations (
+  id uuid primary key default gen_random_uuid(),
+  church_id uuid not null references public.churches(id) on delete cascade,
+  team_member_id uuid references public.team_members(id) on delete set null,
+  email text not null,
+  normalized_email text not null,
+  display_name text not null,
+  role public.team_role not null default 'viewer',
+  token_hash text not null unique,
+  status public.team_invitation_status not null default 'pending',
+  invited_by uuid references public.profiles(id) on delete set null,
+  accepted_by uuid references public.profiles(id) on delete set null,
+  expires_at timestamptz not null default now() + interval '14 days',
+  accepted_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.audit_logs (
+  id uuid primary key default gen_random_uuid(),
+  church_id uuid references public.churches(id) on delete set null,
+  actor_user_id uuid references auth.users(id) on delete set null,
+  target_type text not null,
+  target_id uuid,
+  action text not null,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
 );
 
 create table if not exists public.events (
@@ -331,7 +395,13 @@ create table if not exists public.generated_messages (
 
 create index if not exists church_memberships_user_idx on public.church_memberships(user_id, status);
 create index if not exists church_memberships_church_idx on public.church_memberships(church_id, role, status);
+create index if not exists app_admins_role_idx on public.app_admins(role, is_protected_owner);
 create index if not exists team_members_church_active_idx on public.team_members(church_id, is_active);
+create index if not exists team_invitations_church_status_idx on public.team_invitations(church_id, status, created_at desc);
+create index if not exists team_invitations_email_status_idx on public.team_invitations(normalized_email, status);
+create index if not exists team_invitations_team_member_idx on public.team_invitations(team_member_id);
+create index if not exists audit_logs_church_created_idx on public.audit_logs(church_id, created_at desc);
+create index if not exists audit_logs_target_idx on public.audit_logs(target_type, target_id, created_at desc);
 create index if not exists events_church_idx on public.events(church_id, starts_on desc);
 create index if not exists events_slug_idx on public.events(slug);
 create index if not exists people_church_phone_idx on public.people(church_id, normalized_phone) where normalized_phone is not null;
@@ -419,6 +489,114 @@ as $$
     when coalesce(p_classification_payload->'recommended_tags', '[]'::jsonb) ?| array['bible_study','prayer'] then now() + interval '2 days'
     else now() + interval '5 days'
   end;
+$$;
+
+create or replace function private.hash_invite_token(input text)
+returns text
+language sql
+immutable
+set search_path = public
+as $$
+  select encode(digest(coalesce(input, ''), 'sha256'), 'hex');
+$$;
+
+create or replace function private.accept_team_invitation_for_user(
+  p_token text,
+  p_user_id uuid,
+  p_email text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_invitation public.team_invitations%rowtype;
+  target_membership_id uuid;
+  normalized_email text := nullif(lower(trim(coalesce(p_email, ''))), '');
+begin
+  if p_user_id is null then
+    raise exception 'Login is required before accepting this invitation.';
+  end if;
+
+  select *
+  into target_invitation
+  from public.team_invitations
+  where token_hash = private.hash_invite_token(p_token)
+    and status = 'pending'
+  limit 1;
+
+  if target_invitation.id is null then
+    raise exception 'This invitation is invalid or has already been used.';
+  end if;
+
+  if target_invitation.expires_at <= now() then
+    update public.team_invitations
+    set status = 'expired',
+        updated_at = now()
+    where id = target_invitation.id;
+
+    raise exception 'This invitation has expired.';
+  end if;
+
+  if normalized_email is null or normalized_email <> target_invitation.normalized_email then
+    raise exception 'Use the invited email address to accept this invitation.';
+  end if;
+
+  insert into public.profiles (id, full_name, email)
+  values (p_user_id, target_invitation.display_name, target_invitation.email)
+  on conflict (id) do update
+  set full_name = coalesce(nullif(public.profiles.full_name, ''), excluded.full_name),
+      email = coalesce(public.profiles.email, excluded.email),
+      updated_at = now();
+
+  insert into public.church_memberships (church_id, user_id, role, status)
+  values (target_invitation.church_id, p_user_id, target_invitation.role, 'active')
+  on conflict (church_id, user_id) do update
+  set role = excluded.role,
+      status = 'active',
+      updated_at = now()
+  returning id into target_membership_id;
+
+  update public.team_members
+  set membership_id = target_membership_id,
+      display_name = coalesce(nullif(display_name, ''), target_invitation.display_name),
+      role = target_invitation.role,
+      email = target_invitation.email,
+      is_active = true,
+      updated_at = now()
+  where id = target_invitation.team_member_id;
+
+  update public.team_invitations
+  set status = 'accepted',
+      accepted_by = p_user_id,
+      accepted_at = now(),
+      updated_at = now()
+  where id = target_invitation.id;
+
+  insert into public.audit_logs (
+    church_id,
+    actor_user_id,
+    target_type,
+    target_id,
+    action,
+    metadata
+  )
+  values (
+    target_invitation.church_id,
+    p_user_id,
+    'team_invitation',
+    target_invitation.id,
+    'invitation.accepted',
+    jsonb_build_object(
+      'email', target_invitation.email,
+      'role', target_invitation.role,
+      'teamMemberId', target_invitation.team_member_id
+    )
+  );
+
+  return target_invitation.church_id;
+end;
 $$;
 
 create or replace function private.prepare_contact_identity()
@@ -588,6 +766,9 @@ create trigger app_admins_touch_updated_at before update on public.app_admins fo
 drop trigger if exists team_members_touch_updated_at on public.team_members;
 create trigger team_members_touch_updated_at before update on public.team_members for each row execute function public.touch_updated_at();
 
+drop trigger if exists team_invitations_touch_updated_at on public.team_invitations;
+create trigger team_invitations_touch_updated_at before update on public.team_invitations for each row execute function public.touch_updated_at();
+
 drop trigger if exists events_touch_updated_at on public.events;
 create trigger events_touch_updated_at before update on public.events for each row execute function public.touch_updated_at();
 
@@ -626,15 +807,22 @@ declare
   new_membership_id uuid;
   church_name text;
   full_name text;
+  invite_token text;
 begin
   church_name := coalesce(new.raw_user_meta_data->>'church_name', 'New church');
   full_name := coalesce(new.raw_user_meta_data->>'full_name', new.email, 'Church admin');
+  invite_token := nullif(new.raw_user_meta_data->>'invite_token', '');
 
   insert into public.profiles (id, full_name, email)
   values (new.id, full_name, new.email)
   on conflict (id) do update
   set full_name = excluded.full_name,
       email = excluded.email;
+
+  if invite_token is not null then
+    perform private.accept_team_invitation_for_user(invite_token, new.id, new.email);
+    return new;
+  end if;
 
   insert into public.churches (name)
   values (church_name)
@@ -731,6 +919,24 @@ as $$
   );
 $$;
 
+create or replace function private.is_app_owner()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.app_admins
+    where user_id = auth.uid()
+      and (
+        role = 'owner'
+        or is_protected_owner = true
+      )
+  );
+$$;
+
 create or replace function private.has_church_role(target_church_id uuid, allowed_roles public.team_role[])
 returns boolean
 language sql
@@ -750,9 +956,13 @@ $$;
 
 revoke all on function private.is_church_member(uuid) from public, anon, authenticated;
 revoke all on function private.is_app_admin() from public, anon, authenticated;
+revoke all on function private.is_app_owner() from public, anon, authenticated;
 revoke all on function private.has_church_role(uuid, public.team_role[]) from public, anon, authenticated;
+revoke all on function private.hash_invite_token(text) from public, anon, authenticated;
+revoke all on function private.accept_team_invitation_for_user(text, uuid, text) from public, anon, authenticated;
 grant execute on function private.is_church_member(uuid) to anon, authenticated;
 grant execute on function private.is_app_admin() to anon, authenticated;
+grant execute on function private.is_app_owner() to anon, authenticated;
 grant execute on function private.has_church_role(uuid, public.team_role[]) to anon, authenticated;
 
 alter table public.churches enable row level security;
@@ -760,6 +970,8 @@ alter table public.profiles enable row level security;
 alter table public.church_memberships enable row level security;
 alter table public.app_admins enable row level security;
 alter table public.team_members enable row level security;
+alter table public.team_invitations enable row level security;
+alter table public.audit_logs enable row level security;
 alter table public.events enable row level security;
 alter table public.people enable row level security;
 alter table public.contacts enable row level security;
@@ -768,6 +980,11 @@ alter table public.contact_journey_events enable row level security;
 alter table public.follow_ups enable row level security;
 alter table public.prayer_requests enable row level security;
 alter table public.generated_messages enable row level security;
+
+revoke insert, update, delete on table public.church_memberships from anon, authenticated;
+revoke update, delete on table public.team_members from anon, authenticated;
+grant update (display_name, phone, email, role, is_active, updated_at) on table public.team_members to authenticated;
+revoke delete on table public.team_invitations from anon, authenticated;
 
 drop policy if exists "Members can view their church" on public.churches;
 create policy "Members can view their church"
@@ -803,18 +1020,22 @@ with check (id = auth.uid());
 drop policy if exists "Members can view memberships" on public.church_memberships;
 create policy "Members can view memberships"
 on public.church_memberships for select
-using (private.is_church_member(church_id) or private.is_app_admin());
+using ((status = 'active' and private.is_church_member(church_id)) or private.is_app_admin());
 
 drop policy if exists "Admins can manage memberships" on public.church_memberships;
-create policy "Admins can manage memberships"
-on public.church_memberships for all
-using (private.has_church_role(church_id, array['admin','pastor']::public.team_role[]))
-with check (private.has_church_role(church_id, array['admin','pastor']::public.team_role[]));
+drop policy if exists "Leaders can insert memberships" on public.church_memberships;
+drop policy if exists "Leaders can update memberships" on public.church_memberships;
+drop policy if exists "Leaders can delete memberships" on public.church_memberships;
 
 drop policy if exists "App admins can view own admin row" on public.app_admins;
 create policy "App admins can view own admin row"
 on public.app_admins for select
 using (user_id = auth.uid());
+
+drop policy if exists "App admins can view app admin rows" on public.app_admins;
+create policy "App admins can view app admin rows"
+on public.app_admins for select
+using (private.is_app_admin());
 
 drop policy if exists "Members can view church team" on public.team_members;
 create policy "Members can view church team"
@@ -822,10 +1043,75 @@ on public.team_members for select
 using (private.is_church_member(church_id) or private.is_app_admin());
 
 drop policy if exists "Leaders can manage church team" on public.team_members;
-create policy "Leaders can manage church team"
-on public.team_members for all
+drop policy if exists "Leaders can add church team" on public.team_members;
+create policy "Leaders can add church team"
+on public.team_members for insert
+with check (
+  private.has_church_role(church_id, array['admin','pastor']::public.team_role[])
+  and membership_id is null
+  and role in ('pastor','elder','bible_worker','health_leader','prayer_team','youth_leader','viewer')
+);
+
+drop policy if exists "Leaders can update church team" on public.team_members;
+create policy "Leaders can update church team"
+on public.team_members for update
+using (
+  private.has_church_role(church_id, array['admin','pastor']::public.team_role[])
+  and not exists (
+    select 1
+    from public.church_memberships
+    join public.app_admins on app_admins.user_id = church_memberships.user_id
+    where church_memberships.id = team_members.membership_id
+      and app_admins.is_protected_owner = true
+  )
+)
+with check (
+  private.has_church_role(church_id, array['admin','pastor']::public.team_role[])
+  and role in ('pastor','elder','bible_worker','health_leader','prayer_team','youth_leader','viewer')
+  and not exists (
+    select 1
+    from public.church_memberships
+    join public.app_admins on app_admins.user_id = church_memberships.user_id
+    where church_memberships.id = team_members.membership_id
+      and app_admins.is_protected_owner = true
+  )
+);
+
+drop policy if exists "Leaders can delete church team" on public.team_members;
+
+drop policy if exists "Leaders can view church invitations" on public.team_invitations;
+create policy "Leaders can view church invitations"
+on public.team_invitations for select
+using (private.has_church_role(church_id, array['admin','pastor']::public.team_role[]) or private.is_app_admin());
+
+drop policy if exists "Leaders can create church invitations" on public.team_invitations;
+create policy "Leaders can create church invitations"
+on public.team_invitations for insert
+with check (
+  private.has_church_role(church_id, array['admin','pastor']::public.team_role[])
+  and role in ('pastor','elder','bible_worker','health_leader','prayer_team','youth_leader','viewer')
+);
+
+drop policy if exists "Leaders can update church invitations" on public.team_invitations;
+create policy "Leaders can update church invitations"
+on public.team_invitations for update
 using (private.has_church_role(church_id, array['admin','pastor']::public.team_role[]))
-with check (private.has_church_role(church_id, array['admin','pastor']::public.team_role[]));
+with check (
+  private.has_church_role(church_id, array['admin','pastor']::public.team_role[])
+  and role in ('pastor','elder','bible_worker','health_leader','prayer_team','youth_leader','viewer')
+);
+
+drop policy if exists "Leaders can delete church invitations" on public.team_invitations;
+
+drop policy if exists "Members can view church audit logs" on public.audit_logs;
+create policy "Members can view church audit logs"
+on public.audit_logs for select
+using (private.is_app_admin() or private.has_church_role(church_id, array['admin','pastor']::public.team_role[]));
+
+drop policy if exists "Members can create audit logs" on public.audit_logs;
+create policy "Members can create audit logs"
+on public.audit_logs for insert
+with check (actor_user_id = auth.uid() and (private.is_app_admin() or private.is_church_member(church_id)));
 
 drop policy if exists "Members can view church events" on public.events;
 create policy "Members can view church events"
@@ -964,7 +1250,69 @@ with check (private.is_church_member(church_id));
 
 drop function if exists public.is_church_member(uuid);
 drop function if exists public.is_app_admin();
+drop function if exists public.is_app_owner();
 drop function if exists public.has_church_role(uuid, public.team_role[]);
+
+drop function if exists public.team_invitation_preview(text);
+
+create or replace function public.team_invitation_preview(p_token text)
+returns table (
+  church_name text,
+  display_name text,
+  email text,
+  role public.team_role,
+  status public.team_invitation_status,
+  expires_at timestamptz
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    churches.name as church_name,
+    team_invitations.display_name,
+    team_invitations.email,
+    team_invitations.role,
+    case
+      when team_invitations.status = 'pending' and team_invitations.expires_at <= now() then 'expired'::public.team_invitation_status
+      else team_invitations.status
+    end as status,
+    team_invitations.expires_at
+  from public.team_invitations
+  join public.churches on churches.id = team_invitations.church_id
+  where team_invitations.token_hash = private.hash_invite_token(p_token)
+  limit 1;
+$$;
+
+revoke all on function public.team_invitation_preview(text) from public, anon, authenticated;
+grant execute on function public.team_invitation_preview(text) to anon, authenticated;
+
+drop function if exists public.accept_team_invitation(text);
+
+create or replace function public.accept_team_invitation(p_token text)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_email text;
+begin
+  if auth.uid() is null then
+    raise exception 'Login is required before accepting this invitation.';
+  end if;
+
+  select email
+  into current_email
+  from auth.users
+  where id = auth.uid();
+
+  return private.accept_team_invitation_for_user(p_token, auth.uid(), current_email);
+end;
+$$;
+
+revoke all on function public.accept_team_invitation(text) from public, anon, authenticated;
+grant execute on function public.accept_team_invitation(text) to authenticated;
 
 drop view if exists public.public_events;
 create view public.public_events
@@ -1044,11 +1392,13 @@ returns table (
   team_member_id uuid,
   team_member_name text,
   team_member_active boolean,
+  app_admin_role public.app_admin_role,
+  is_protected_owner boolean,
   event_count bigint,
   contact_count bigint
 )
 language plpgsql
-security invoker
+security definer
 set search_path = public
 as $$
 begin
@@ -1071,12 +1421,15 @@ begin
     team_members.id as team_member_id,
     team_members.display_name as team_member_name,
     coalesce(team_members.is_active, false) as team_member_active,
+    app_admins.role as app_admin_role,
+    coalesce(app_admins.is_protected_owner, false) as is_protected_owner,
     count(distinct events.id) as event_count,
     count(distinct contacts.id) as contact_count
   from public.churches
   join public.church_memberships on church_memberships.church_id = churches.id
   left join public.profiles on profiles.id = church_memberships.user_id
   left join public.team_members on team_members.membership_id = church_memberships.id
+  left join public.app_admins on app_admins.user_id = church_memberships.user_id
   left join public.events on events.church_id = churches.id
   left join public.contacts on contacts.church_id = churches.id
   group by
@@ -1092,13 +1445,71 @@ begin
     church_memberships.created_at,
     team_members.id,
     team_members.display_name,
-    team_members.is_active
+    team_members.is_active,
+    app_admins.role,
+    app_admins.is_protected_owner
   order by churches.created_at desc, church_memberships.created_at asc;
 end;
 $$;
 
 revoke all on function public.owner_account_rows() from public, anon, authenticated;
 grant execute on function public.owner_account_rows() to authenticated;
+
+drop function if exists public.owner_invitation_rows();
+
+create or replace function public.owner_invitation_rows()
+returns table (
+  church_id uuid,
+  church_name text,
+  invitation_id uuid,
+  team_member_id uuid,
+  display_name text,
+  email text,
+  role public.team_role,
+  status public.team_invitation_status,
+  invited_by_name text,
+  accepted_by_name text,
+  expires_at timestamptz,
+  accepted_at timestamptz,
+  created_at timestamptz
+)
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  if not private.is_app_admin() then
+    raise exception 'Only ShepardRoute app admins can view invitation rows.';
+  end if;
+
+  return query
+  select
+    churches.id as church_id,
+    churches.name as church_name,
+    team_invitations.id as invitation_id,
+    team_invitations.team_member_id,
+    team_invitations.display_name,
+    team_invitations.email,
+    team_invitations.role,
+    case
+      when team_invitations.status = 'pending' and team_invitations.expires_at <= now() then 'expired'::public.team_invitation_status
+      else team_invitations.status
+    end as status,
+    invited_by_profile.full_name as invited_by_name,
+    accepted_by_profile.full_name as accepted_by_name,
+    team_invitations.expires_at,
+    team_invitations.accepted_at,
+    team_invitations.created_at
+  from public.team_invitations
+  join public.churches on churches.id = team_invitations.church_id
+  left join public.profiles as invited_by_profile on invited_by_profile.id = team_invitations.invited_by
+  left join public.profiles as accepted_by_profile on accepted_by_profile.id = team_invitations.accepted_by
+  order by team_invitations.created_at desc;
+end;
+$$;
+
+revoke all on function public.owner_invitation_rows() from public, anon, authenticated;
+grant execute on function public.owner_invitation_rows() to authenticated;
 
 drop function if exists public.owner_update_membership_status(uuid, public.membership_status);
 
@@ -1113,9 +1524,11 @@ set search_path = public
 as $$
 declare
   target_membership public.church_memberships%rowtype;
+  target_is_protected_owner boolean := false;
+  active_leader_count integer := 0;
 begin
-  if not private.is_app_admin() then
-    raise exception 'Only ShepardRoute app admins can update account access.';
+  if not private.is_app_owner() then
+    raise exception 'Only ShepardRoute app owners can update account access.';
   end if;
 
   select *
@@ -1128,6 +1541,34 @@ begin
     raise exception 'Membership not found.';
   end if;
 
+  select exists (
+    select 1
+    from public.app_admins
+    where app_admins.user_id = target_membership.user_id
+      and app_admins.is_protected_owner = true
+  )
+  into target_is_protected_owner
+  ;
+
+  if target_is_protected_owner and p_status <> 'active' then
+    raise exception 'Protected owner access cannot be deactivated from the app.';
+  end if;
+
+  select count(*)
+  into active_leader_count
+  from public.church_memberships
+  where church_id = target_membership.church_id
+    and status = 'active'
+    and role in ('admin','pastor')
+    and id <> target_membership.id;
+
+  if target_membership.status = 'active'
+    and target_membership.role in ('admin','pastor')
+    and p_status <> 'active'
+    and active_leader_count = 0 then
+    raise exception 'Every church must keep at least one active admin or pastor.';
+  end if;
+
   update public.church_memberships
   set status = p_status,
       updated_at = now()
@@ -1137,11 +1578,126 @@ begin
   set is_active = p_status = 'active',
       updated_at = now()
   where membership_id = target_membership.id;
+
+  insert into public.audit_logs (
+    church_id,
+    actor_user_id,
+    target_type,
+    target_id,
+    action,
+    metadata
+  )
+  values (
+    target_membership.church_id,
+    auth.uid(),
+    'church_membership',
+    target_membership.id,
+    'membership.status_changed',
+    jsonb_build_object(
+      'fromStatus', target_membership.status,
+      'toStatus', p_status,
+      'role', target_membership.role
+    )
+  );
 end;
 $$;
 
 revoke all on function public.owner_update_membership_status(uuid, public.membership_status) from public, anon, authenticated;
 grant execute on function public.owner_update_membership_status(uuid, public.membership_status) to authenticated;
+
+drop function if exists public.owner_update_membership_role(uuid, public.team_role);
+
+create or replace function public.owner_update_membership_role(
+  p_membership_id uuid,
+  p_role public.team_role
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_membership public.church_memberships%rowtype;
+  target_is_protected_owner boolean := false;
+  active_leader_count integer := 0;
+begin
+  if not private.is_app_owner() then
+    raise exception 'Only ShepardRoute app owners can update church roles.';
+  end if;
+
+  select *
+  into target_membership
+  from public.church_memberships
+  where id = p_membership_id
+  limit 1;
+
+  if target_membership.id is null then
+    raise exception 'Membership not found.';
+  end if;
+
+  select exists (
+    select 1
+    from public.app_admins
+    where app_admins.user_id = target_membership.user_id
+      and app_admins.is_protected_owner = true
+  )
+  into target_is_protected_owner
+  ;
+
+  if target_is_protected_owner and p_role <> target_membership.role then
+    raise exception 'Protected owner church role cannot be changed from the app.';
+  end if;
+
+  select count(*)
+  into active_leader_count
+  from public.church_memberships
+  where church_id = target_membership.church_id
+    and status = 'active'
+    and role in ('admin','pastor')
+    and id <> target_membership.id;
+
+  if target_membership.status = 'active'
+    and target_membership.role in ('admin','pastor')
+    and p_role not in ('admin','pastor')
+    and active_leader_count = 0 then
+    raise exception 'Every church must keep at least one active admin or pastor.';
+  end if;
+
+  update public.church_memberships
+  set role = p_role,
+      updated_at = now()
+  where id = target_membership.id;
+
+  update public.team_members
+  set role = p_role,
+      updated_at = now()
+  where membership_id = target_membership.id;
+
+  insert into public.audit_logs (
+    church_id,
+    actor_user_id,
+    target_type,
+    target_id,
+    action,
+    metadata
+  )
+  values (
+    target_membership.church_id,
+    auth.uid(),
+    'church_membership',
+    target_membership.id,
+    'membership.role_changed',
+    jsonb_build_object(
+      'fromRole', target_membership.role,
+      'toRole', p_role,
+      'status', target_membership.status
+    )
+  );
+end;
+$$;
+
+revoke all on function public.owner_update_membership_role(uuid, public.team_role) from public, anon, authenticated;
+grant execute on function public.owner_update_membership_role(uuid, public.team_role) to authenticated;
 
 drop function if exists public.search_contacts(
   uuid,

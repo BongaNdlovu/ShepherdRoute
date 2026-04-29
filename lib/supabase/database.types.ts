@@ -41,9 +41,63 @@ export type Database = {
     Tables: {
       [key: string]: GenericTable;
       app_admins: {
-        Row: { user_id: string; created_at: Timestamp; updated_at: Timestamp };
-        Insert: { user_id: string; created_at?: Timestamp; updated_at?: Timestamp };
-        Update: { user_id?: string; created_at?: Timestamp; updated_at?: Timestamp };
+        Row: {
+          user_id: string;
+          role: Database["public"]["Enums"]["app_admin_role"];
+          is_protected_owner: boolean;
+          created_by: string | null;
+          created_at: Timestamp;
+          updated_at: Timestamp;
+        };
+        Insert: {
+          user_id: string;
+          role?: Database["public"]["Enums"]["app_admin_role"];
+          is_protected_owner?: boolean;
+          created_by?: string | null;
+          created_at?: Timestamp;
+          updated_at?: Timestamp;
+        };
+        Update: {
+          user_id?: string;
+          role?: Database["public"]["Enums"]["app_admin_role"];
+          is_protected_owner?: boolean;
+          created_by?: string | null;
+          created_at?: Timestamp;
+          updated_at?: Timestamp;
+        };
+        Relationships: [];
+      };
+      audit_logs: {
+        Row: {
+          id: string;
+          church_id: string | null;
+          actor_user_id: string | null;
+          target_type: string;
+          target_id: string | null;
+          action: string;
+          metadata: Json;
+          created_at: Timestamp;
+        };
+        Insert: {
+          id?: string;
+          church_id?: string | null;
+          actor_user_id?: string | null;
+          target_type: string;
+          target_id?: string | null;
+          action: string;
+          metadata?: Json;
+          created_at?: Timestamp;
+        };
+        Update: {
+          id?: string;
+          church_id?: string | null;
+          actor_user_id?: string | null;
+          target_type?: string;
+          target_id?: string | null;
+          action?: string;
+          metadata?: Json;
+          created_at?: Timestamp;
+        };
         Relationships: [];
       };
       churches: {
@@ -420,6 +474,44 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["team_members"]["Insert"]>;
         Relationships: [];
       };
+      team_invitations: {
+        Row: {
+          id: string;
+          church_id: string;
+          team_member_id: string | null;
+          email: string;
+          normalized_email: string;
+          display_name: string;
+          role: Database["public"]["Enums"]["team_role"];
+          token_hash: string;
+          status: Database["public"]["Enums"]["team_invitation_status"];
+          invited_by: string | null;
+          accepted_by: string | null;
+          expires_at: Timestamp;
+          accepted_at: Timestamp | null;
+          created_at: Timestamp;
+          updated_at: Timestamp;
+        };
+        Insert: {
+          id?: string;
+          church_id: string;
+          team_member_id?: string | null;
+          email: string;
+          normalized_email: string;
+          display_name: string;
+          role?: Database["public"]["Enums"]["team_role"];
+          token_hash: string;
+          status?: Database["public"]["Enums"]["team_invitation_status"];
+          invited_by?: string | null;
+          accepted_by?: string | null;
+          expires_at?: Timestamp;
+          accepted_at?: Timestamp | null;
+          created_at?: Timestamp;
+          updated_at?: Timestamp;
+        };
+        Update: Partial<Database["public"]["Tables"]["team_invitations"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: {
       [key: string]: GenericView;
@@ -440,6 +532,10 @@ export type Database = {
     };
     Functions: {
       [key: string]: GenericFunction;
+      accept_team_invitation: {
+        Args: { p_token: string };
+        Returns: string;
+      };
       owner_church_summaries: {
         Args: never;
         Returns: Array<{
@@ -468,6 +564,8 @@ export type Database = {
           team_member_id: string | null;
           team_member_name: string | null;
           team_member_active: boolean;
+          app_admin_role: Database["public"]["Enums"]["app_admin_role"] | null;
+          is_protected_owner: boolean;
           event_count: number;
           contact_count: number;
         }>;
@@ -478,6 +576,31 @@ export type Database = {
           p_status: Database["public"]["Enums"]["membership_status"];
         };
         Returns: void;
+      };
+      owner_update_membership_role: {
+        Args: {
+          p_membership_id: string;
+          p_role: Database["public"]["Enums"]["team_role"];
+        };
+        Returns: void;
+      };
+      owner_invitation_rows: {
+        Args: never;
+        Returns: Array<{
+          church_id: string;
+          church_name: string;
+          invitation_id: string;
+          team_member_id: string | null;
+          display_name: string;
+          email: string;
+          role: Database["public"]["Enums"]["team_role"];
+          status: Database["public"]["Enums"]["team_invitation_status"];
+          invited_by_name: string | null;
+          accepted_by_name: string | null;
+          expires_at: Timestamp;
+          accepted_at: Timestamp | null;
+          created_at: Timestamp;
+        }>;
       };
       search_contacts: {
         Args: {
@@ -515,6 +638,17 @@ export type Database = {
           total_count: number;
         }>;
       };
+      team_invitation_preview: {
+        Args: { p_token: string };
+        Returns: Array<{
+          church_name: string;
+          display_name: string;
+          email: string;
+          role: Database["public"]["Enums"]["team_role"];
+          status: Database["public"]["Enums"]["team_invitation_status"];
+          expires_at: Timestamp;
+        }>;
+      };
       submit_event_registration: {
         Args: {
           p_slug: string;
@@ -537,6 +671,7 @@ export type Database = {
       };
     };
     Enums: {
+      app_admin_role: "owner" | "support_admin" | "billing_admin";
       event_type:
         | "sabbath_visitor"
         | "church_service"
@@ -578,6 +713,7 @@ export type Database = {
         | "sensitive"
         | "health_related";
       team_role: "admin" | "pastor" | "elder" | "bible_worker" | "health_leader" | "prayer_team" | "youth_leader" | "viewer";
+      team_invitation_status: "pending" | "accepted" | "revoked" | "expired";
       urgency_level: "low" | "medium" | "high";
     };
     CompositeTypes: {

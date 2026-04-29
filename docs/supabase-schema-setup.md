@@ -18,25 +18,34 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-6. Add auth redirect URLs for local and deployed dashboard routes:
+6. Add auth redirect URLs for local and deployed dashboard/invite routes:
 
 ```text
 http://localhost:3000/dashboard
+http://localhost:3000/invite/*
 http://127.0.0.1:3000/dashboard
+http://127.0.0.1:3000/invite/*
 https://your-vercel-domain.vercel.app/dashboard
+https://your-vercel-domain.vercel.app/invite/*
 ```
 
 ## What The Schema Creates
 
 - Extensions: `pgcrypto`, `pg_trgm`
-- Core tables: `churches`, `profiles`, `church_memberships`, `app_admins`, `team_members`, `events`, `contacts`
-- Ministry tables: `contact_interests`, `follow_ups`, `prayer_requests`, `generated_messages`
-- Enum types for roles, event types, interests, follow-up statuses, channels, urgency, and prayer visibility
+- Core tables: `churches`, `profiles`, `church_memberships`, `app_admins`, `team_members`, `team_invitations`, `events`, `people`, `contacts`
+- Ministry tables: `contact_interests`, `contact_journey_events`, `follow_ups`, `prayer_requests`, `generated_messages`
+- Enum types for app admin roles, team invitation statuses, roles, event types, interests, follow-up statuses, channels, urgency, and prayer visibility
 - RLS policies for authenticated church members, leaders, app admins, and public event access
 - Public view: `public_events`
 - Auth trigger: `private.handle_new_user`
 - Public RPCs:
+  - `team_invitation_preview`
+  - `accept_team_invitation`
   - `owner_church_summaries`
+  - `owner_account_rows`
+  - `owner_invitation_rows`
+  - `owner_update_membership_status`
+  - `owner_update_membership_role`
   - `search_contacts`
   - `export_contacts`
   - `outreach_report_summary`

@@ -25,8 +25,26 @@ export type OwnerAccountRow = {
   team_member_id: string | null;
   team_member_name: string | null;
   team_member_active: boolean;
+  app_admin_role: "owner" | "support_admin" | "billing_admin" | null;
+  is_protected_owner: boolean;
   event_count: number;
   contact_count: number;
+};
+
+export type OwnerInvitationRow = {
+  church_id: string;
+  church_name: string;
+  invitation_id: string;
+  team_member_id: string | null;
+  display_name: string;
+  email: string;
+  role: string;
+  status: "pending" | "accepted" | "revoked" | "expired";
+  invited_by_name: string | null;
+  accepted_by_name: string | null;
+  expires_at: string;
+  accepted_at: string | null;
+  created_at: string;
 };
 
 export async function getOwnerChurchSummaries() {
@@ -38,6 +56,17 @@ export async function getOwnerChurchSummaries() {
   }
 
   return (data ?? []) as OwnerChurchSummary[];
+}
+
+export async function getOwnerInvitationRows() {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("owner_invitation_rows");
+
+  if (error) {
+    notFound();
+  }
+
+  return (data ?? []) as OwnerInvitationRow[];
 }
 
 export async function getOwnerAccountRows() {

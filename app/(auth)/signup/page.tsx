@@ -13,9 +13,10 @@ export const metadata = {
 export default async function SignupPage({
   searchParams
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; invite?: string }>;
 }) {
   const params = await searchParams;
+  const inviteQuery = params.invite ? `?invite=${encodeURIComponent(params.invite)}` : "";
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
@@ -24,8 +25,10 @@ export default async function SignupPage({
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Church className="h-6 w-6" />
           </div>
-          <CardTitle className="text-2xl">Start ShepardRoute</CardTitle>
-          <CardDescription>Create your church workspace and first admin account.</CardDescription>
+          <CardTitle className="text-2xl">{params.invite ? "Create your team account" : "Start ShepardRoute"}</CardTitle>
+          <CardDescription>
+            {params.invite ? "Use the invited email address to join the church workspace." : "Create your church workspace and first admin account."}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {params.error ? (
@@ -34,10 +37,13 @@ export default async function SignupPage({
             </div>
           ) : null}
           <form action={signupAction} className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="churchName">Church name</Label>
-              <Input id="churchName" name="churchName" placeholder="Pinetown SDA Church" required />
-            </div>
+            {params.invite ? <input type="hidden" name="inviteToken" value={params.invite} /> : null}
+            {!params.invite ? (
+              <div className="grid gap-2">
+                <Label htmlFor="churchName">Church name</Label>
+                <Input id="churchName" name="churchName" placeholder="Pinetown SDA Church" required />
+              </div>
+            ) : null}
             <div className="grid gap-2">
               <Label htmlFor="fullName">Your name</Label>
               <Input id="fullName" name="fullName" autoComplete="name" required />
@@ -50,11 +56,11 @@ export default async function SignupPage({
               <Label htmlFor="password">Password</Label>
               <Input id="password" name="password" type="password" autoComplete="new-password" minLength={8} required />
             </div>
-            <Button size="lg" type="submit">Create church account</Button>
+            <Button size="lg" type="submit">{params.invite ? "Create account" : "Create church account"}</Button>
           </form>
           <p className="mt-5 text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link className="font-semibold text-foreground underline-offset-4 hover:underline" href="/login">
+            <Link className="font-semibold text-foreground underline-offset-4 hover:underline" href={`/login${inviteQuery}`}>
               Login
             </Link>
           </p>

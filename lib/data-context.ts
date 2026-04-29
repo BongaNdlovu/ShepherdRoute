@@ -1,6 +1,13 @@
 import { cache } from "react";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+
+export type ChurchMembershipOption = {
+  churchId: string;
+  churchName: string;
+  role: string;
+};
 
 export type ChurchContext = {
   userId: string;
@@ -8,7 +15,10 @@ export type ChurchContext = {
   churchName: string;
   fullName: string;
   role: string;
+  memberships: ChurchMembershipOption[];
   isAppAdmin: boolean;
+  appAdminRole: string | null;
+  isProtectedOwner: boolean;
 };
 
 export const getChurchContext = cache(async function getChurchContext(): Promise<ChurchContext> {
@@ -21,7 +31,10 @@ export const getChurchContext = cache(async function getChurchContext(): Promise
     redirect("/login");
   }
 
-  const [{ data: profile }, { data: membership, error }, { data: appAdmin }] = await Promise.all([
+  const cookieStore = await cookies();
+  const selectedChurchId = cookieStore.get("selected_church_id")?.value;
+
+  const [{ data: profile }, { data: memberships, error }, { data: appAdmin }] = await Promise.all([
     supabase
       .from("profiles")
       .select("full_name, email")
@@ -32,28 +45,39 @@ export const getChurchContext = cache(async function getChurchContext(): Promise
       .select("church_id, role, churches(name)")
       .eq("user_id", user.id)
       .eq("status", "active")
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .single(),
+      .order("created_at", { ascending: true }),
     supabase
       .from("app_admins")
-      .select("user_id")
+      .select("user_id, role, is_protected_owner")
       .eq("user_id", user.id)
       .maybeSingle()
   ]);
 
-  if (error || !membership || !profile) {
+  if (error || !memberships?.length || !profile) {
     redirect("/login?error=Your%20church%20profile%20is%20not%20ready%20yet.");
   }
 
-  const church = Array.isArray(membership.churches) ? membership.churches[0] : membership.churches;
+  const selectedMembership = memberships.find((membership) => membership.church_id === selectedChurchId) ?? memberships[0];
+  const selectedChurch = Array.isArray(selectedMembership.churches) ? selectedMembership.churches[0] : selectedMembership.churches;
+  const membershipOptions = memberships.map((membership) => {
+    const church = Array.isArray(membership.churches) ? membership.churches[0] : membership.churches;
+
+    return {
+      churchId: membership.church_id,
+      churchName: church?.name ?? "Your church",
+      role: membership.role
+    };
+  });
 
   return {
     userId: user.id,
-    churchId: membership.church_id,
-    churchName: church?.name ?? "Your church",
+    churchId: selectedMembership.church_id,
+    churchName: selectedChurch?.name ?? "Your church",
     fullName: profile.full_name ?? user.email ?? "Team member",
-    role: membership.role,
-    isAppAdmin: Boolean(appAdmin)
+    role: selectedMembership.role,
+    memberships: membershipOptions,
+    isAppAdmin: Boolean(appAdmin),
+    appAdminRole: appAdmin?.role ?? null,
+    isProtectedOwner: appAdmin?.is_protected_owner ?? false
   };
 });
