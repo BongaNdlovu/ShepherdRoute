@@ -159,7 +159,7 @@ test.describe("workflow helpers", () => {
       churchName: "Pinetown SDA"
     });
 
-    expect(message).toContain("baptismal request");
+    expect(message).toContain("Thank you for sharing your baptismal request");
     expect(message).toContain("Bible worker");
     expect(message).toContain("preparation");
     expect(message).toContain("Bible study");

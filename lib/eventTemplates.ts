@@ -39,6 +39,80 @@ const commonPrayerBibleHealth: TemplateInterestOption[] = [
   { value: "health", label: "Health Resources", description: "Lifestyle and wellness resources." }
 ];
 
+const friendlyMessageTemplates = {
+  sabbathDefault:
+    "Good day {firstName}, thank you for worshipping with {churchName}{eventLine}. We are grateful you joined us. Would it be okay if one of our team members checks in with you this week?",
+  sabbathPrayer:
+    "Good day {firstName}, thank you for worshipping with {churchName}{eventLine}. Thank you for trusting us with your prayer request. Would it be okay if our prayer team prays for you and checks in gently?",
+  sabbathBibleStudy:
+    "Good day {firstName}, thank you for worshipping with {churchName}{eventLine}. We are glad you are interested in Bible study. Would it be okay if one of our Bible workers shares the available study options with you?",
+  sabbathBaptism:
+    "Good day {firstName}, thank you for worshipping with {churchName}{eventLine}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
+
+  healthExpoDefault:
+    "Good day {firstName}, thank you for attending {eventName} with {churchName}. We hope the day was helpful. Would you like us to send health resources and future wellness program updates?",
+  healthResources:
+    "Good day {firstName}, thank you for attending {eventName}. We would be happy to send the 7-day health challenge and simple lifestyle resources from {churchName}.",
+  cookingClass:
+    "Good day {firstName}, thank you for attending {eventName}. We would be glad to send the recipes and let you know when the next healthy cooking class is planned.",
+  healthBibleStudy:
+    "Good day {firstName}, thank you for attending {eventName}. We also noticed your interest in Bible study. Would it be okay if one of our Bible workers shares the available options with you?",
+  healthBaptism:
+    "Good day {firstName}, thank you for attending {eventName}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
+
+  campaignDefault:
+    "Good day {firstName}, thank you for attending {eventName}. We are grateful you came. Would you like us to send study notes and updates for the next meeting from {churchName}?",
+  campaignBibleStudy:
+    "Good day {firstName}, thank you for attending {eventName}. Would it be okay if one of our Bible workers sends the study notes and shares Bible study options with you?",
+  campaignBaptism:
+    "Good day {firstName}, thank you for attending {eventName}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker for preparation, with pastoral support when the time is right.",
+
+  prophecyDefault:
+    "Good day {firstName}, thank you for attending {eventName}. We are glad you joined the seminar. Would you like us to send the notes and reminders for the next session?",
+  prophecyBibleStudy:
+    "Good day {firstName}, thank you for attending {eventName}. Would it be okay if one of our Bible workers sends the study notes and shares Bible study options with you?",
+  prophecyBaptism:
+    "Good day {firstName}, thank you for attending {eventName}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker for preparation, with pastoral support when the time is right.",
+
+  youthDefault:
+    "Good day {firstName}, thank you for joining {eventName}. We are glad you connected with us. Would you like the youth ministry team to share future updates with you?",
+  youth:
+    "Good day {firstName}, thank you for joining {eventName}. We would be happy to share youth ministry updates and details for the next program.",
+  youthBaptism:
+    "Good day {firstName}, thank you for joining {eventName}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
+
+  prayerDefault:
+    "Good day {firstName}, thank you for trusting {churchName}{eventLine}. We have your prayer request, and we will handle it with care. Would it be okay if a trusted prayer leader checks in with you?",
+  prayer:
+    "Good day {firstName}, thank you for sharing your prayer request with {churchName}. Our prayer team would be honoured to pray for you and check in with care and respect.",
+  prayerBaptism:
+    "Good day {firstName}, thank you for sharing your baptismal request with {churchName}. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
+
+  memberDefault:
+    "Good day {firstName}, thank you for contacting {churchName}. We are glad you reached out. We can route your request to the right ministry leader for follow-up.",
+  memberBaptism:
+    "Good day {firstName}, thank you for contacting {churchName}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
+
+  baptizedMemberDefault:
+    "Good day {firstName}, thank you for connecting with {churchName}. We are glad to walk with you in this next step of church life. We can connect you with the right leader for support.",
+  baptizedMemberBibleStudy:
+    "Good day {firstName}, thank you for connecting with {churchName}. Would it be okay if one of our Bible workers shares discipleship study options with you?",
+  baptizedMemberBaptism:
+    "Good day {firstName}, thank you for connecting with {churchName}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
+
+  healthSeminarDefault:
+    "Good day {firstName}, thank you for attending {eventName}. We hope the seminar was helpful. Would you like us to send notes and future health program updates from {churchName}?",
+  healthSeminarHealth:
+    "Good day {firstName}, thank you for attending {eventName}. We would be happy to send lifestyle resources and details for the next health program.",
+  healthSeminarBaptism:
+    "Good day {firstName}, thank you for attending {eventName}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
+
+  customDefault:
+    "Good day {firstName}, thank you for connecting with {churchName}{eventLine}. We are glad you reached out. Would it be okay if one of our team members follows up with you this week?",
+  customBaptism:
+    "Good day {firstName}, thank you for connecting with {churchName}{eventLine}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker who can walk with you through preparation."
+};
+
 export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
   sabbath_visitor: {
     type: "sabbath_visitor",
@@ -57,10 +131,10 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     defaultStatuses: ["first_time_visitor", "thank_you_sent", "invited_again", "prayer_requested", "bible_study_requested", "attended_again", "connected", "closed"],
     defaultRoles: ["elder", "pastor", "prayer_team", "bible_worker"],
     messageTemplates: {
-      default: "Good day {firstName}, thank you for worshipping with {churchName}{eventLine}. We are grateful you visited. Would it be okay if one of our team members follows up with you this week?",
-      prayer: "Good day {firstName}, thank you for worshipping with {churchName}{eventLine}. We received your prayer request and would be honoured to have our prayer team check in with you.",
-      bible_study: "Good day {firstName}, thank you for worshipping with {churchName}{eventLine}. You mentioned Bible study interest. May one of our Bible workers share the available study options?",
-      baptism: "Good day {firstName}, thank you for worshipping with {churchName}{eventLine}. We received your baptismal request and can connect you with a Bible worker to begin preparation."
+      default: friendlyMessageTemplates.sabbathDefault,
+      prayer: friendlyMessageTemplates.sabbathPrayer,
+      bible_study: friendlyMessageTemplates.sabbathBibleStudy,
+      baptism: friendlyMessageTemplates.sabbathBaptism
     },
     reportSections: [
       { key: "total_contacts", label: "First-time visitors", description: "Total visitor registrations.", metric: "total_contacts" },
@@ -89,11 +163,11 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     defaultStatuses: ["new", "health_resources_sent", "invited_to_cooking_class", "prayer_follow_up", "bible_study_requested", "contacted", "closed"],
     defaultRoles: ["health_leader", "prayer_team", "bible_worker", "pastor"],
     messageTemplates: {
-      default: "Good day {firstName}, thank you for attending {eventName} with {churchName}. Would you like us to send the health challenge details and future wellness program updates?",
-      health: "Good day {firstName}, thank you for attending {eventName}. We can send the 7-day health challenge and simple lifestyle resources from {churchName}.",
-      cooking_class: "Good day {firstName}, thank you for attending {eventName}. We can send details for the next healthy cooking class and related resources.",
-      bible_study: "Good day {firstName}, thank you for attending {eventName}. You also showed interest in Bible study. May one of our Bible workers share the available options?",
-      baptism: "Good day {firstName}, thank you for attending {eventName}. We received your baptismal request and can connect you with a Bible worker to begin preparation."
+      default: friendlyMessageTemplates.healthExpoDefault,
+      health: friendlyMessageTemplates.healthResources,
+      cooking_class: friendlyMessageTemplates.cookingClass,
+      bible_study: friendlyMessageTemplates.healthBibleStudy,
+      baptism: friendlyMessageTemplates.healthBaptism
     },
     reportSections: [
       { key: "total_contacts", label: "Total contacts", description: "All health expo registrations.", metric: "total_contacts" },
@@ -122,9 +196,9 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     defaultStatuses: ["new_attendee", "notes_sent", "invited_next_meeting", "bible_study_requested", "pastoral_visit_needed", "baptism_interest", "decision_follow_up", "closed"],
     defaultRoles: ["pastor", "elder", "bible_worker", "prayer_team"],
     messageTemplates: {
-      default: "Good day {firstName}, thank you for attending {eventName}. We can send study notes and updates for the next meeting from {churchName}.",
-      bible_study: "Good day {firstName}, thank you for attending {eventName}. May one of our Bible workers send the study notes and share Bible study options?",
-      baptism: "Good day {firstName}, thank you for attending {eventName}. We received your baptismal request and can connect you with a Bible worker to begin preparation, with pastoral involvement when ready."
+      default: friendlyMessageTemplates.campaignDefault,
+      bible_study: friendlyMessageTemplates.campaignBibleStudy,
+      baptism: friendlyMessageTemplates.campaignBaptism
     },
     reportSections: [
       { key: "total_attendees", label: "Total attendees", description: "All captured attendees.", metric: "total_contacts" },
@@ -153,9 +227,9 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     defaultStatuses: ["new_attendee", "notes_sent", "question_received", "bible_study_requested", "baptism_interest", "invited_next_session", "closed"],
     defaultRoles: ["bible_worker", "pastor", "elder", "prayer_team"],
     messageTemplates: {
-      default: "Good day {firstName}, thank you for attending {eventName}. We can send the seminar notes and reminders for the next session.",
-      bible_study: "Good day {firstName}, thank you for attending {eventName}. May one of our Bible workers send study notes and Bible study options?",
-      baptism: "Good day {firstName}, thank you for attending {eventName}. We received your baptismal request and can connect you with a Bible worker to begin preparation, with pastoral involvement when ready."
+      default: friendlyMessageTemplates.prophecyDefault,
+      bible_study: friendlyMessageTemplates.prophecyBibleStudy,
+      baptism: friendlyMessageTemplates.prophecyBaptism
     },
     reportSections: [
       { key: "total_attendees", label: "Total attendees", description: "All seminar registrations.", metric: "total_contacts" },
@@ -184,10 +258,10 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     defaultStatuses: ["new", "recipes_sent", "health_challenge_invited", "invited_next_class", "prayer_follow_up", "bible_study_requested", "closed"],
     defaultRoles: ["health_leader", "prayer_team", "bible_worker"],
     messageTemplates: {
-      default: "Good day {firstName}, thank you for attending {eventName}. We can send the recipes and let you know about the next cooking class.",
-      cooking_class: "Good day {firstName}, thank you for attending {eventName}. We can send the recipes and next class details from {churchName}.",
-      health: "Good day {firstName}, thank you for attending {eventName}. We can also send the 7-day health challenge and simple lifestyle resources.",
-      baptism: "Good day {firstName}, thank you for attending {eventName}. We received your baptismal request and can connect you with a Bible worker to begin preparation."
+      default: friendlyMessageTemplates.cookingClass,
+      cooking_class: friendlyMessageTemplates.cookingClass,
+      health: friendlyMessageTemplates.healthResources,
+      baptism: friendlyMessageTemplates.healthBaptism
     },
     reportSections: [
       { key: "total_contacts", label: "Total contacts", description: "All cooking class registrations.", metric: "total_contacts" },
@@ -215,9 +289,9 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     defaultStatuses: ["new", "youth_leader_assigned", "parent_contacted", "invited_next_program", "connected", "closed"],
     defaultRoles: ["elder", "pastor", "prayer_team"],
     messageTemplates: {
-      default: "Good day {firstName}, thank you for joining {eventName}. We can connect you with the youth ministry team for future updates.",
-      youth: "Good day {firstName}, thank you for joining {eventName}. We can share youth ministry updates and the next program details.",
-      baptism: "Good day {firstName}, thank you for joining {eventName}. We received your baptismal request and can connect you with a Bible worker to begin preparation."
+      default: friendlyMessageTemplates.youthDefault,
+      youth: friendlyMessageTemplates.youth,
+      baptism: friendlyMessageTemplates.youthBaptism
     },
     reportSections: [
       { key: "total_contacts", label: "Total contacts", description: "All youth event registrations.", metric: "total_contacts" },
@@ -242,9 +316,9 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     defaultStatuses: ["new", "prayer_team_assigned", "pastor_review", "followed_up", "closed"],
     defaultRoles: ["prayer_team", "pastor", "elder"],
     messageTemplates: {
-      default: "Good day {firstName}, thank you for trusting {churchName}{eventLine}. We received your prayer request and can arrange a respectful human follow-up.",
-      prayer: "Good day {firstName}, thank you for sharing your prayer request with {churchName}. Our prayer team can check in with care and respect.",
-      baptism: "Good day {firstName}, thank you for sharing your request with {churchName}. We received your baptismal request and can connect you with a Bible worker to begin preparation."
+      default: friendlyMessageTemplates.prayerDefault,
+      prayer: friendlyMessageTemplates.prayer,
+      baptism: friendlyMessageTemplates.prayerBaptism
     },
     reportSections: [
       { key: "total_contacts", label: "Total requests", description: "All prayer campaign contacts.", metric: "total_contacts" },
@@ -269,8 +343,8 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     defaultStatuses: ["new", "assigned", "member_contacted", "ministry_connected", "closed"],
     defaultRoles: ["elder", "pastor", "prayer_team", "bible_worker", "health_leader"],
     messageTemplates: {
-      default: "Good day {firstName}, thank you for contacting {churchName}. We can route your request to the right ministry leader for follow-up.",
-      baptism: "Good day {firstName}, thank you for contacting {churchName}. We received your baptismal request and can connect you with a Bible worker to begin preparation."
+      default: friendlyMessageTemplates.memberDefault,
+      baptism: friendlyMessageTemplates.memberBaptism
     },
     reportSections: [
       { key: "total_contacts", label: "Total member requests", description: "All member follow-up requests.", metric: "total_contacts" },
@@ -297,9 +371,9 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     defaultStatuses: ["new", "discipleship_assigned", "elder_contacted", "ministry_connected", "closed"],
     defaultRoles: ["pastor", "elder", "bible_worker", "prayer_team"],
     messageTemplates: {
-      default: "Good day {firstName}, thank you for connecting with {churchName}. We can connect you with the right leader for your next step after baptism.",
-      bible_study: "Good day {firstName}, thank you for connecting with {churchName}. May one of our Bible workers share discipleship study options with you?",
-      baptism: "Good day {firstName}, thank you for connecting with {churchName}. We received your baptismal request and can connect you with a Bible worker to begin preparation."
+      default: friendlyMessageTemplates.baptizedMemberDefault,
+      bible_study: friendlyMessageTemplates.baptizedMemberBibleStudy,
+      baptism: friendlyMessageTemplates.baptizedMemberBaptism
     },
     reportSections: [
       { key: "total_contacts", label: "Total contacts", description: "All post-baptism follow-ups.", metric: "total_contacts" },
@@ -326,9 +400,9 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     defaultStatuses: ["new", "resources_sent", "health_leader_assigned", "invited_next_program", "prayer_follow_up", "closed"],
     defaultRoles: ["health_leader", "prayer_team", "bible_worker", "pastor"],
     messageTemplates: {
-      default: "Good day {firstName}, thank you for attending {eventName}. We can send seminar notes and future health program updates from {churchName}.",
-      health: "Good day {firstName}, thank you for attending {eventName}. We can send lifestyle resources and details for the next health program.",
-      baptism: "Good day {firstName}, thank you for attending {eventName}. We received your baptismal request and can connect you with a Bible worker to begin preparation."
+      default: friendlyMessageTemplates.healthSeminarDefault,
+      health: friendlyMessageTemplates.healthSeminarHealth,
+      baptism: friendlyMessageTemplates.healthSeminarBaptism
     },
     reportSections: [
       { key: "total_contacts", label: "Total contacts", description: "All health seminar registrations.", metric: "total_contacts" },
@@ -355,8 +429,8 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     defaultStatuses: ["new", "assigned", "contacted", "waiting", "interested", "closed"],
     defaultRoles: ["elder", "pastor", "bible_worker", "health_leader", "prayer_team"],
     messageTemplates: {
-      default: "Good day {firstName}, thank you for connecting with {churchName}{eventLine}. Would it be okay if one of our team members follows up with you this week?",
-      baptism: "Good day {firstName}, thank you for connecting with {churchName}{eventLine}. We received your baptismal request and can connect you with a Bible worker to begin preparation."
+      default: friendlyMessageTemplates.customDefault,
+      baptism: friendlyMessageTemplates.customBaptism
     },
     reportSections: [
       { key: "total_contacts", label: "Total contacts", description: "All registrations.", metric: "total_contacts" },

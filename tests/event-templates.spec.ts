@@ -53,7 +53,7 @@ test.describe("event templates", () => {
     });
 
     expect(message).toContain("recipes");
-    expect(message).toContain("next class");
+    expect(message).toContain("next healthy cooking class is planned");
   });
 
   test("classifier receives event type and changes routing", () => {
@@ -131,5 +131,40 @@ test.describe("event templates", () => {
         expect(hasBaptismSection).toBe(true);
       }
     }
+  });
+
+  test("event message templates use compassionate consent-based language", () => {
+    const templateTypes = Object.keys(eventTemplates) as Array<keyof typeof eventTemplates>;
+
+    for (const templateType of templateTypes) {
+      const template = eventTemplates[templateType];
+      const messages = Object.values(template.messageTemplates).filter(Boolean);
+
+      expect(messages.length).toBeGreaterThan(0);
+
+      for (const message of messages) {
+        expect(message).toMatch(/Good day \{firstName\}/);
+        expect(message).not.toMatch(/\bcan arrange a respectful human follow-up\b/i);
+        expect(message).not.toMatch(/\bWe received your baptismal request and can connect\b/i);
+        expect(message).not.toMatch(/\bYou mentioned Bible study interest\b/i);
+        expect(message).not.toMatch(/\bwould like us to send\b/i);
+      }
+    }
+  });
+
+  test("generated baptism messages are warm and include preparation support", () => {
+    const message = generateMessage({
+      name: "Thandi M.",
+      phone: "+27820000000",
+      interests: ["baptism"],
+      churchName: "Pinetown SDA",
+      eventName: "Sabbath Worship",
+      templateType: "sabbath_visitor"
+    });
+
+    expect(message).toContain("Thank you for sharing your baptismal request");
+    expect(message).toContain("honoured to connect you with a Bible worker");
+    expect(message).toContain("walk with you through preparation");
+    expect(message).toContain("Reply STOP");
   });
 });
