@@ -1,4 +1,4 @@
-import type { Urgency } from "@/lib/classifyContact";
+import type { AssignedRole, ContactTag, Urgency } from "@/lib/classifyContact";
 
 export type PrayerVisibility =
   | "general_prayer"
@@ -41,7 +41,11 @@ export const consentScopeLabels: Record<string, string> = {
   prayer: "Prayer support follow-up"
 };
 
-export function defaultDueDate(urgency: Urgency, assignedRole?: string) {
+export function defaultDueDate(
+  urgency: Urgency,
+  assignedRole?: AssignedRole | string,
+  tags: ContactTag[] = []
+) {
   const dueDate = new Date();
 
   if (urgency === "high") {
@@ -54,7 +58,12 @@ export function defaultDueDate(urgency: Urgency, assignedRole?: string) {
     return dueDate;
   }
 
-  dueDate.setDate(dueDate.getDate() + 2);
+  if (tags.some((tag) => ["bible_study", "prayer", "baptism"].includes(tag))) {
+    dueDate.setDate(dueDate.getDate() + 2);
+    return dueDate;
+  }
+
+  dueDate.setDate(dueDate.getDate() + 5);
   return dueDate;
 }
 

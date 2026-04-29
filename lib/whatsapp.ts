@@ -1,5 +1,5 @@
 import type { Interest } from "@/lib/constants";
-import { getEventTemplate } from "@/lib/eventTemplates";
+import { getEventTemplate, type TemplateMessageKey } from "@/lib/eventTemplates";
 
 type MessageContact = {
   name: string;
@@ -18,8 +18,9 @@ export function generateMessage(contact: MessageContact) {
   const eventLine = contact.eventName ? ` after ${contact.eventName}` : "";
   const eventName = contact.eventName || "the event";
   const template = contact.templateType ? getEventTemplate(contact.templateType) : null;
-  const templateKey = chooseTemplateKey(contact.interests);
-  const templateMessage = template?.messageTemplates[templateKey] ?? template?.messageTemplates.default;
+  const templateMessage = template
+    ? chooseTemplateMessage(template.messageTemplates, contact.interests)
+    : null;
 
   if (templateMessage) {
     return withOptOut(fillTemplate(templateMessage, { firstName, churchName, eventLine, eventName }), contact);
@@ -62,9 +63,14 @@ export function waLink(phone: string, message: string) {
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
 
-function chooseTemplateKey(interests: Interest[]) {
+function chooseTemplateMessage(
+  templates: Partial<Record<TemplateMessageKey, string>>,
+  interests: Interest[]
+) {
   const priority: Interest[] = ["pastoral_visit", "baptism", "prayer", "bible_study", "health", "cooking_class", "youth"];
-  return priority.find((interest) => interests.includes(interest)) ?? "default";
+  const matchingKey = priority.find((interest) => interests.includes(interest) && templates[interest]);
+
+  return matchingKey ? templates[matchingKey] : templates.default;
 }
 
 function fillTemplate(

@@ -5,6 +5,7 @@ import { canChangeChurchRole, canInviteRole, canManageMembershipStatus, canManag
 import { generateMessage } from "@/lib/whatsapp";
 
 const schema = readFileSync("supabase/schema.sql", "utf8");
+const dashboardLayout = readFileSync("app/(dashboard)/layout.tsx", "utf8");
 const dashboardPage = readFileSync("app/(dashboard)/dashboard/page.tsx", "utf8");
 const eventsPage = readFileSync("app/(dashboard)/events/page.tsx", "utf8");
 const eventDetailPage = readFileSync("app/(dashboard)/events/[id]/page.tsx", "utf8");
@@ -175,5 +176,24 @@ test.describe("workflow helpers", () => {
     expect(dbTypes).toMatch(
       /event_report_summary:\s*\{[\s\S]*?Returns: Array<\{[\s\S]*?baptism_count: number;[\s\S]*?follow_up_count: number;[\s\S]*?status_counts: Json;[\s\S]*?interest_counts: Json;[\s\S]*?\}>;/
     );
+  });
+
+  test("dashboard sidebar keeps logout visible below scrollable content", () => {
+    expect(dashboardLayout).toContain("md:flex-col");
+    expect(dashboardLayout).toContain("overflow-y-auto");
+    expect(dashboardLayout).toContain("aria-label=\"Log out\"");
+    expect(dashboardLayout).toContain("action={logoutAction}");
+  });
+
+  test("manual due-date fallback matches database due-date priorities", () => {
+    const high = defaultDueDate("high").getTime();
+    const pastor = defaultDueDate("medium", "pastor").getTime();
+    const bibleStudy = defaultDueDate("low", "bible_worker", ["bible_study"]).getTime();
+    const general = defaultDueDate("low", "elder", ["general_visit"]).getTime();
+
+    expect(high).toBeLessThan(pastor);
+    expect(pastor).toBeLessThan(bibleStudy);
+    expect(bibleStudy).toBeLessThan(general);
+    expect(schema).toContain("else now() + interval '5 days'");
   });
 });

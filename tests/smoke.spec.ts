@@ -10,6 +10,7 @@ async function login(page: import("@playwright/test").Page) {
   await page.getByLabel("Password").fill(password!);
   await page.getByRole("button", { name: "Login" }).click();
   await expect(page.getByRole("heading", { name: /capture\. care\. follow up\. disciple\./i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /log out|logout/i })).toBeVisible();
 }
 
 test("public auth pages load", async ({ page }) => {

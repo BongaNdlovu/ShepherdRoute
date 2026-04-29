@@ -63,17 +63,23 @@ export async function updateContactAction(formData: FormData) {
     .eq("church_id", context.churchId)
     .eq("id", parsed.data.contactId);
 
-  if (!error) {
-    await supabase.from("follow_ups").insert({
-      church_id: context.churchId,
-      contact_id: parsed.data.contactId,
-      assigned_to: assignedTo,
-      author_id: context.userId,
-      channel: "note",
-      status: parsed.data.status,
-      notes: "Follow-up tracker updated.",
-      next_action: parsed.data.status === "closed" ? "No further action needed." : "Continue follow-up pathway."
-    });
+  if (error) {
+    redirect(`/contacts?error=${actionError(error, "Could not update contact.")}`);
+  }
+
+  const { error: followUpError } = await supabase.from("follow_ups").insert({
+    church_id: context.churchId,
+    contact_id: parsed.data.contactId,
+    assigned_to: assignedTo,
+    author_id: context.userId,
+    channel: "note",
+    status: parsed.data.status,
+    notes: "Follow-up tracker updated.",
+    next_action: parsed.data.status === "closed" ? "No further action needed." : "Continue follow-up pathway."
+  });
+
+  if (followUpError) {
+    redirect(`/contacts/${parsed.data.contactId}?error=${actionError(followUpError, "Contact updated, but the follow-up history could not be saved.")}`);
   }
 
   revalidatePath("/contacts");
@@ -118,7 +124,7 @@ export async function addFollowUpNoteAction(formData: FormData) {
     redirect(`/contacts/${parsed.data.contactId}?error=${encodeURIComponent(error.message)}`);
   }
 
-  await supabase
+  const { error: contactUpdateError } = await supabase
     .from("contacts")
     .update({
       assigned_to: assignedTo,
@@ -126,6 +132,10 @@ export async function addFollowUpNoteAction(formData: FormData) {
     })
     .eq("church_id", context.churchId)
     .eq("id", parsed.data.contactId);
+
+  if (contactUpdateError) {
+    redirect(`/contacts/${parsed.data.contactId}?error=${actionError(contactUpdateError, "Follow-up note saved, but contact status could not be updated.")}`);
+  }
 
   revalidatePath("/contacts");
   revalidatePath(`/contacts/${parsed.data.contactId}`);
@@ -181,14 +191,18 @@ export async function updateContactLifecycleAction(formData: FormData) {
           ? { archived_at: now }
           : { deleted_at: now, do_not_contact: true, do_not_contact_at: now };
 
-    await supabase
+    const { error: personUpdateError } = await supabase
       .from("people")
       .update(personUpdate)
       .eq("church_id", context.churchId)
       .eq("id", contact.person_id);
+
+    if (personUpdateError) {
+      redirect(`/contacts/${parsed.data.contactId}?error=${actionError(personUpdateError, "Contact updated, but the linked person record could not be updated.")}`);
+    }
   }
 
-  await supabase.from("follow_ups").insert({
+  const { error: lifecycleFollowUpError } = await supabase.from("follow_ups").insert({
     church_id: context.churchId,
     contact_id: parsed.data.contactId,
     author_id: context.userId,
@@ -201,6 +215,10 @@ export async function updateContactLifecycleAction(formData: FormData) {
         : "Contact soft-deleted and marked do not contact.",
     completed_at: now
   });
+
+  if (lifecycleFollowUpError) {
+    redirect(`/contacts/${parsed.data.contactId}?error=${actionError(lifecycleFollowUpError, "Contact updated, but the lifecycle note could not be saved.")}`);
+  }
 
   revalidatePath("/contacts");
   revalidatePath(`/contacts/${parsed.data.contactId}`);
@@ -235,7 +253,11 @@ export async function addQuickContactAction(formData: FormData) {
     message: parsed.data.prayerRequest,
     visitorType: "general"
   });
-  const dueAt = defaultDueDate(classification.urgency, classification.recommended_assigned_role).toISOString();
+  const dueAt = defaultDueDate(
+    classification.urgency,
+    classification.recommended_assigned_role,
+    classification.recommended_tags
+  ).toISOString();
   const { data: contact, error } = await supabase
     .from("contacts")
     .insert({
@@ -268,7 +290,7 @@ export async function addQuickContactAction(formData: FormData) {
     redirect(`/contacts?error=${encodeURIComponent(error?.message ?? "Could not add contact.")}`);
   }
 
-  await supabase.from("contact_interests").insert(
+  const { error: interestsError } = await supabase.from("contact_interests").insert(
     parsed.data.interests.map((interest) => ({
       church_id: context.churchId,
       contact_id: contact.id,
@@ -276,17 +298,25 @@ export async function addQuickContactAction(formData: FormData) {
     }))
   );
 
+  if (interestsError) {
+    redirect(`/contacts/${contact.id}?error=${actionError(interestsError, "Contact created, but interests could not be saved.")}`);
+  }
+
   if (parsed.data.prayerRequest) {
-    await supabase.from("prayer_requests").insert({
+    const { error: prayerError } = await supabase.from("prayer_requests").insert({
       church_id: context.churchId,
       contact_id: contact.id,
       request_text: parsed.data.prayerRequest,
       visibility: parsed.data.prayerVisibility,
       created_by: context.userId
     });
+
+    if (prayerError) {
+      redirect(`/contacts/${contact.id}?error=${actionError(prayerError, "Contact created, but prayer request could not be saved.")}`);
+    }
   }
 
-  await supabase.from("follow_ups").insert({
+  const { error: followUpError } = await supabase.from("follow_ups").insert({
     church_id: context.churchId,
     contact_id: contact.id,
     author_id: context.userId,
@@ -297,12 +327,16 @@ export async function addQuickContactAction(formData: FormData) {
     due_at: dueAt
   });
 
+  if (followUpError) {
+    redirect(`/contacts/${contact.id}?error=${actionError(followUpError, "Contact created, but first follow-up could not be saved.")}`);
+  }
+
   if (contact.person_id) {
     const { data: event } = contact.event_id
       ? await supabase.from("events").select("id, name, event_type").eq("church_id", context.churchId).eq("id", contact.event_id).single()
       : { data: null };
 
-    await supabase.from("contact_journey_events").insert({
+    const { error: journeyError } = await supabase.from("contact_journey_events").insert({
       church_id: context.churchId,
       person_id: contact.person_id,
       contact_id: contact.id,
@@ -313,8 +347,16 @@ export async function addQuickContactAction(formData: FormData) {
       selected_interests: parsed.data.interests,
       classification_payload: contact.classification_payload
     });
+
+    if (journeyError) {
+      redirect(`/contacts/${contact.id}?error=${actionError(journeyError, "Contact created, but journey history could not be saved.")}`);
+    }
   }
 
   revalidatePath("/contacts");
   redirect(`/contacts/${contact.id}`);
+}
+
+function actionError(error: { message?: string } | null | undefined, fallback: string) {
+  return encodeURIComponent(error?.message ?? fallback);
 }

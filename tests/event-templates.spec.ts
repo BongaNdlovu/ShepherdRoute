@@ -167,4 +167,19 @@ test.describe("event templates", () => {
     expect(message).toContain("walk with you through preparation");
     expect(message).toContain("Reply STOP");
   });
+
+  test("message templates try the next matching interest before default", () => {
+    const message = generateMessage({
+      name: "Thandi M.",
+      phone: "+27820000000",
+      interests: ["pastoral_visit", "baptism"],
+      churchName: "Pinetown SDA",
+      eventName: "Sabbath Worship",
+      templateType: "sabbath_visitor"
+    });
+
+    expect(message).toContain("baptismal request");
+    expect(message).toContain("Bible worker");
+    expect(message).not.toContain("checks in with you this week");
+  });
 });
