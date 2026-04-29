@@ -969,6 +969,8 @@ where events.is_active = true;
 grant select on public.public_events to anon, authenticated;
 grant select on public.churches, public.events to anon, authenticated;
 
+drop function if exists public.owner_church_summaries();
+
 create or replace function public.owner_church_summaries()
 returns table (
   church_id uuid,
@@ -1008,6 +1010,18 @@ $$;
 
 revoke all on function public.owner_church_summaries() from public, anon, authenticated;
 grant execute on function public.owner_church_summaries() to authenticated;
+
+drop function if exists public.search_contacts(
+  uuid,
+  text,
+  public.follow_up_status,
+  uuid,
+  public.interest_tag,
+  uuid,
+  boolean,
+  integer,
+  integer
+);
 
 create or replace function public.search_contacts(
   p_church_id uuid,
@@ -1160,6 +1174,16 @@ grant execute on function public.search_contacts(
   integer
 ) to authenticated;
 
+drop function if exists public.export_contacts(
+  uuid,
+  text,
+  public.follow_up_status,
+  uuid,
+  public.interest_tag,
+  uuid,
+  boolean
+);
+
 create or replace function public.export_contacts(
   p_church_id uuid,
   p_q text default null,
@@ -1304,6 +1328,8 @@ grant execute on function public.export_contacts(
   boolean
 ) to authenticated;
 
+drop function if exists public.outreach_report_summary(uuid);
+
 create or replace function public.outreach_report_summary(p_church_id uuid)
 returns table (
   total_contacts bigint,
@@ -1444,6 +1470,8 @@ $$;
 
 revoke all on function public.outreach_report_summary(uuid) from public, anon, authenticated;
 grant execute on function public.outreach_report_summary(uuid) to authenticated;
+
+drop function if exists public.event_report_summary(uuid, uuid);
 
 create or replace function public.event_report_summary(
   p_church_id uuid,
