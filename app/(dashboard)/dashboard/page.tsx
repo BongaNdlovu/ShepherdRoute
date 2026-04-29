@@ -15,16 +15,9 @@ export const metadata = {
 
 export default async function DashboardPage() {
   const context = await getChurchContext();
-  const { contacts, events } = await getDashboardData(context.churchId);
+  const { contacts, events, summary } = await getDashboardData(context.churchId);
   const activeEvent = events[0];
   const allContacts = contacts;
-  const bibleStudies = allContacts.filter((contact) =>
-    (contact.contact_interests ?? []).some((item: { interest: string }) => item.interest === "bible_study")
-  ).length;
-  const prayer = allContacts.filter((contact) =>
-    (contact.contact_interests ?? []).some((item: { interest: string }) => item.interest === "prayer")
-  ).length;
-  const pastoral = allContacts.filter((contact) => contact.urgency === "high").length;
 
   return (
     <section className="space-y-4">
@@ -53,10 +46,10 @@ export default async function DashboardPage() {
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={Bell} title="New contacts" value={allContacts.filter((contact) => contact.status === "new").length} note="Need first follow-up from the team." />
-        <StatCard icon={ClipboardList} title="Bible study requests" value={bibleStudies} note="Ready for Bible worker assignment." />
-        <StatCard icon={Heart} title="Prayer requests" value={prayer} note="Stored separately for pastoral and prayer care." />
-        <StatCard icon={Activity} title="Pastoral attention" value={pastoral} note="High priority visits and baptism conversations." />
+        <StatCard icon={Bell} title="New contacts" value={summary.total_contacts - summary.followed_up_count} note="Need first follow-up from the team." />
+        <StatCard icon={ClipboardList} title="Bible study requests" value={summary.bible_study_count} note="Ready for Bible worker assignment." />
+        <StatCard icon={Heart} title="Prayer requests" value={summary.prayer_count} note="Stored separately for pastoral and prayer care." />
+        <StatCard icon={Activity} title="Pastoral attention" value={summary.high_priority_count} note="High priority visits and baptism conversations." />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">

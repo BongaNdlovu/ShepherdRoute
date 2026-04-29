@@ -25,7 +25,7 @@ export default async function EventDetailPage({
   const { id } = await params;
   const query = await searchParams;
   const context = await getChurchContext();
-  const { event, contacts } = await getEvent(context.churchId, id);
+  const { event, contacts, contactsLimit, contactsTotal } = await getEvent(context.churchId, id);
   const publicUrl = absoluteUrl(`/public/e/${event.slug}`);
 
   return (
@@ -77,7 +77,7 @@ export default async function EventDetailPage({
             <div className="rounded-lg bg-muted p-4">
               <UsersRound className="h-5 w-5 text-muted-foreground" />
               <p className="mt-2 text-sm text-muted-foreground">Contacts captured</p>
-              <p className="font-bold">{contacts.length}</p>
+              <p className="font-bold">{contactsTotal}</p>
             </div>
           </div>
         </CardContent>
@@ -87,7 +87,10 @@ export default async function EventDetailPage({
         <Card>
           <CardHeader>
             <CardTitle>Event contacts</CardTitle>
-            <CardDescription>People captured from this registration page.</CardDescription>
+            <CardDescription>
+              People captured from this registration page.
+              {contactsTotal > contacts.length ? ` Showing latest ${contactsLimit}.` : ""}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="overflow-hidden rounded-lg border">

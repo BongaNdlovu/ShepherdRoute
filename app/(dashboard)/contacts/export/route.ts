@@ -15,10 +15,8 @@ export async function GET(request: Request) {
   const contacts = await getContacts(context.churchId, filters);
 
   const rows = contacts.map((contact) => {
-    const event = Array.isArray(contact.events) ? contact.events[0] : contact.events;
-    const assigned = Array.isArray(contact.team_members) ? contact.team_members[0] : contact.team_members;
-    const interests = (contact.contact_interests ?? [])
-      .map((item: { interest: Interest }) => interestLabels[item.interest])
+    const interests = (contact.interests ?? [])
+      .map((interest: Interest) => interestLabels[interest])
       .join("; ");
 
     return [
@@ -26,11 +24,11 @@ export async function GET(request: Request) {
       contact.phone,
       contact.area ?? "",
       contact.language ?? "",
-      event?.name ?? "Manual contact",
+      contact.event_name ?? "Manual contact",
       interests,
       statusLabels[contact.status as FollowUpStatus],
       contact.urgency,
-      assigned?.display_name ?? "Unassigned",
+      contact.assigned_name ?? "Unassigned",
       contact.best_time_to_contact ?? "",
       contact.created_at
     ];

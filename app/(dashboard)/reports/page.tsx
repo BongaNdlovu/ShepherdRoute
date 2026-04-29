@@ -1,7 +1,7 @@
 import { BarChart3, ClipboardList, Heart, UserCheck } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/app/stat-card";
-import { getChurchContext, getContacts, getEvents } from "@/lib/data";
+import { getChurchContext, getOutreachReportSummary } from "@/lib/data";
 
 export const metadata = {
   title: "Reports"
@@ -9,19 +9,7 @@ export const metadata = {
 
 export default async function ReportsPage() {
   const context = await getChurchContext();
-  const [contacts, events] = await Promise.all([
-    getContacts(context.churchId, {}),
-    getEvents(context.churchId)
-  ]);
-
-  const followedUp = contacts.filter((contact) => contact.status !== "new").length;
-  const bibleStudies = contacts.filter((contact) =>
-    (contact.contact_interests ?? []).some((item: { interest: string }) => item.interest === "bible_study")
-  ).length;
-  const prayer = contacts.filter((contact) =>
-    (contact.contact_interests ?? []).some((item: { interest: string }) => item.interest === "prayer")
-  ).length;
-  const pastoral = contacts.filter((contact) => contact.urgency === "high").length;
+  const summary = await getOutreachReportSummary(context.churchId);
 
   return (
     <section className="space-y-4">
@@ -31,10 +19,10 @@ export default async function ReportsPage() {
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={BarChart3} title="Total contacts" value={contacts.length} note="Across all recorded events." />
-        <StatCard icon={UserCheck} title="Followed up" value={followedUp} note="Contacts no longer in new status." />
-        <StatCard icon={ClipboardList} title="Bible study leads" value={bibleStudies} note="Ready for study pathway." />
-        <StatCard icon={Heart} title="Prayer care" value={prayer} note="Prayer team and pastoral support." />
+        <StatCard icon={BarChart3} title="Total contacts" value={summary.total_contacts} note="Across all recorded events." />
+        <StatCard icon={UserCheck} title="Followed up" value={summary.followed_up_count} note="Contacts no longer in new status." />
+        <StatCard icon={ClipboardList} title="Bible study leads" value={summary.bible_study_count} note="Ready for study pathway." />
+        <StatCard icon={Heart} title="Prayer care" value={summary.prayer_count} note="Prayer team and pastoral support." />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_0.9fr]">
@@ -45,13 +33,13 @@ export default async function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="divide-y rounded-lg border">
-              {events.map((event) => (
+              {summary.events.map((event) => (
                 <div key={event.id} className="flex items-center justify-between gap-4 p-4">
                   <div>
                     <p className="font-bold">{event.name}</p>
                     <p className="text-sm text-muted-foreground">{event.event_type}</p>
                   </div>
-                  <p className="text-2xl font-black">{event.contacts?.[0]?.count ?? 0}</p>
+                  <p className="text-2xl font-black">{event.contact_count}</p>
                 </div>
               ))}
             </div>
@@ -65,7 +53,7 @@ export default async function ReportsPage() {
           </CardHeader>
           <CardContent>
             <p className="leading-7 text-slate-700">
-              The current outreach pipeline has {contacts.length} contacts, with {bibleStudies} Bible study lead{bibleStudies === 1 ? "" : "s"}, {prayer} prayer care request{prayer === 1 ? "" : "s"}, and {pastoral} high-priority pastoral case{pastoral === 1 ? "" : "s"}. Assign new contacts within 48 hours, use WhatsApp for first contact, and protect prayer requests as sensitive ministry data.
+              The current outreach pipeline has {summary.total_contacts} contacts, with {summary.bible_study_count} Bible study lead{summary.bible_study_count === 1 ? "" : "s"}, {summary.prayer_count} prayer care request{summary.prayer_count === 1 ? "" : "s"}, and {summary.high_priority_count} high-priority pastoral case{summary.high_priority_count === 1 ? "" : "s"}. Assign new contacts within 48 hours, use WhatsApp for first contact, and protect prayer requests as sensitive ministry data.
             </p>
           </CardContent>
         </Card>

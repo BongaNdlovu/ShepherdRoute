@@ -16,6 +16,22 @@ function sameOriginUrl(request: NextRequest, pathname: string) {
 }
 
 export async function updateSession(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup");
+  const isDashboard =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/contacts") ||
+    pathname.startsWith("/events") ||
+    pathname.startsWith("/reports") ||
+    pathname.startsWith("/team") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/admin");
+  const needsSession = pathname === "/" || isAuthPage || isDashboard;
+
+  if (!needsSession) {
+    return NextResponse.next({ request });
+  }
+
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return NextResponse.next({ request });
   }
@@ -44,17 +60,6 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user }
   } = await supabase.auth.getUser();
-
-  const pathname = request.nextUrl.pathname;
-  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup");
-  const isDashboard =
-    pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/contacts") ||
-    pathname.startsWith("/events") ||
-    pathname.startsWith("/reports") ||
-    pathname.startsWith("/team") ||
-    pathname.startsWith("/settings") ||
-    pathname.startsWith("/admin");
 
   if (pathname === "/") {
     return NextResponse.redirect(sameOriginUrl(request, user ? "/dashboard" : "/login"));

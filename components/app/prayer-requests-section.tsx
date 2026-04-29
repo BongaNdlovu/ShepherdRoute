@@ -1,0 +1,22 @@
+import type { ContactDetailResult } from "@/lib/data";
+
+type PrayerRequestsSectionProps = {
+  prayer: ContactDetailResult["prayer"];
+};
+
+export function PrayerRequestsSection({ prayer }: PrayerRequestsSectionProps) {
+  return (
+    <div>
+      <h3 className="font-bold">Prayer requests</h3>
+      <p className="mt-1 text-sm text-muted-foreground">Kept outside the general contact table for tighter future access control.</p>
+      <div className="mt-3 grid gap-2">
+        {prayer.map((request) => (
+          <div key={request.created_at} className="rounded-lg border bg-white p-3 text-sm leading-6">
+            {request.request_text}
+          </div>
+        ))}
+        {!prayer.length ? <p className="rounded-lg border bg-white p-3 text-sm text-muted-foreground">No prayer request recorded.</p> : null}
+      </div>
+    </div>
+  );
+}

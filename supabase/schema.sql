@@ -771,6 +771,286 @@ grant execute on function public.search_contacts(
   integer
 ) to authenticated;
 
+create or replace function public.export_contacts(
+  p_church_id uuid,
+  p_q text default null,
+  p_status public.follow_up_status default null,
+  p_event_id uuid default null,
+  p_interest public.interest_tag default null,
+  p_assigned_to uuid default null,
+  p_unassigned boolean default false
+)
+returns table (
+  id uuid,
+  full_name text,
+  phone text,
+  area text,
+  language text,
+  best_time_to_contact text,
+  status public.follow_up_status,
+  urgency public.urgency_level,
+  assigned_to uuid,
+  created_at timestamptz,
+  event_id uuid,
+  event_name text,
+  assigned_name text,
+  interests public.interest_tag[],
+  total_count bigint
+)
+language sql
+security invoker
+set search_path = public
+as $$
+  with filtered as (
+    select
+      contacts.id,
+      contacts.full_name,
+      contacts.phone,
+      contacts.area,
+      contacts.language,
+      contacts.best_time_to_contact,
+      contacts.status,
+      contacts.urgency,
+      contacts.assigned_to,
+      contacts.created_at,
+      events.id as event_id,
+      events.name as event_name,
+      team_members.display_name as assigned_name,
+      count(*) over() as total_count
+    from public.contacts
+    left join public.events on events.id = contacts.event_id
+    left join public.team_members on team_members.id = contacts.assigned_to
+    where contacts.church_id = p_church_id
+      and (
+        nullif(trim(coalesce(p_q, '')), '') is null
+        or contacts.full_name ilike '%' || trim(p_q) || '%'
+        or contacts.phone ilike '%' || trim(p_q) || '%'
+        or contacts.area ilike '%' || trim(p_q) || '%'
+      )
+      and (p_status is null or contacts.status = p_status)
+      and (p_event_id is null or contacts.event_id = p_event_id)
+      and (
+        case
+          when p_unassigned then contacts.assigned_to is null
+          when p_assigned_to is not null then contacts.assigned_to = p_assigned_to
+          else true
+        end
+      )
+      and (
+        p_interest is null
+        or exists (
+          select 1
+          from public.contact_interests
+          where contact_interests.contact_id = contacts.id
+            and contact_interests.church_id = contacts.church_id
+            and contact_interests.interest = p_interest
+        )
+      )
+    order by contacts.created_at desc
+  )
+  select
+    filtered.id,
+    filtered.full_name,
+    filtered.phone,
+    filtered.area,
+    filtered.language,
+    filtered.best_time_to_contact,
+    filtered.status,
+    filtered.urgency,
+    filtered.assigned_to,
+    filtered.created_at,
+    filtered.event_id,
+    filtered.event_name,
+    filtered.assigned_name,
+    coalesce(
+      (
+        select array_agg(contact_interests.interest order by contact_interests.interest::text)
+        from public.contact_interests
+        where contact_interests.contact_id = filtered.id
+      ),
+      array[]::public.interest_tag[]
+    ) as interests,
+    filtered.total_count
+  from filtered;
+$$;
+
+revoke all on function public.export_contacts(
+  uuid,
+  text,
+  public.follow_up_status,
+  uuid,
+  public.interest_tag,
+  uuid,
+  boolean
+) from public, anon, authenticated;
+
+grant execute on function public.export_contacts(
+  uuid,
+  text,
+  public.follow_up_status,
+  uuid,
+  public.interest_tag,
+  uuid,
+  boolean
+) to authenticated;
+
+create or replace function public.outreach_report_summary(p_church_id uuid)
+returns table (
+  total_contacts bigint,
+  followed_up_count bigint,
+  bible_study_count bigint,
+  prayer_count bigint,
+  high_priority_count bigint,
+  events jsonb
+)
+language sql
+security invoker
+set search_path = public
+as $$
+  with event_counts as (
+    select
+      events.id,
+      events.name,
+      events.event_type,
+      events.created_at,
+      count(contacts.id) as contact_count
+    from public.events
+    left join public.contacts on contacts.event_id = events.id
+      and contacts.church_id = events.church_id
+    where events.church_id = p_church_id
+    group by events.id, events.name, events.event_type, events.created_at
+  )
+  select
+    (
+      select count(*)
+      from public.contacts
+      where contacts.church_id = p_church_id
+    ) as total_contacts,
+    (
+      select count(*)
+      from public.contacts
+      where contacts.church_id = p_church_id
+        and contacts.status <> 'new'
+    ) as followed_up_count,
+    (
+      select count(distinct contacts.id)
+      from public.contacts
+      join public.contact_interests on contact_interests.contact_id = contacts.id
+        and contact_interests.church_id = contacts.church_id
+      where contacts.church_id = p_church_id
+        and contact_interests.interest = 'bible_study'
+    ) as bible_study_count,
+    (
+      select count(distinct contacts.id)
+      from public.contacts
+      join public.contact_interests on contact_interests.contact_id = contacts.id
+        and contact_interests.church_id = contacts.church_id
+      where contacts.church_id = p_church_id
+        and contact_interests.interest = 'prayer'
+    ) as prayer_count,
+    (
+      select count(*)
+      from public.contacts
+      where contacts.church_id = p_church_id
+        and contacts.urgency = 'high'
+    ) as high_priority_count,
+    coalesce(
+      (
+        select jsonb_agg(
+          jsonb_build_object(
+            'id', event_counts.id,
+            'name', event_counts.name,
+            'event_type', event_counts.event_type,
+            'contact_count', event_counts.contact_count
+          )
+          order by event_counts.created_at desc
+        )
+        from event_counts
+      ),
+      '[]'::jsonb
+    ) as events;
+$$;
+
+revoke all on function public.outreach_report_summary(uuid) from public, anon, authenticated;
+grant execute on function public.outreach_report_summary(uuid) to authenticated;
+
+create or replace function public.event_report_summary(
+  p_church_id uuid,
+  p_event_id uuid
+)
+returns table (
+  total_contacts bigint,
+  followed_up_count bigint,
+  bible_study_count bigint,
+  prayer_count bigint,
+  high_priority_count bigint,
+  follow_up_count bigint,
+  status_counts jsonb,
+  interest_counts jsonb
+)
+language sql
+security invoker
+set search_path = public
+as $$
+  with event_contacts as (
+    select *
+    from public.contacts
+    where contacts.church_id = p_church_id
+      and contacts.event_id = p_event_id
+  )
+  select
+    (select count(*) from event_contacts) as total_contacts,
+    (select count(*) from event_contacts where status <> 'new') as followed_up_count,
+    (
+      select count(distinct event_contacts.id)
+      from event_contacts
+      join public.contact_interests on contact_interests.contact_id = event_contacts.id
+        and contact_interests.church_id = event_contacts.church_id
+      where contact_interests.interest = 'bible_study'
+    ) as bible_study_count,
+    (
+      select count(distinct event_contacts.id)
+      from event_contacts
+      join public.contact_interests on contact_interests.contact_id = event_contacts.id
+        and contact_interests.church_id = event_contacts.church_id
+      where contact_interests.interest = 'prayer'
+    ) as prayer_count,
+    (select count(*) from event_contacts where urgency = 'high') as high_priority_count,
+    (
+      select count(*)
+      from public.follow_ups
+      join event_contacts on event_contacts.id = follow_ups.contact_id
+      where follow_ups.church_id = p_church_id
+    ) as follow_up_count,
+    coalesce(
+      (
+        select jsonb_object_agg(status_rows.status, status_rows.count)
+        from (
+          select event_contacts.status::text as status, count(*) as count
+          from event_contacts
+          group by event_contacts.status
+        ) status_rows
+      ),
+      '{}'::jsonb
+    ) as status_counts,
+    coalesce(
+      (
+        select jsonb_object_agg(interest_rows.interest, interest_rows.count)
+        from (
+          select contact_interests.interest::text as interest, count(distinct event_contacts.id) as count
+          from event_contacts
+          join public.contact_interests on contact_interests.contact_id = event_contacts.id
+            and contact_interests.church_id = event_contacts.church_id
+          group by contact_interests.interest
+        ) interest_rows
+      ),
+      '{}'::jsonb
+    ) as interest_counts;
+$$;
+
+revoke all on function public.event_report_summary(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.event_report_summary(uuid, uuid) to authenticated;
+
 drop function if exists public.submit_event_registration(
   text,
   text,
