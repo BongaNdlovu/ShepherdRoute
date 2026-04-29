@@ -30,8 +30,7 @@ export function ContactList({ churchName, contacts, team }: ContactListProps) {
             phone: contact.phone,
             interests: contact.interests,
             churchName,
-            eventName: contact.event_name,
-            doNotContact: contact.do_not_contact
+            eventName: contact.event_name
           });
 
           return (

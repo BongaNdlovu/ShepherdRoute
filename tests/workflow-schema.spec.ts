@@ -130,7 +130,7 @@ test.describe("workflow helpers", () => {
     expect(high).toBeLessThan(medium);
   });
 
-  test("WhatsApp messages include a gentle opt-out line", () => {
+  test("WhatsApp messages do not append robotic STOP copy", () => {
     const message = generateMessage({
       name: "Thandi M.",
       phone: "+27820000000",
@@ -138,21 +138,21 @@ test.describe("workflow helpers", () => {
       churchName: "Pinetown SDA"
     });
 
-    expect(message).toContain("Reply STOP");
+    expect(message).not.toContain("Reply STOP");
+    expect(message).not.toContain("no longer wish");
   });
 
-  test("do-not-contact messages do not add opt-out copy", () => {
+  test("do-not-contact messages stay message-only", () => {
     const message = generateMessage({
       name: "Thandi M.",
       phone: "+27820000000",
-      interests: ["bible_study"],
-      doNotContact: true
+      interests: ["bible_study"]
     });
 
     expect(message).not.toContain("Reply STOP");
   });
 
-  test("WhatsApp baptism message includes baptismal preparation wording and opt-out", () => {
+  test("WhatsApp baptism message includes baptismal preparation wording", () => {
     const message = generateMessage({
       name: "Thandi M.",
       phone: "+27820000000",
@@ -164,7 +164,7 @@ test.describe("workflow helpers", () => {
     expect(message).toContain("Bible worker");
     expect(message).toContain("preparation");
     expect(message).toContain("Bible study");
-    expect(message).toContain("Reply STOP");
+    expect(message).not.toContain("Reply STOP");
   });
 
   test("report RPC type definitions match report summary table returns", () => {
@@ -179,7 +179,7 @@ test.describe("workflow helpers", () => {
   });
 
   test("dashboard sidebar keeps logout visible below scrollable content", () => {
-    expect(dashboardLayout).toContain("md:flex-col");
+    expect(dashboardLayout).toContain("flex flex-col");
     expect(dashboardLayout).toContain("overflow-y-auto");
     expect(dashboardLayout).toContain("aria-label=\"Log out\"");
     expect(dashboardLayout).toContain("action={logoutAction}");

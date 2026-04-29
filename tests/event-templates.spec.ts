@@ -118,6 +118,20 @@ test.describe("event templates", () => {
     }
   });
 
+  test("every event template with a prayer option has a prayer-specific message template", () => {
+    const templateTypes = Object.keys(eventTemplates) as Array<keyof typeof eventTemplates>;
+
+    for (const templateType of templateTypes) {
+      const template = eventTemplates[templateType];
+      const values = template.interestOptions.map((option) => option.value);
+      if (values.includes("prayer")) {
+        expect(template.messageTemplates.prayer).toBeDefined();
+        expect(template.messageTemplates.prayer).toContain("prayer request");
+        expect(template.messageTemplates.prayer).toContain("prayer team");
+      }
+    }
+  });
+
   test("every event template with a baptism option exposes a baptismal report section", () => {
     const templateTypes = Object.keys(eventTemplates) as Array<keyof typeof eventTemplates>;
 
@@ -165,7 +179,7 @@ test.describe("event templates", () => {
     expect(message).toContain("Thank you for sharing your baptismal request");
     expect(message).toContain("honoured to connect you with a Bible worker");
     expect(message).toContain("walk with you through preparation");
-    expect(message).toContain("Reply STOP");
+    expect(message).not.toContain("Reply STOP");
   });
 
   test("message templates try the next matching interest before default", () => {
@@ -181,5 +195,21 @@ test.describe("event templates", () => {
     expect(message).toContain("baptismal request");
     expect(message).toContain("Bible worker");
     expect(message).not.toContain("checks in with you this week");
+  });
+
+  test("regular member prayer requests use prayer language instead of generic routing", () => {
+    const message = generateMessage({
+      name: "Kelly Conning",
+      phone: "+27820000000",
+      interests: ["prayer"],
+      churchName: "Pinetown SDA Church",
+      templateType: "regular_member"
+    });
+
+    expect(message).toContain("Good day Kelly");
+    expect(message).toContain("prayer request");
+    expect(message).toContain("prayer team");
+    expect(message).not.toContain("route your request");
+    expect(message).not.toContain("Reply STOP");
   });
 });

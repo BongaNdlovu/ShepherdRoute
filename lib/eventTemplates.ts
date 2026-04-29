@@ -89,7 +89,7 @@ const friendlyMessageTemplates = {
     "Good day {firstName}, thank you for sharing your baptismal request with {churchName}. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
 
   memberDefault:
-    "Good day {firstName}, thank you for contacting {churchName}. We are glad you reached out. We can route your request to the right ministry leader for follow-up.",
+    "Good day {firstName}, thank you for reaching out to {churchName}. We are grateful you trusted us with this request. One of the right ministry leaders will follow up with care.",
   memberBaptism:
     "Good day {firstName}, thank you for contacting {churchName}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
 
@@ -166,6 +166,7 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
       default: friendlyMessageTemplates.healthExpoDefault,
       health: friendlyMessageTemplates.healthResources,
       cooking_class: friendlyMessageTemplates.cookingClass,
+      prayer: friendlyMessageTemplates.prayer,
       bible_study: friendlyMessageTemplates.healthBibleStudy,
       baptism: friendlyMessageTemplates.healthBaptism
     },
@@ -197,6 +198,7 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     defaultRoles: ["pastor", "elder", "bible_worker", "prayer_team"],
     messageTemplates: {
       default: friendlyMessageTemplates.campaignDefault,
+      prayer: friendlyMessageTemplates.prayer,
       bible_study: friendlyMessageTemplates.campaignBibleStudy,
       baptism: friendlyMessageTemplates.campaignBaptism
     },
@@ -228,6 +230,7 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     defaultRoles: ["bible_worker", "pastor", "elder", "prayer_team"],
     messageTemplates: {
       default: friendlyMessageTemplates.prophecyDefault,
+      prayer: friendlyMessageTemplates.prayer,
       bible_study: friendlyMessageTemplates.prophecyBibleStudy,
       baptism: friendlyMessageTemplates.prophecyBaptism
     },
@@ -261,6 +264,7 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
       default: friendlyMessageTemplates.cookingClass,
       cooking_class: friendlyMessageTemplates.cookingClass,
       health: friendlyMessageTemplates.healthResources,
+      prayer: friendlyMessageTemplates.prayer,
       baptism: friendlyMessageTemplates.healthBaptism
     },
     reportSections: [
@@ -291,6 +295,7 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     messageTemplates: {
       default: friendlyMessageTemplates.youthDefault,
       youth: friendlyMessageTemplates.youth,
+      prayer: friendlyMessageTemplates.prayer,
       baptism: friendlyMessageTemplates.youthBaptism
     },
     reportSections: [
@@ -344,6 +349,7 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     defaultRoles: ["elder", "pastor", "prayer_team", "bible_worker", "health_leader"],
     messageTemplates: {
       default: friendlyMessageTemplates.memberDefault,
+      prayer: friendlyMessageTemplates.prayer,
       baptism: friendlyMessageTemplates.memberBaptism
     },
     reportSections: [
@@ -373,6 +379,7 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     messageTemplates: {
       default: friendlyMessageTemplates.baptizedMemberDefault,
       bible_study: friendlyMessageTemplates.baptizedMemberBibleStudy,
+      prayer: friendlyMessageTemplates.prayer,
       baptism: friendlyMessageTemplates.baptizedMemberBaptism
     },
     reportSections: [
@@ -402,6 +409,7 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     messageTemplates: {
       default: friendlyMessageTemplates.healthSeminarDefault,
       health: friendlyMessageTemplates.healthSeminarHealth,
+      prayer: friendlyMessageTemplates.prayer,
       baptism: friendlyMessageTemplates.healthSeminarBaptism
     },
     reportSections: [
@@ -430,6 +438,7 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     defaultRoles: ["elder", "pastor", "bible_worker", "health_leader", "prayer_team"],
     messageTemplates: {
       default: friendlyMessageTemplates.customDefault,
+      prayer: friendlyMessageTemplates.prayer,
       baptism: friendlyMessageTemplates.customBaptism
     },
     reportSections: [

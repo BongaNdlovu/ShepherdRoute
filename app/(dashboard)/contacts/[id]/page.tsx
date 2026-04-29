@@ -34,8 +34,7 @@ export default async function ContactDetailPage({
     interests: interests.map((item) => item.interest),
     churchName: context.churchName,
     eventName: contact.events?.name,
-    templateType: contact.events?.event_type,
-    doNotContact: contact.do_not_contact
+    templateType: contact.events?.event_type
   });
 
   return (

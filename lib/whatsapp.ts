@@ -8,8 +8,6 @@ type MessageContact = {
   churchName?: string | null;
   eventName?: string | null;
   templateType?: string | null;
-  includeOptOut?: boolean;
-  doNotContact?: boolean;
 };
 
 export function generateMessage(contact: MessageContact) {
@@ -23,34 +21,34 @@ export function generateMessage(contact: MessageContact) {
     : null;
 
   if (templateMessage) {
-    return withOptOut(fillTemplate(templateMessage, { firstName, churchName, eventLine, eventName }), contact);
+    return fillTemplate(templateMessage, { firstName, churchName, eventLine, eventName });
   }
 
   if (contact.interests.includes("pastoral_visit")) {
-    return withOptOut(`Good day ${firstName}, thank you for connecting with ${churchName}${eventLine}. You mentioned that you would appreciate a pastoral visit. Would it be okay if one of our pastoral team members contacts you to find a suitable time?`, contact);
+    return `Good day ${firstName}, thank you for connecting with ${churchName}${eventLine}. You mentioned that you would appreciate a pastoral visit. Would it be okay if one of our pastoral team members contacts you to find a suitable time?`;
   }
 
   if (contact.interests.includes("baptism")) {
-    return withOptOut(`Good day ${firstName}, thank you for reaching out to ${churchName}${eventLine}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker who can walk with you through preparation. Would it also be helpful if we shared Bible study options with you?`, contact);
+    return `Good day ${firstName}, thank you for reaching out to ${churchName}${eventLine}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker who can walk with you through preparation. Would it also be helpful if we shared Bible study options with you?`;
   }
 
   if (contact.interests.includes("prayer")) {
-    return withOptOut(`Good day ${firstName}, thank you for trusting ${churchName}${eventLine}. We have your prayer request, and we will handle it with care. Would you like someone from our prayer team to check in with you?`, contact);
+    return `Good day ${firstName}, thank you for trusting ${churchName}${eventLine}. We have your prayer request, and we will handle it with care. Would you like someone from our prayer team to check in with you?`;
   }
 
   if (contact.interests.includes("bible_study")) {
-    return withOptOut(`Good day ${firstName}, thank you for connecting with ${churchName}${eventLine}. We are glad you are interested in Bible study. Would it be okay if one of our Bible workers contacts you and shares the available study options?`, contact);
+    return `Good day ${firstName}, thank you for connecting with ${churchName}${eventLine}. We are glad you are interested in Bible study. Would it be okay if one of our Bible workers contacts you and shares the available study options?`;
   }
 
   if (contact.interests.includes("health")) {
-    return withOptOut(`Good day ${firstName}, thank you for connecting with ${churchName}${eventLine}. You showed interest in health resources. Would you like us to send a simple resource and let you know about the next health program?`, contact);
+    return `Good day ${firstName}, thank you for connecting with ${churchName}${eventLine}. You showed interest in health resources. Would you like us to send a simple resource and let you know about the next health program?`;
   }
 
   if (contact.interests.includes("cooking_class")) {
-    return withOptOut(`Good day ${firstName}, thank you for connecting with ${churchName}${eventLine}. You selected cooking class updates. Would you like us to send details when the next healthy cooking session is planned?`, contact);
+    return `Good day ${firstName}, thank you for connecting with ${churchName}${eventLine}. You selected cooking class updates. Would you like us to send details when the next healthy cooking session is planned?`;
   }
 
-  return withOptOut(`Good day ${firstName}, thank you for visiting ${churchName}${eventLine}. We are grateful you connected with us. Would it be okay if one of our team members follows up with you this week?`, contact);
+  return `Good day ${firstName}, thank you for visiting ${churchName}${eventLine}. We are grateful you connected with us. Would it be okay if one of our team members follows up with you this week?`;
 }
 
 export function waLink(phone: string, message: string) {
@@ -82,12 +80,4 @@ function fillTemplate(
     .replaceAll("{churchName}", values.churchName)
     .replaceAll("{eventLine}", values.eventLine)
     .replaceAll("{eventName}", values.eventName);
-}
-
-function withOptOut(message: string, contact: MessageContact) {
-  if (contact.doNotContact || contact.includeOptOut === false) {
-    return message;
-  }
-
-  return `${message}\n\nReply STOP if you no longer wish to receive follow-up messages.`;
 }
