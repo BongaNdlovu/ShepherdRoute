@@ -14,8 +14,9 @@ export const metadata = {
 
 export default async function EventsPage() {
   const context = await getChurchContext();
-  const events = await getEvents(context.churchId);
+  const events = await getEvents(context.churchId, { includeArchived: true });
   const origin = await requestOrigin();
+  const currentEvent = events.find((event) => event.is_active && !event.archived_at);
 
   return (
     <section className="space-y-4">
@@ -40,7 +41,10 @@ export default async function EventsPage() {
                 <div className="rounded-md bg-amber-100 p-3 text-amber-800">
                   <QrCode className="h-5 w-5" />
                 </div>
-                <Badge variant={event.is_active ? "success" : "muted"}>{event.is_active ? "Active" : "Closed"}</Badge>
+                <div className="flex flex-wrap justify-end gap-2">
+                  {event.archived_at ? <Badge variant="warning">Archived</Badge> : null}
+                  <Badge variant={event.is_active && !event.archived_at ? "success" : "muted"}>{event.is_active && !event.archived_at ? "Active" : "Closed"}</Badge>
+                </div>
               </div>
               <CardTitle>
                 <Link href={`/events/${event.id}`} className="underline-offset-4 hover:underline">
@@ -60,16 +64,18 @@ export default async function EventsPage() {
                 <Button asChild variant="outline">
                   <Link href={`/events/${event.id}`}>View event</Link>
                 </Button>
-                <Button asChild>
-                  <Link href={`/e/${event.slug}`} target="_blank">Open form</Link>
-                </Button>
+                {!event.archived_at && event.is_active ? (
+                  <Button asChild>
+                    <Link href={`/e/${event.slug}`} target="_blank">Open form</Link>
+                  </Button>
+                ) : null}
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {events[0] ? <QrCard eventName={events[0].name} url={`${origin}/e/${events[0].slug}`} /> : null}
+      {currentEvent ? <QrCard eventName={currentEvent.name} url={`${origin}/e/${currentEvent.slug}`} /> : null}
     </section>
   );
 }

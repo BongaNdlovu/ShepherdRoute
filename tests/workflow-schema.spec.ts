@@ -7,6 +7,7 @@ const schema = readFileSync("supabase/schema.sql", "utf8");
 const dashboardPage = readFileSync("app/(dashboard)/dashboard/page.tsx", "utf8");
 const eventsPage = readFileSync("app/(dashboard)/events/page.tsx", "utf8");
 const eventDetailPage = readFileSync("app/(dashboard)/events/[id]/page.tsx", "utf8");
+const eventActions = readFileSync("app/(dashboard)/_actions/events.ts", "utf8");
 const publicEventPage = readFileSync("app/e/[slug]/page.tsx", "utf8");
 
 test.describe("accountability and privacy workflow schema", () => {
@@ -30,9 +31,26 @@ test.describe("accountability and privacy workflow schema", () => {
     expect(schema).toContain("consent_scope text[]");
     expect(schema).toContain("do_not_contact boolean");
   });
+
+  test("schema includes event archive lifecycle support", () => {
+    expect(schema).toContain("archived_at timestamptz");
+    expect(schema).toContain("add column if not exists archived_at timestamptz");
+    expect(schema).toContain("events.archived_at is null");
+  });
 });
 
 test.describe("workflow helpers", () => {
+  test("event lifecycle actions expose close, archive, restore, and delete workflows", () => {
+    expect(eventActions).toContain("updateEventStatusAction");
+    expect(eventActions).toContain("updateEventArchiveAction");
+    expect(eventActions).toContain("deleteEventAction");
+    expect(eventActions).toContain(".delete()");
+    expect(eventDetailPage).toContain("Archive event");
+    expect(eventDetailPage).toContain("Restore event");
+    expect(eventDetailPage).toContain("Delete event");
+    expect(eventDetailPage).toContain("Type the event name to delete");
+  });
+
   test("QR public URLs use the request origin instead of a stale deployment URL", () => {
     expect(dashboardPage).toContain("absoluteRequestUrl");
     expect(eventsPage).toContain("requestOrigin");

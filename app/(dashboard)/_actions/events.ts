@@ -21,6 +21,17 @@ const eventStatusSchema = z.object({
   isActive: z.enum(["true", "false"])
 });
 
+const eventArchiveSchema = z.object({
+  eventId: z.string().uuid(),
+  archived: z.enum(["true", "false"])
+});
+
+const deleteEventSchema = z.object({
+  eventId: z.string().uuid(),
+  eventName: z.string().min(2),
+  confirmation: z.string().min(2)
+});
+
 export async function createEventAction(formData: FormData) {
   const context = await getChurchContext();
   const parsed = eventSchema.safeParse({
@@ -82,4 +93,67 @@ export async function updateEventStatusAction(formData: FormData) {
   revalidatePath("/events");
   revalidatePath(`/events/${parsed.data.eventId}`);
   redirect(`/events/${parsed.data.eventId}`);
+}
+
+export async function updateEventArchiveAction(formData: FormData) {
+  const context = await getChurchContext();
+  const parsed = eventArchiveSchema.safeParse({
+    eventId: formData.get("eventId"),
+    archived: formData.get("archived")
+  });
+
+  if (!parsed.success) {
+    redirect("/events?error=Could%20not%20update%20the%20event%20archive%20state.");
+  }
+
+  const isArchiving = parsed.data.archived === "true";
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("events")
+    .update({
+      archived_at: isArchiving ? new Date().toISOString() : null,
+      is_active: isArchiving ? false : true
+    })
+    .eq("church_id", context.churchId)
+    .eq("id", parsed.data.eventId);
+
+  if (error) {
+    redirect(`/events/${parsed.data.eventId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/events");
+  revalidatePath("/contacts");
+  revalidatePath(`/events/${parsed.data.eventId}`);
+  redirect(`/events/${parsed.data.eventId}`);
+}
+
+export async function deleteEventAction(formData: FormData) {
+  const context = await getChurchContext();
+  const parsed = deleteEventSchema.safeParse({
+    eventId: formData.get("eventId"),
+    eventName: formData.get("eventName"),
+    confirmation: formData.get("confirmation")
+  });
+
+  if (!parsed.success || parsed.data.confirmation !== parsed.data.eventName) {
+    redirect(`/events/${formData.get("eventId")}?error=Type%20the%20event%20name%20exactly%20to%20delete%20it.`);
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("events")
+    .delete()
+    .eq("church_id", context.churchId)
+    .eq("id", parsed.data.eventId)
+    .eq("name", parsed.data.eventName);
+
+  if (error) {
+    redirect(`/events/${parsed.data.eventId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/events");
+  revalidatePath("/contacts");
+  redirect("/events");
 }

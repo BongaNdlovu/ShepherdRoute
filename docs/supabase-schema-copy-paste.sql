@@ -166,10 +166,14 @@ create table if not exists public.events (
   slug text not null unique,
   description text,
   is_active boolean not null default true,
+  archived_at timestamptz,
   created_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.events
+  add column if not exists archived_at timestamptz;
 
 create table if not exists public.people (
   id uuid primary key default gen_random_uuid(),
@@ -318,6 +322,7 @@ create index if not exists church_memberships_user_idx on public.church_membersh
 create index if not exists church_memberships_church_idx on public.church_memberships(church_id, role, status);
 create index if not exists team_members_church_active_idx on public.team_members(church_id, is_active);
 create index if not exists events_church_idx on public.events(church_id, starts_on desc);
+create index if not exists events_church_archived_idx on public.events(church_id, archived_at, is_active);
 create index if not exists events_slug_idx on public.events(slug);
 create index if not exists people_church_phone_idx on public.people(church_id, normalized_phone) where normalized_phone is not null;
 create index if not exists people_church_whatsapp_idx on public.people(church_id, normalized_whatsapp) where normalized_whatsapp is not null;
@@ -964,7 +969,8 @@ select
   churches.name as church_name
 from public.events
 join public.churches on churches.id = events.church_id
-where events.is_active = true;
+where events.is_active = true
+  and events.archived_at is null;
 
 grant select on public.public_events to anon, authenticated;
 grant select on public.churches, public.events to anon, authenticated;
@@ -1665,7 +1671,9 @@ begin
 
   select * into target_event
   from public.events
-  where slug = p_slug and is_active = true
+  where slug = p_slug
+    and is_active = true
+    and archived_at is null
   limit 1;
 
   if target_event.id is null then

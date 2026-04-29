@@ -177,10 +177,14 @@ create table if not exists public.events (
   slug text not null unique,
   description text,
   is_active boolean not null default true,
+  archived_at timestamptz,
   created_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.events
+  add column if not exists archived_at timestamptz;
 
 create table if not exists public.people (
   id uuid primary key default gen_random_uuid(),
@@ -975,7 +979,8 @@ select
   churches.name as church_name
 from public.events
 join public.churches on churches.id = events.church_id
-where events.is_active = true;
+where events.is_active = true
+  and events.archived_at is null;
 
 grant select on public.public_events to anon, authenticated;
 grant select on public.churches, public.events to anon, authenticated;
@@ -1676,7 +1681,9 @@ begin
 
   select * into target_event
   from public.events
-  where slug = p_slug and is_active = true
+  where slug = p_slug
+    and is_active = true
+    and archived_at is null
   limit 1;
 
   if target_event.id is null then

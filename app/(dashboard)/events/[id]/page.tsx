@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { CalendarDays, Lock, MapPin, QrCode, Unlock, UsersRound } from "lucide-react";
-import { updateEventStatusAction } from "@/app/(dashboard)/actions";
+import { Archive, CalendarDays, Lock, MapPin, QrCode, Trash2, Undo2, Unlock, UsersRound } from "lucide-react";
+import { deleteEventAction, updateEventArchiveAction, updateEventStatusAction } from "@/app/(dashboard)/actions";
 import { InterestPills } from "@/components/app/interest-pills";
 import { QrCard } from "@/components/app/qr-card";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
@@ -27,6 +27,7 @@ export default async function EventDetailPage({
   const context = await getChurchContext();
   const { event, contacts, contactsLimit, contactsTotal } = await getEvent(context.churchId, id);
   const publicUrl = await absoluteRequestUrl(`/e/${event.slug}`);
+  const isArchived = Boolean(event.archived_at);
 
   return (
     <section className="space-y-4">
@@ -36,7 +37,8 @@ export default async function EventDetailPage({
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={event.is_active ? "success" : "muted"}>{event.is_active ? "Active" : "Closed"}</Badge>
+                {isArchived ? <Badge variant="warning">Archived</Badge> : null}
+                <Badge variant={event.is_active && !isArchived ? "success" : "muted"}>{event.is_active && !isArchived ? "Active" : "Closed"}</Badge>
                 <Badge variant="secondary">{eventTypeLabels[event.event_type as EventType]}</Badge>
               </div>
               <CardTitle className="mt-3 text-2xl">{event.name}</CardTitle>
@@ -46,15 +48,23 @@ export default async function EventDetailPage({
               <form action={updateEventStatusAction}>
                 <input type="hidden" name="eventId" value={event.id} />
                 <input type="hidden" name="isActive" value={event.is_active ? "false" : "true"} />
-                <Button type="submit" variant="outline">
+                <Button type="submit" variant="outline" disabled={isArchived}>
                   {event.is_active ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
                   {event.is_active ? "Close event" : "Reopen event"}
+                </Button>
+              </form>
+              <form action={updateEventArchiveAction}>
+                <input type="hidden" name="eventId" value={event.id} />
+                <input type="hidden" name="archived" value={isArchived ? "false" : "true"} />
+                <Button type="submit" variant="outline">
+                  {isArchived ? <Undo2 className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                  {isArchived ? "Restore event" : "Archive event"}
                 </Button>
               </form>
               <Button asChild variant="outline">
                 <Link href={`/events/${event.id}/report`}>View report</Link>
               </Button>
-              {event.is_active ? (
+              {event.is_active && !isArchived ? (
                 <Button asChild>
                   <a href={publicUrl} target="_blank" rel="noreferrer">Open public form</a>
                 </Button>
@@ -124,17 +134,38 @@ export default async function EventDetailPage({
           </CardContent>
         </Card>
 
-        {event.is_active ? (
+        {event.is_active && !isArchived ? (
           <QrCard eventName={event.name} url={publicUrl} />
         ) : (
           <Card>
             <CardHeader>
-              <CardTitle>Registration closed</CardTitle>
-              <CardDescription>The public registration page is disabled. Reopen the event to restore the QR form.</CardDescription>
+              <CardTitle>{isArchived ? "Event archived" : "Registration closed"}</CardTitle>
+              <CardDescription>{isArchived ? "Archived events are hidden from active workflows. Restore the event to reuse its QR form." : "The public registration page is disabled. Reopen the event to restore the QR form."}</CardDescription>
             </CardHeader>
           </Card>
         )}
       </div>
+
+      <Card className="border-rose-200">
+        <CardHeader>
+          <CardTitle className="text-rose-700">Delete event</CardTitle>
+          <CardDescription>Use this for test events or permanent cleanup. Contacts captured from this event will remain, but their event link will be cleared by the database.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form action={deleteEventAction} className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+            <input type="hidden" name="eventId" value={event.id} />
+            <input type="hidden" name="eventName" value={event.name} />
+            <div className="grid gap-2">
+              <label htmlFor="confirmation" className="text-sm font-bold">Type the event name to delete</label>
+              <input id="confirmation" name="confirmation" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring" placeholder={event.name} />
+            </div>
+            <Button type="submit" variant="destructive">
+              <Trash2 className="h-4 w-4" />
+              Delete event
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </section>
   );
 }
