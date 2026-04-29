@@ -98,7 +98,16 @@ exception when duplicate_object then null;
 end $$;
 
 do $$ begin
-  create type public.prayer_visibility as enum ('pastoral_prayer', 'pastors_only');
+  create type public.prayer_visibility as enum (
+    'general_prayer',
+    'pastor_only',
+    'private_contact',
+    'family_support',
+    'sensitive',
+    'health_related',
+    'pastoral_prayer',
+    'pastors_only'
+  );
 exception when duplicate_object then null;
 end $$;
 
@@ -108,6 +117,8 @@ alter type public.prayer_visibility add value if not exists 'private_contact';
 alter type public.prayer_visibility add value if not exists 'family_support';
 alter type public.prayer_visibility add value if not exists 'sensitive';
 alter type public.prayer_visibility add value if not exists 'health_related';
+alter type public.prayer_visibility add value if not exists 'pastoral_prayer';
+alter type public.prayer_visibility add value if not exists 'pastors_only';
 
 create table if not exists public.churches (
   id uuid primary key default gen_random_uuid(),
@@ -299,7 +310,7 @@ create table if not exists public.prayer_requests (
   church_id uuid not null references public.churches(id) on delete cascade,
   contact_id uuid not null references public.contacts(id) on delete cascade,
   request_text text not null,
-  visibility public.prayer_visibility not null default 'pastoral_prayer',
+  visibility public.prayer_visibility not null default 'general_prayer',
   created_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -322,7 +333,6 @@ create index if not exists church_memberships_user_idx on public.church_membersh
 create index if not exists church_memberships_church_idx on public.church_memberships(church_id, role, status);
 create index if not exists team_members_church_active_idx on public.team_members(church_id, is_active);
 create index if not exists events_church_idx on public.events(church_id, starts_on desc);
-create index if not exists events_church_archived_idx on public.events(church_id, archived_at, is_active);
 create index if not exists events_slug_idx on public.events(slug);
 create index if not exists people_church_phone_idx on public.people(church_id, normalized_phone) where normalized_phone is not null;
 create index if not exists people_church_whatsapp_idx on public.people(church_id, normalized_whatsapp) where normalized_whatsapp is not null;
@@ -914,19 +924,19 @@ on public.prayer_requests for select
 using (
   private.is_app_admin()
   or (
-    visibility in ('pastoral_prayer','general_prayer')
+    visibility::text in ('pastoral_prayer','general_prayer')
     and private.has_church_role(church_id, array['admin','pastor','prayer_team']::public.team_role[])
   )
   or (
-    visibility in ('pastors_only','pastor_only','private_contact','sensitive')
+    visibility::text in ('pastors_only','pastor_only','private_contact','sensitive')
     and private.has_church_role(church_id, array['admin','pastor']::public.team_role[])
   )
   or (
-    visibility = 'family_support'
+    visibility::text = 'family_support'
     and private.has_church_role(church_id, array['admin','pastor','elder']::public.team_role[])
   )
   or (
-    visibility = 'health_related'
+    visibility::text = 'health_related'
     and private.has_church_role(church_id, array['admin','pastor','health_leader']::public.team_role[])
   )
 );
@@ -1016,6 +1026,122 @@ $$;
 
 revoke all on function public.owner_church_summaries() from public, anon, authenticated;
 grant execute on function public.owner_church_summaries() to authenticated;
+
+drop function if exists public.owner_account_rows();
+
+create or replace function public.owner_account_rows()
+returns table (
+  church_id uuid,
+  church_name text,
+  church_created_at timestamptz,
+  membership_id uuid,
+  user_id uuid,
+  full_name text,
+  email text,
+  role public.team_role,
+  status public.membership_status,
+  membership_created_at timestamptz,
+  team_member_id uuid,
+  team_member_name text,
+  team_member_active boolean,
+  event_count bigint,
+  contact_count bigint
+)
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  if not private.is_app_admin() then
+    raise exception 'Only ShepardRoute app admins can view account rows.';
+  end if;
+
+  return query
+  select
+    churches.id as church_id,
+    churches.name as church_name,
+    churches.created_at as church_created_at,
+    church_memberships.id as membership_id,
+    church_memberships.user_id,
+    profiles.full_name,
+    profiles.email,
+    church_memberships.role,
+    church_memberships.status,
+    church_memberships.created_at as membership_created_at,
+    team_members.id as team_member_id,
+    team_members.display_name as team_member_name,
+    coalesce(team_members.is_active, false) as team_member_active,
+    count(distinct events.id) as event_count,
+    count(distinct contacts.id) as contact_count
+  from public.churches
+  join public.church_memberships on church_memberships.church_id = churches.id
+  left join public.profiles on profiles.id = church_memberships.user_id
+  left join public.team_members on team_members.membership_id = church_memberships.id
+  left join public.events on events.church_id = churches.id
+  left join public.contacts on contacts.church_id = churches.id
+  group by
+    churches.id,
+    churches.name,
+    churches.created_at,
+    church_memberships.id,
+    church_memberships.user_id,
+    profiles.full_name,
+    profiles.email,
+    church_memberships.role,
+    church_memberships.status,
+    church_memberships.created_at,
+    team_members.id,
+    team_members.display_name,
+    team_members.is_active
+  order by churches.created_at desc, church_memberships.created_at asc;
+end;
+$$;
+
+revoke all on function public.owner_account_rows() from public, anon, authenticated;
+grant execute on function public.owner_account_rows() to authenticated;
+
+drop function if exists public.owner_update_membership_status(uuid, public.membership_status);
+
+create or replace function public.owner_update_membership_status(
+  p_membership_id uuid,
+  p_status public.membership_status
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_membership public.church_memberships%rowtype;
+begin
+  if not private.is_app_admin() then
+    raise exception 'Only ShepardRoute app admins can update account access.';
+  end if;
+
+  select *
+  into target_membership
+  from public.church_memberships
+  where id = p_membership_id
+  limit 1;
+
+  if target_membership.id is null then
+    raise exception 'Membership not found.';
+  end if;
+
+  update public.church_memberships
+  set status = p_status,
+      updated_at = now()
+  where id = target_membership.id;
+
+  update public.team_members
+  set is_active = p_status = 'active',
+      updated_at = now()
+  where membership_id = target_membership.id;
+end;
+$$;
+
+revoke all on function public.owner_update_membership_status(uuid, public.membership_status) from public, anon, authenticated;
+grant execute on function public.owner_update_membership_status(uuid, public.membership_status) to authenticated;
 
 drop function if exists public.search_contacts(
   uuid,

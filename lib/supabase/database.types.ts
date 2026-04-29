@@ -452,6 +452,33 @@ export type Database = {
           new_contact_count: number;
         }>;
       };
+      owner_account_rows: {
+        Args: never;
+        Returns: Array<{
+          church_id: string;
+          church_name: string;
+          church_created_at: Timestamp;
+          membership_id: string;
+          user_id: string;
+          full_name: string | null;
+          email: string | null;
+          role: Database["public"]["Enums"]["team_role"];
+          status: Database["public"]["Enums"]["membership_status"];
+          membership_created_at: Timestamp;
+          team_member_id: string | null;
+          team_member_name: string | null;
+          team_member_active: boolean;
+          event_count: number;
+          contact_count: number;
+        }>;
+      };
+      owner_update_membership_status: {
+        Args: {
+          p_membership_id: string;
+          p_status: Database["public"]["Enums"]["membership_status"];
+        };
+        Returns: void;
+      };
       search_contacts: {
         Args: {
           p_church_id: string;

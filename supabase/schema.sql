@@ -1027,6 +1027,122 @@ $$;
 revoke all on function public.owner_church_summaries() from public, anon, authenticated;
 grant execute on function public.owner_church_summaries() to authenticated;
 
+drop function if exists public.owner_account_rows();
+
+create or replace function public.owner_account_rows()
+returns table (
+  church_id uuid,
+  church_name text,
+  church_created_at timestamptz,
+  membership_id uuid,
+  user_id uuid,
+  full_name text,
+  email text,
+  role public.team_role,
+  status public.membership_status,
+  membership_created_at timestamptz,
+  team_member_id uuid,
+  team_member_name text,
+  team_member_active boolean,
+  event_count bigint,
+  contact_count bigint
+)
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  if not private.is_app_admin() then
+    raise exception 'Only ShepardRoute app admins can view account rows.';
+  end if;
+
+  return query
+  select
+    churches.id as church_id,
+    churches.name as church_name,
+    churches.created_at as church_created_at,
+    church_memberships.id as membership_id,
+    church_memberships.user_id,
+    profiles.full_name,
+    profiles.email,
+    church_memberships.role,
+    church_memberships.status,
+    church_memberships.created_at as membership_created_at,
+    team_members.id as team_member_id,
+    team_members.display_name as team_member_name,
+    coalesce(team_members.is_active, false) as team_member_active,
+    count(distinct events.id) as event_count,
+    count(distinct contacts.id) as contact_count
+  from public.churches
+  join public.church_memberships on church_memberships.church_id = churches.id
+  left join public.profiles on profiles.id = church_memberships.user_id
+  left join public.team_members on team_members.membership_id = church_memberships.id
+  left join public.events on events.church_id = churches.id
+  left join public.contacts on contacts.church_id = churches.id
+  group by
+    churches.id,
+    churches.name,
+    churches.created_at,
+    church_memberships.id,
+    church_memberships.user_id,
+    profiles.full_name,
+    profiles.email,
+    church_memberships.role,
+    church_memberships.status,
+    church_memberships.created_at,
+    team_members.id,
+    team_members.display_name,
+    team_members.is_active
+  order by churches.created_at desc, church_memberships.created_at asc;
+end;
+$$;
+
+revoke all on function public.owner_account_rows() from public, anon, authenticated;
+grant execute on function public.owner_account_rows() to authenticated;
+
+drop function if exists public.owner_update_membership_status(uuid, public.membership_status);
+
+create or replace function public.owner_update_membership_status(
+  p_membership_id uuid,
+  p_status public.membership_status
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_membership public.church_memberships%rowtype;
+begin
+  if not private.is_app_admin() then
+    raise exception 'Only ShepardRoute app admins can update account access.';
+  end if;
+
+  select *
+  into target_membership
+  from public.church_memberships
+  where id = p_membership_id
+  limit 1;
+
+  if target_membership.id is null then
+    raise exception 'Membership not found.';
+  end if;
+
+  update public.church_memberships
+  set status = p_status,
+      updated_at = now()
+  where id = target_membership.id;
+
+  update public.team_members
+  set is_active = p_status = 'active',
+      updated_at = now()
+  where membership_id = target_membership.id;
+end;
+$$;
+
+revoke all on function public.owner_update_membership_status(uuid, public.membership_status) from public, anon, authenticated;
+grant execute on function public.owner_update_membership_status(uuid, public.membership_status) to authenticated;
+
 drop function if exists public.search_contacts(
   uuid,
   text,
