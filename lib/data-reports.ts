@@ -14,7 +14,9 @@ export type OutreachReportSummary = {
   followed_up_count: number;
   bible_study_count: number;
   prayer_count: number;
+  health_count: number;
   high_priority_count: number;
+  unassigned_count: number;
   events: OutreachReportEvent[];
 };
 
@@ -34,7 +36,9 @@ const emptyOutreachSummary: OutreachReportSummary = {
   followed_up_count: 0,
   bible_study_count: 0,
   prayer_count: 0,
+  health_count: 0,
   high_priority_count: 0,
+  unassigned_count: 0,
   events: []
 };
 
@@ -67,7 +71,9 @@ function parseOutreachSummary(row: Partial<OutreachReportSummary> | null | undef
     followed_up_count: Number(row.followed_up_count) || 0,
     bible_study_count: Number(row.bible_study_count) || 0,
     prayer_count: Number(row.prayer_count) || 0,
+    health_count: Number(row.health_count) || 0,
     high_priority_count: Number(row.high_priority_count) || 0,
+    unassigned_count: Number(row.unassigned_count) || 0,
     events: Array.isArray(row.events) ? row.events : []
   };
 }

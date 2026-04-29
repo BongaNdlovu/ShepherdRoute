@@ -2,11 +2,13 @@
 
 This app expects Supabase Auth plus the full database schema in `supabase/schema.sql`.
 
+If you just want the copy-paste SQL, open `docs/supabase-schema-copy-paste.sql`, select all, and paste it into the Supabase SQL Editor.
+
 ## Fresh Project Setup
 
 1. Create a Supabase project and enable email/password auth.
 2. Open **SQL Editor** in Supabase.
-3. Paste the full contents of `supabase/schema.sql`.
+3. Paste the full contents of `docs/supabase-schema-copy-paste.sql`.
 4. Run the script once from top to bottom.
 5. Copy the project URL and anon key into `.env.local`:
 

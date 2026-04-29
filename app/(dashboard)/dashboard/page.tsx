@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, Bell, ClipboardList, Heart, Plus, UsersRound } from "lucide-react";
+import { Activity, ClipboardList, Heart, HeartPulse, Plus, UserRoundCheck, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InterestPills } from "@/components/app/interest-pills";
@@ -45,11 +45,12 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={Bell} title="New contacts" value={summary.total_contacts - summary.followed_up_count} note="Need first follow-up from the team." />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <StatCard icon={Activity} title="High urgency" value={summary.high_priority_count} note="Route to a trusted pastor quickly." />
         <StatCard icon={ClipboardList} title="Bible study requests" value={summary.bible_study_count} note="Ready for Bible worker assignment." />
         <StatCard icon={Heart} title="Prayer requests" value={summary.prayer_count} note="Stored separately for pastoral and prayer care." />
-        <StatCard icon={Activity} title="Pastoral attention" value={summary.high_priority_count} note="High priority visits and baptism conversations." />
+        <StatCard icon={HeartPulse} title="Health interests" value={summary.health_count} note="Ready for health ministry follow-up." />
+        <StatCard icon={UserRoundCheck} title="Unassigned" value={summary.unassigned_count} note="Need an owner for follow-up." />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">

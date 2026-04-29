@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import type { ClassificationResult } from "@/lib/classifyContact";
 import type { FollowUpStatus, Interest } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 
@@ -32,6 +33,12 @@ export type ContactPageResult = {
   pageCount: number;
 };
 
+export type ContactClassificationPayload = ClassificationResult & {
+  classification_version?: string;
+  rule_based?: boolean;
+  ready_for_ai?: boolean;
+};
+
 type ContactFilters = {
   q?: string;
   status?: string;
@@ -52,6 +59,7 @@ export type ContactDetailResult = {
     urgency: "low" | "medium" | "high";
     assigned_to: string | null;
     consent_given: boolean;
+    classification_payload: ContactClassificationPayload | null;
     events: { name: string } | null;
     team_members: { display_name: string } | { display_name: string }[] | null;
     contact_interests: Array<{ interest: Interest }>;
@@ -142,7 +150,7 @@ export async function getContact(churchId: string, id: string): Promise<ContactD
   const [{ data: contact }, { data: prayer }, { data: team }, { data: followUps }, { data: messages }] = await Promise.all([
     supabase
       .from("contacts")
-      .select("id, full_name, phone, area, language, best_time_to_contact, status, urgency, assigned_to, consent_given, events(name), team_members(display_name), contact_interests(interest)")
+      .select("id, full_name, phone, area, language, best_time_to_contact, status, urgency, assigned_to, consent_given, classification_payload, events(name), team_members(display_name), contact_interests(interest)")
       .eq("church_id", churchId)
       .eq("id", id)
       .single(),

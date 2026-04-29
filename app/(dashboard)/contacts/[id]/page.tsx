@@ -1,4 +1,5 @@
 import { ContactSummaryPanel } from "@/components/app/contact-summary-panel";
+import { ContactClassificationPanel } from "@/components/app/contact-classification-panel";
 import { FollowUpHistorySection } from "@/components/app/follow-up-history-section";
 import { FollowUpNoteCard } from "@/components/app/follow-up-note-card";
 import { FollowUpTrackerCard } from "@/components/app/follow-up-tracker-card";
@@ -51,6 +52,7 @@ export default async function ContactDetailPage({
         </CardHeader>
         <CardContent className="space-y-5">
           <ContactSummaryPanel contact={contact} error={query.error} />
+          <ContactClassificationPanel classification={contact.classification_payload} />
           <WhatsappFollowUpCard contactId={contact.id} phone={contact.phone} message={message} />
           <PrayerRequestsSection prayer={prayer} />
           <FollowUpHistorySection followUps={followUps} />

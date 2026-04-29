@@ -8,6 +8,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { interestLabels, interestOptions } from "@/lib/constants";
 import { getPublicEvent } from "@/lib/data";
 
+function visitorTypeFromEventType(eventType: string) {
+  if (eventType === "health_expo") return "health_expo";
+  if (eventType === "prophecy_seminar") return "prophecy_seminar";
+  if (eventType === "bible_study") return "bible_study";
+  if (eventType === "church_service" || eventType === "visitor_sabbath") return "sabbath_visitor";
+  return "general";
+}
+
 export default async function PublicEventPage({
   params,
   searchParams
@@ -47,6 +55,7 @@ export default async function PublicEventPage({
                 {query.error ? <p className="mb-4 rounded-md bg-rose-50 p-3 text-sm text-rose-700">{query.error}</p> : null}
                 <form action={submitRegistrationAction} className="grid gap-5">
                   <input type="hidden" name="slug" value={event.slug} />
+                  <input type="hidden" name="visitorType" value={visitorTypeFromEventType(event.event_type)} />
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="grid gap-2">
                       <Label htmlFor="fullName">Name</Label>
