@@ -98,7 +98,16 @@ exception when duplicate_object then null;
 end $$;
 
 do $$ begin
-  create type public.prayer_visibility as enum ('pastoral_prayer', 'pastors_only');
+  create type public.prayer_visibility as enum (
+    'general_prayer',
+    'pastor_only',
+    'private_contact',
+    'family_support',
+    'sensitive',
+    'health_related',
+    'pastoral_prayer',
+    'pastors_only'
+  );
 exception when duplicate_object then null;
 end $$;
 
@@ -108,6 +117,8 @@ alter type public.prayer_visibility add value if not exists 'private_contact';
 alter type public.prayer_visibility add value if not exists 'family_support';
 alter type public.prayer_visibility add value if not exists 'sensitive';
 alter type public.prayer_visibility add value if not exists 'health_related';
+alter type public.prayer_visibility add value if not exists 'pastoral_prayer';
+alter type public.prayer_visibility add value if not exists 'pastors_only';
 
 create table if not exists public.churches (
   id uuid primary key default gen_random_uuid(),
@@ -295,7 +306,7 @@ create table if not exists public.prayer_requests (
   church_id uuid not null references public.churches(id) on delete cascade,
   contact_id uuid not null references public.contacts(id) on delete cascade,
   request_text text not null,
-  visibility public.prayer_visibility not null default 'pastoral_prayer',
+  visibility public.prayer_visibility not null default 'general_prayer',
   created_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -909,19 +920,19 @@ on public.prayer_requests for select
 using (
   private.is_app_admin()
   or (
-    visibility in ('pastoral_prayer','general_prayer')
+    visibility::text in ('pastoral_prayer','general_prayer')
     and private.has_church_role(church_id, array['admin','pastor','prayer_team']::public.team_role[])
   )
   or (
-    visibility in ('pastors_only','pastor_only','private_contact','sensitive')
+    visibility::text in ('pastors_only','pastor_only','private_contact','sensitive')
     and private.has_church_role(church_id, array['admin','pastor']::public.team_role[])
   )
   or (
-    visibility = 'family_support'
+    visibility::text = 'family_support'
     and private.has_church_role(church_id, array['admin','pastor','elder']::public.team_role[])
   )
   or (
-    visibility = 'health_related'
+    visibility::text = 'health_related'
     and private.has_church_role(church_id, array['admin','pastor','health_leader']::public.team_role[])
   )
 );
