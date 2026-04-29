@@ -2334,7 +2334,7 @@ as $$
 declare
   target_event public.events%rowtype;
   new_contact_id uuid;
-  interest public.interest_tag;
+  selected_interest public.interest_tag;
   computed_urgency public.urgency_level := coalesce(p_urgency, 'medium'::public.urgency_level);
   computed_due_at timestamptz;
   computed_classification_payload jsonb := coalesce(
@@ -2402,9 +2402,9 @@ begin
   )
   returning id into new_contact_id;
 
-  foreach interest in array p_interests loop
+  foreach selected_interest in array p_interests loop
     insert into public.contact_interests (church_id, contact_id, interest)
-    values (target_event.church_id, new_contact_id, interest)
+    values (target_event.church_id, new_contact_id, selected_interest)
     on conflict (contact_id, interest) do nothing;
   end loop;
 
