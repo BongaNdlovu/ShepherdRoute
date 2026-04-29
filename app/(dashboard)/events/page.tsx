@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { QrCard } from "@/components/app/qr-card";
 import { eventTypeLabels, type EventType } from "@/lib/constants";
 import { getChurchContext, getEvents } from "@/lib/data";
-import { absoluteUrl } from "@/lib/utils";
+import { requestOrigin } from "@/lib/server-url";
 
 export const metadata = {
   title: "Events"
@@ -15,6 +15,7 @@ export const metadata = {
 export default async function EventsPage() {
   const context = await getChurchContext();
   const events = await getEvents(context.churchId);
+  const origin = await requestOrigin();
 
   return (
     <section className="space-y-4">
@@ -53,7 +54,7 @@ export default async function EventsPage() {
             <CardContent className="space-y-4">
               <div className="rounded-lg bg-muted p-4">
                 <p className="text-sm text-muted-foreground">Public URL</p>
-                <p className="mt-1 break-all text-sm font-semibold">{absoluteUrl(`/e/${event.slug}`)}</p>
+                <p className="mt-1 break-all text-sm font-semibold">{`${origin}/e/${event.slug}`}</p>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <Button asChild variant="outline">
@@ -68,7 +69,7 @@ export default async function EventsPage() {
         ))}
       </div>
 
-      {events[0] ? <QrCard eventName={events[0].name} url={absoluteUrl(`/e/${events[0].slug}`)} /> : null}
+      {events[0] ? <QrCard eventName={events[0].name} url={`${origin}/e/${events[0].slug}`} /> : null}
     </section>
   );
 }

@@ -4,6 +4,10 @@ import { defaultDueDate } from "@/lib/followUp";
 import { generateMessage } from "@/lib/whatsapp";
 
 const schema = readFileSync("supabase/schema.sql", "utf8");
+const dashboardPage = readFileSync("app/(dashboard)/dashboard/page.tsx", "utf8");
+const eventsPage = readFileSync("app/(dashboard)/events/page.tsx", "utf8");
+const eventDetailPage = readFileSync("app/(dashboard)/events/[id]/page.tsx", "utf8");
+const publicEventPage = readFileSync("app/e/[slug]/page.tsx", "utf8");
 
 test.describe("accountability and privacy workflow schema", () => {
   test("schema includes duplicate-aware people and journey storage", () => {
@@ -29,6 +33,20 @@ test.describe("accountability and privacy workflow schema", () => {
 });
 
 test.describe("workflow helpers", () => {
+  test("QR public URLs use the request origin instead of a stale deployment URL", () => {
+    expect(dashboardPage).toContain("absoluteRequestUrl");
+    expect(eventsPage).toContain("requestOrigin");
+    expect(eventDetailPage).toContain("absoluteRequestUrl");
+    expect(dashboardPage).not.toContain("absoluteUrl(`/e/");
+    expect(eventsPage).not.toContain("absoluteUrl(`/e/");
+    expect(eventDetailPage).not.toContain("absoluteUrl(`/e/");
+  });
+
+  test("best time options do not include channel-only preferences", () => {
+    expect(publicEventPage).toContain("Best time to contact");
+    expect(publicEventPage).not.toContain("WhatsApp first");
+  });
+
   test("high urgency deadline is sooner than medium urgency", () => {
     const high = defaultDueDate("high").getTime();
     const medium = defaultDueDate("medium").getTime();

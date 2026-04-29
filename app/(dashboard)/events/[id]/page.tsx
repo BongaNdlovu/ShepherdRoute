@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { eventTypeLabels, type EventType } from "@/lib/constants";
 import { getChurchContext, getEvent } from "@/lib/data";
-import { absoluteUrl } from "@/lib/utils";
+import { absoluteRequestUrl } from "@/lib/server-url";
 
 export const metadata = {
   title: "Event"
@@ -26,7 +26,7 @@ export default async function EventDetailPage({
   const query = await searchParams;
   const context = await getChurchContext();
   const { event, contacts, contactsLimit, contactsTotal } = await getEvent(context.churchId, id);
-  const publicUrl = absoluteUrl(`/e/${event.slug}`);
+  const publicUrl = await absoluteRequestUrl(`/e/${event.slug}`);
 
   return (
     <section className="space-y-4">

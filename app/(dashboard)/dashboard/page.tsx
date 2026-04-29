@@ -7,7 +7,7 @@ import { QrCard } from "@/components/app/qr-card";
 import { StatCard } from "@/components/app/stat-card";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
 import { getChurchContext, getDashboardData } from "@/lib/data";
-import { absoluteUrl } from "@/lib/utils";
+import { absoluteRequestUrl } from "@/lib/server-url";
 
 export const metadata = {
   title: "Dashboard"
@@ -17,6 +17,7 @@ export default async function DashboardPage() {
   const context = await getChurchContext();
   const { contacts, events, summary } = await getDashboardData(context.churchId);
   const activeEvent = events[0];
+  const activeEventPublicUrl = activeEvent ? await absoluteRequestUrl(`/e/${activeEvent.slug}`) : null;
   const allContacts = contacts;
 
   return (
@@ -96,7 +97,7 @@ export default async function DashboardPage() {
         </Card>
 
         {activeEvent ? (
-          <QrCard eventName={activeEvent.name} url={absoluteUrl(`/e/${activeEvent.slug}`)} />
+          <QrCard eventName={activeEvent.name} url={activeEventPublicUrl!} />
         ) : (
           <Card>
             <CardHeader>

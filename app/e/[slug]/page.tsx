@@ -87,7 +87,6 @@ export default async function PublicEventPage({
                         <option>Afternoon</option>
                         <option>Evening</option>
                         <option>Weekend</option>
-                        <option>WhatsApp first</option>
                       </select>
                     </div>
                   </div>
