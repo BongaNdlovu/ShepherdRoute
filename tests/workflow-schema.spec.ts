@@ -310,6 +310,40 @@ test.describe("workflow helpers", () => {
     expect(createWhatsappLink("082 000 0000", "Hello")).toContain("https://wa.me/27820000000");
   });
 
+  test("WhatsApp link helper supports blank chats", () => {
+    expect(createWhatsappLink("082 000 0000")).toBe("https://wa.me/27820000000");
+  });
+
+  test("follow-up queue allows opening WhatsApp without a generated message", () => {
+    const queueList = readFileSync("components/app/follow-ups-queue-list.tsx", "utf8");
+    const messagesActions = readFileSync("app/(dashboard)/_actions/messages.ts", "utf8");
+
+    expect(queueList).not.toContain("disabled={!item.suggested_message");
+    expect(queueList).toContain("disabled={item.contact.do_not_contact}");
+    expect(messagesActions).toContain("messageId: formData.get(\"messageId\") || undefined");
+    expect(messagesActions).toContain("messageText = \"\"");
+  });
+
+  test("mark contacted returns to the calling queue instead of dashboard", () => {
+    const contactsActions = readFileSync("app/(dashboard)/_actions/contacts.ts", "utf8");
+    const confirmForm = readFileSync("components/app/mark-contacted-confirm-form.tsx", "utf8");
+
+    expect(contactsActions).toContain("returnTo");
+    expect(contactsActions).toContain("redirect(returnTo)");
+    expect(contactsActions).not.toContain("redirect(\"/dashboard\")");
+    expect(confirmForm).toContain('name="returnTo"');
+  });
+
+  test("conversation ongoing sets waiting without completing the follow-up", () => {
+    const contactsActions = readFileSync("app/(dashboard)/_actions/contacts.ts", "utf8");
+    const queueList = readFileSync("components/app/follow-ups-queue-list.tsx", "utf8");
+
+    expect(contactsActions).toContain("markFollowUpWaitingAction");
+    expect(contactsActions).toContain("status: \"waiting\"");
+    expect(contactsActions).not.toMatch(/markFollowUpWaitingAction[\s\S]*completed_at: now/);
+    expect(queueList).toContain("ConversationOngoingConfirmForm");
+  });
+
   test("new actions are exported from dashboard actions barrel", () => {
     const dashboardActions = readFileSync("app/(dashboard)/actions.ts", "utf8");
     expect(dashboardActions).toContain("openSuggestedWhatsappAction");

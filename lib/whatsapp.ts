@@ -67,14 +67,20 @@ export function normalizeWhatsappPhone(phone: string | null | undefined) {
   return normalized;
 }
 
-export function createWhatsappLink(phone: string | null | undefined, message: string) {
+export function createWhatsappLink(phone: string | null | undefined, message = "") {
   const normalizedPhone = normalizeWhatsappPhone(phone);
 
   if (!normalizedPhone) {
     return null;
   }
 
-  return `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`;
+  const trimmedMessage = message.trim();
+
+  if (!trimmedMessage) {
+    return `https://wa.me/${normalizedPhone}`;
+  }
+
+  return `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(trimmedMessage)}`;
 }
 
 export function waLink(phone: string, message: string) {

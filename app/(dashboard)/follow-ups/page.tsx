@@ -56,7 +56,21 @@ export default async function FollowUpsPage({
             total={followUpsPage.total}
             visibleCount={followUpsPage.items.length}
           />
-          <FollowUpsQueueList items={followUpsPage.items} compactLists={preferences.compactLists} />
+          <FollowUpsQueueList items={followUpsPage.items} compactLists={preferences.compactLists} returnTo={(() => {
+            const returnSearchParams = new URLSearchParams();
+
+            Object.entries(params).forEach(([key, value]) => {
+              if (value && key !== "error") {
+                returnSearchParams.set(key, value);
+              }
+            });
+
+            const returnTo = returnSearchParams.toString()
+              ? `/follow-ups?${returnSearchParams.toString()}`
+              : "/follow-ups";
+
+            return returnTo;
+          })()} />
         </CardContent>
       </Card>
     </section>

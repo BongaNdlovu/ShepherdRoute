@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MessageCircle } from "lucide-react";
 import { openSuggestedWhatsappAction } from "@/app/(dashboard)/actions";
+import { ConversationOngoingConfirmForm } from "@/components/app/conversation-ongoing-confirm-form";
 import { MarkContactedConfirmForm } from "@/components/app/mark-contacted-confirm-form";
 import { InterestPills } from "@/components/app/interest-pills";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
@@ -11,10 +12,12 @@ import { formatDateTime } from "@/lib/followUp";
 
 export function FollowUpsQueueList({
   items,
-  compactLists = false
+  compactLists = false,
+  returnTo = "/follow-ups"
 }: {
   items: FollowUpQueueItem[];
   compactLists?: boolean;
+  returnTo?: string;
 }) {
   return (
     <div className="mt-5 overflow-hidden rounded-lg border">
@@ -67,14 +70,22 @@ export function FollowUpsQueueList({
                 <input type="hidden" name="followUpId" value={item.id} />
                 <input type="hidden" name="contactId" value={item.contact_id} />
                 <input type="hidden" name="messageId" value={item.suggested_message?.id ?? ""} />
-                <Button type="submit" variant="success" size="sm" className="w-full" disabled={!item.suggested_message || item.contact.do_not_contact}>
+                <input type="hidden" name="returnTo" value={returnTo} />
+                <Button type="submit" variant="success" size="sm" className="w-full" disabled={item.contact.do_not_contact}>
                   <MessageCircle className="h-4 w-4" />
                   {item.contact.do_not_contact ? "Opted out" : item.suggested_message?.opened_at ? "Open WhatsApp again" : "Open WhatsApp"}
                 </Button>
               </form>
+              <ConversationOngoingConfirmForm
+                followUpId={item.id}
+                contactId={item.contact_id}
+                returnTo={returnTo}
+                disabled={Boolean(item.completed_at) || item.status === "waiting"}
+              />
               <MarkContactedConfirmForm
                 followUpId={item.id}
                 contactId={item.contact_id}
+                returnTo={returnTo}
                 disabled={Boolean(item.completed_at)}
               />
             </div>

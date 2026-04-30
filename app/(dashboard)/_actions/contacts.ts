@@ -47,7 +47,14 @@ const contactLifecycleSchema = z.object({
 
 const markContactedSchema = z.object({
   followUpId: z.string().uuid(),
-  contactId: z.string().uuid()
+  contactId: z.string().uuid(),
+  returnTo: z.string().optional()
+});
+
+const followUpStatusActionSchema = z.object({
+  followUpId: z.string().uuid(),
+  contactId: z.string().uuid(),
+  returnTo: z.string().optional()
 });
 
 export async function updateContactAction(formData: FormData) {
@@ -406,12 +413,15 @@ export async function markFollowUpContactedAction(formData: FormData) {
   const context = await getChurchContext();
   const parsed = markContactedSchema.safeParse({
     followUpId: formData.get("followUpId"),
-    contactId: formData.get("contactId")
+    contactId: formData.get("contactId"),
+    returnTo: formData.get("returnTo") || undefined
   });
 
   if (!parsed.success) {
-    redirect("/dashboard?error=Could%20not%20mark%20the%20follow-up%20as%20contacted.");
+    redirect("/follow-ups?error=Could%20not%20mark%20the%20follow-up%20as%20contacted.");
   }
+
+  const returnTo = safeReturnTo(parsed.data.returnTo, "/follow-ups");
 
   const supabase = await createClient();
   const { data: followUp, error: followUpLookupError } = await supabase
@@ -424,7 +434,7 @@ export async function markFollowUpContactedAction(formData: FormData) {
     .maybeSingle();
 
   if (followUpLookupError || !followUp) {
-    redirect(`/contacts/${parsed.data.contactId}?error=Open%20follow-up%20task%20not%20found.`);
+    redirect(`${returnTo}?error=Open%20follow-up%20task%20not%20found.`);
   }
 
   const now = new Date().toISOString();
@@ -437,7 +447,7 @@ export async function markFollowUpContactedAction(formData: FormData) {
     .is("completed_at", null);
 
   if (followUpError) {
-    redirect(`/contacts/${parsed.data.contactId}?error=${actionError(followUpError, "Could not complete the follow-up task.")}`);
+    redirect(`${returnTo}?error=${actionError(followUpError, "Could not complete the follow-up task.")}`);
   }
 
   const { error: contactError } = await supabase
@@ -447,13 +457,81 @@ export async function markFollowUpContactedAction(formData: FormData) {
     .eq("id", parsed.data.contactId);
 
   if (contactError) {
-    redirect(`/contacts/${parsed.data.contactId}?error=${actionError(contactError, "Follow-up completed, but contact status could not be updated.")}`);
+    redirect(`${returnTo}?error=${actionError(contactError, "Follow-up completed, but contact status could not be updated.")}`);
   }
 
   revalidatePath("/dashboard");
   revalidatePath("/contacts");
   revalidatePath(`/contacts/${parsed.data.contactId}`);
-  redirect("/dashboard");
+  redirect(returnTo);
+}
+
+export async function markFollowUpWaitingAction(formData: FormData) {
+  const context = await getChurchContext();
+  const parsed = followUpStatusActionSchema.safeParse({
+    followUpId: formData.get("followUpId"),
+    contactId: formData.get("contactId"),
+    returnTo: formData.get("returnTo") || undefined
+  });
+
+  if (!parsed.success) {
+    redirect("/follow-ups?error=Could%20not%20update%20the%20follow-up.");
+  }
+
+  const returnTo = safeReturnTo(parsed.data.returnTo, "/follow-ups");
+  const supabase = await createClient();
+
+  const { data: followUp, error: followUpLookupError } = await supabase
+    .from("follow_ups")
+    .select("id")
+    .eq("church_id", context.churchId)
+    .eq("id", parsed.data.followUpId)
+    .eq("contact_id", parsed.data.contactId)
+    .is("completed_at", null)
+    .maybeSingle();
+
+  if (followUpLookupError || !followUp) {
+    redirect(`${returnTo}?error=Open%20follow-up%20task%20not%20found.`);
+  }
+
+  const { error: followUpError } = await supabase
+    .from("follow_ups")
+    .update({
+      status: "waiting",
+      next_action: "Wait for reply, then record the next follow-up outcome."
+    })
+    .eq("church_id", context.churchId)
+    .eq("id", parsed.data.followUpId)
+    .eq("contact_id", parsed.data.contactId)
+    .is("completed_at", null);
+
+  if (followUpError) {
+    redirect(`${returnTo}?error=${actionError(followUpError, "Could not update the follow-up task.")}`);
+  }
+
+  const { error: contactError } = await supabase
+    .from("contacts")
+    .update({ status: "waiting" })
+    .eq("church_id", context.churchId)
+    .eq("id", parsed.data.contactId);
+
+  if (contactError) {
+    redirect(`${returnTo}?error=${actionError(contactError, "Follow-up updated, but contact status could not be updated.")}`);
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/follow-ups");
+  revalidatePath("/contacts");
+  revalidatePath(`/contacts/${parsed.data.contactId}`);
+  redirect(returnTo);
+}
+
+function safeReturnTo(value: string | undefined, fallback: string) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return fallback;
+  }
+
+  return value;
 }
 
 function actionError(error: { message?: string } | null | undefined, fallback: string) {

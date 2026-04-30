@@ -16,7 +16,8 @@ const generatedMessageSchema = z.object({
 const openSuggestedMessageSchema = z.object({
   followUpId: z.string().uuid(),
   contactId: z.string().uuid(),
-  messageId: z.string().uuid()
+  messageId: z.string().uuid().optional(),
+  returnTo: z.string().optional()
 });
 
 export async function saveGeneratedMessageAction(formData: FormData) {
@@ -55,11 +56,12 @@ export async function openSuggestedWhatsappAction(formData: FormData) {
   const parsed = openSuggestedMessageSchema.safeParse({
     followUpId: formData.get("followUpId"),
     contactId: formData.get("contactId"),
-    messageId: formData.get("messageId")
+    messageId: formData.get("messageId") || undefined,
+    returnTo: formData.get("returnTo") || undefined
   });
 
   if (!parsed.success) {
-    redirect("/dashboard?error=Could%20not%20open%20the%20suggested%20WhatsApp%20message.");
+    redirect("/follow-ups?error=Could%20not%20open%20the%20WhatsApp%20message.");
   }
 
   const supabase = await createClient();
@@ -86,40 +88,58 @@ export async function openSuggestedWhatsappAction(formData: FormData) {
     redirect(`/contacts/${parsed.data.contactId}?error=This%20contact%20has%20opted%20out%20of%20follow-up.`);
   }
 
-  const { data: message, error } = await supabase
-    .from("generated_messages")
-    .select("id, message_text, wa_link")
-    .eq("church_id", context.churchId)
-    .eq("contact_id", parsed.data.contactId)
-    .eq("id", parsed.data.messageId)
-    .eq("purpose", "suggested_whatsapp")
-    .maybeSingle();
+  const returnTo = safeReturnTo(parsed.data.returnTo, "/follow-ups");
 
-  if (error || !message) {
-    redirect(`/follow-ups?error=Suggested%20WhatsApp%20message%20not%20found.`);
+  let messageText = "";
+
+  if (parsed.data.messageId) {
+    const { data: message, error } = await supabase
+      .from("generated_messages")
+      .select("id, message_text")
+      .eq("church_id", context.churchId)
+      .eq("contact_id", parsed.data.contactId)
+      .eq("id", parsed.data.messageId)
+      .eq("purpose", "suggested_whatsapp")
+      .maybeSingle();
+
+    if (error) {
+      redirect(`${returnTo}?error=Could%20not%20load%20the%20suggested%20WhatsApp%20message.`);
+    }
+
+    messageText = message?.message_text ?? "";
   }
 
-  const link = createWhatsappLink(contact.whatsapp_number ?? contact.phone, message.message_text);
+  const link = createWhatsappLink(contact.whatsapp_number ?? contact.phone, messageText);
 
   if (!link) {
-    redirect("/follow-ups?error=Add%20a%20valid%20WhatsApp%20number%20before%20opening%20WhatsApp.");
+    redirect(`${returnTo}?error=Add%20a%20valid%20WhatsApp%20number%20before%20opening%20WhatsApp.`);
   }
 
-  const now = new Date().toISOString();
-  const { error: updateError } = await supabase
-    .from("generated_messages")
-    .update({ opened_at: now, wa_link: link })
-    .eq("church_id", context.churchId)
-    .eq("contact_id", parsed.data.contactId)
-    .eq("id", parsed.data.messageId)
-    .eq("purpose", "suggested_whatsapp");
+  if (parsed.data.messageId) {
+    const now = new Date().toISOString();
+    const { error: updateError } = await supabase
+      .from("generated_messages")
+      .update({ opened_at: now, wa_link: link })
+      .eq("church_id", context.churchId)
+      .eq("contact_id", parsed.data.contactId)
+      .eq("id", parsed.data.messageId)
+      .eq("purpose", "suggested_whatsapp");
 
-  if (updateError) {
-    redirect(`/contacts/${parsed.data.contactId}?error=${encodeURIComponent(updateError.message)}`);
+    if (updateError) {
+      redirect(`${returnTo}?error=${encodeURIComponent(updateError.message)}`);
+    }
   }
 
   revalidatePath("/dashboard");
   revalidatePath("/follow-ups");
   revalidatePath(`/contacts/${parsed.data.contactId}`);
   redirect(link);
+}
+
+function safeReturnTo(value: string | undefined, fallback: string) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return fallback;
+  }
+
+  return value;
 }

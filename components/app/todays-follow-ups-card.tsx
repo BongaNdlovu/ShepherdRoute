@@ -53,12 +53,13 @@ export function TodaysFollowUpsCard({ items }: { items: TodayFollowUpItem[] }) {
                     <input type="hidden" name="followUpId" value={item.id} />
                     <input type="hidden" name="contactId" value={item.contact_id} />
                     <input type="hidden" name="messageId" value={item.suggested_message?.id ?? ""} />
-                    <Button type="submit" variant="success" className="w-full" disabled={!item.suggested_message || item.contact.do_not_contact}>
+                    <input type="hidden" name="returnTo" value="/dashboard" />
+                    <Button type="submit" variant="success" className="w-full" disabled={item.contact.do_not_contact}>
                       <MessageCircle className="h-4 w-4" />
                       {item.contact.do_not_contact ? "Opted out" : item.suggested_message?.opened_at ? "Open WhatsApp again" : "Open WhatsApp"}
                     </Button>
                   </form>
-                  <MarkContactedConfirmForm followUpId={item.id} contactId={item.contact_id} size="default" />
+                  <MarkContactedConfirmForm followUpId={item.id} contactId={item.contact_id} returnTo="/dashboard" size="default" />
                 </div>
               </div>
             </div>
