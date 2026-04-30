@@ -1,0 +1,78 @@
+import Link from "next/link";
+import { CheckCircle2, MessageCircle } from "lucide-react";
+import { markFollowUpContactedAction, openSuggestedWhatsappAction } from "@/app/(dashboard)/actions";
+import { InterestPills } from "@/components/app/interest-pills";
+import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
+import { Button } from "@/components/ui/button";
+import type { FollowUpQueueItem } from "@/lib/data-follow-ups";
+import { formatDateTime } from "@/lib/followUp";
+
+export function FollowUpsQueueList({ items }: { items: FollowUpQueueItem[] }) {
+  return (
+    <div className="mt-5 overflow-hidden rounded-lg border">
+      <div className="hidden grid-cols-[1.2fr_1fr_1fr_1.1fr] bg-muted px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground xl:grid">
+        <span>Contact</span>
+        <span>Care path</span>
+        <span>Due / owner</span>
+        <span>Actions</span>
+      </div>
+      <div className="divide-y">
+        {items.map((item) => (
+          <div key={item.id} className="grid gap-4 px-4 py-4 transition hover:bg-amber-50 xl:grid-cols-[1.2fr_1fr_1fr_1.1fr] xl:items-start">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Link href={`/contacts/${item.contact_id}`} className="font-bold underline-offset-4 hover:underline">
+                  {item.contact.full_name}
+                </Link>
+                <UrgencyBadge urgency={item.contact.urgency} />
+                {item.contact.do_not_contact ? <span className="rounded-md bg-slate-200 px-2 py-1 text-xs font-bold text-slate-700">Do not contact</span> : null}
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {item.contact.phone}{item.contact.email ? ` - ${item.contact.email}` : ""}{item.contact.area ? ` - ${item.contact.area}` : ""}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">{item.contact.event_name ?? "Manual contact"}</p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
+                <StatusBadge status={item.status} />
+                <StatusBadge status={item.contact.status} />
+              </div>
+              <InterestPills interests={item.contact.interests} />
+              {item.next_action ? <p className="text-sm leading-6 text-slate-700">{item.next_action}</p> : null}
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold text-slate-700">{formatDateTime(item.due_at)}</p>
+              <p className="mt-1 text-sm text-muted-foreground">Owner: {item.assigned_name ?? "Unassigned"}</p>
+              {item.completed_at ? <p className="mt-1 text-xs text-muted-foreground">Completed: {formatDateTime(item.completed_at)}</p> : null}
+            </div>
+
+            <div className="grid gap-2">
+              <form action={openSuggestedWhatsappAction}>
+                <input type="hidden" name="followUpId" value={item.id} />
+                <input type="hidden" name="contactId" value={item.contact_id} />
+                <input type="hidden" name="messageId" value={item.suggested_message?.id ?? ""} />
+                <Button type="submit" variant="success" size="sm" className="w-full" disabled={!item.suggested_message || item.contact.do_not_contact}>
+                  <MessageCircle className="h-4 w-4" />
+                  {item.contact.do_not_contact ? "Opted out" : item.suggested_message?.opened_at ? "Open again" : "Approve & open WhatsApp"}
+                </Button>
+              </form>
+              <form action={markFollowUpContactedAction}>
+                <input type="hidden" name="followUpId" value={item.id} />
+                <input type="hidden" name="contactId" value={item.contact_id} />
+                <Button type="submit" variant="outline" size="sm" className="w-full" disabled={Boolean(item.completed_at)}>
+                  <CheckCircle2 className="h-4 w-4" />
+                  Mark contacted
+                </Button>
+              </form>
+            </div>
+          </div>
+        ))}
+        {!items.length ? (
+          <p className="p-8 text-center text-sm text-muted-foreground">No follow-ups match this queue view.</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}

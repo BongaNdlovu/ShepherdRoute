@@ -296,4 +296,56 @@ test.describe("workflow helpers", () => {
     expect(dataContacts).toContain("approved_at");
     expect(dataContacts).toContain("opened_at");
   });
+
+  test("follow-up queue route and RPC exist with pagination filters", () => {
+    const followUpsPage = readFileSync("app/(dashboard)/follow-ups/page.tsx", "utf8");
+    const dataFollowUps = readFileSync("lib/data-follow-ups.ts", "utf8");
+    expect(schema).toContain("create or replace function public.search_follow_ups");
+    expect(schema).toContain("limit greatest(1, least(coalesce(p_limit, 25), 100))");
+    expect(dataFollowUps).toContain("getFollowUpsPage");
+    expect(dataFollowUps).toContain("p_due_state");
+    expect(dataFollowUps).toContain("pageSize = Math.min(100");
+    expect(followUpsPage).toContain("FollowUpsQueueList");
+    expect(followUpsPage).toContain("FollowUpsPagination");
+  });
+
+  test("dashboard follow-up card links to dedicated queue", () => {
+    const card = readFileSync("components/app/todays-follow-ups-card.tsx", "utf8");
+    expect(card).toContain("/follow-ups");
+    expect(card).not.toContain("/contacts?status=assigned");
+  });
+
+  test("contacts and event report exports stream CSV instead of building all rows", () => {
+    const contactsExport = readFileSync("app/(dashboard)/contacts/export/route.ts", "utf8");
+    const eventExport = readFileSync("app/(dashboard)/events/[id]/report/export/route.ts", "utf8");
+    const csv = readFileSync("lib/csv.ts", "utf8");
+    expect(csv).toContain("streamCsvResponse");
+    expect(csv).toContain("ReadableStream");
+    expect(contactsExport).toContain("streamCsvResponse");
+    expect(contactsExport).toContain("getContactsPage");
+    expect(contactsExport).not.toContain("getContacts(");
+    expect(eventExport).toContain("streamCsvResponse");
+    expect(eventExport).toContain("getEventReportContactsPage");
+  });
+
+  test("CSV escaping protects spreadsheet formula-like values", () => {
+    const csv = readFileSync("lib/csv.ts", "utf8");
+    expect(csv).toContain("escapeCsvValue");
+    expect(csv).toContain("/^[=+\\-@]/");
+    expect(csv).toContain("text = `'${text}`");
+  });
+
+  test("scale scripts and package commands exist with seed guardrails", () => {
+    const pkg = readFileSync("package.json", "utf8");
+    const common = readFileSync("scripts/scale/common.mjs", "utf8");
+    const seed = readFileSync("scripts/scale/seed.mjs", "utf8");
+    expect(pkg).toContain("scale:seed");
+    expect(pkg).toContain("scale:check");
+    expect(pkg).toContain("scale:cleanup");
+    expect(common).toContain("ALLOW_SCALE_SEED");
+    expect(common).toContain("ALLOW_PRODUCTION_SCALE_SEED");
+    expect(seed).toContain("allowedCounts");
+    expect(seed).toContain("generated_messages");
+    expect(seed).toContain("follow_ups");
+  });
 });

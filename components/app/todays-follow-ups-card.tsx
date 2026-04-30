@@ -17,7 +17,7 @@ export function TodaysFollowUpsCard({ items }: { items: TodayFollowUpItem[] }) {
           <CardDescription>Approve the suggested WhatsApp, open it, then mark the contact as contacted.</CardDescription>
         </div>
         <Button asChild variant="outline" size="sm">
-          <Link href="/contacts?status=assigned">View queue</Link>
+          <Link href="/follow-ups">View queue</Link>
         </Button>
       </CardHeader>
       <CardContent>

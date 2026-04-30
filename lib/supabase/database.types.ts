@@ -644,6 +644,46 @@ export type Database = {
           total_count: number;
         }>;
       };
+      search_follow_ups: {
+        Args: {
+          p_church_id: string;
+          p_q?: string | null;
+          p_status?: Database["public"]["Enums"]["follow_up_status"] | null;
+          p_assigned_to?: string | null;
+          p_unassigned?: boolean;
+          p_due_state?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: Array<{
+          id: string;
+          contact_id: string;
+          assigned_to: string | null;
+          status: Database["public"]["Enums"]["follow_up_status"];
+          channel: Database["public"]["Enums"]["follow_up_channel"];
+          next_action: string | null;
+          notes: string | null;
+          due_at: Timestamp | null;
+          completed_at: Timestamp | null;
+          created_at: Timestamp;
+          contact_full_name: string;
+          contact_phone: string;
+          contact_email: string | null;
+          contact_area: string | null;
+          contact_status: Database["public"]["Enums"]["follow_up_status"];
+          contact_urgency: Database["public"]["Enums"]["urgency_level"];
+          contact_do_not_contact: boolean;
+          event_id: string | null;
+          event_name: string | null;
+          assigned_name: string | null;
+          interests: Database["public"]["Enums"]["interest_tag"][];
+          suggested_message_id: string | null;
+          suggested_message_text: string | null;
+          suggested_wa_link: string | null;
+          suggested_opened_at: Timestamp | null;
+          total_count: number;
+        }>;
+      };
       team_invitation_preview: {
         Args: { p_token: string };
         Returns: Array<{

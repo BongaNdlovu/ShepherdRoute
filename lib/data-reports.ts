@@ -39,6 +39,17 @@ export type EventReportSummary = {
   interest_counts: Record<string, number>;
 };
 
+export type EventReportExportContact = {
+  id: string;
+  full_name: string;
+  phone: string;
+  area: string | null;
+  status: FollowUpStatus;
+  urgency: "low" | "medium" | "high";
+  created_at: string;
+  contact_interests: Array<{ interest: Interest }>;
+};
+
 export type TodayFollowUpItem = {
   id: string;
   contact_id: string;
@@ -303,4 +314,37 @@ export async function getEventReportContacts(churchId: string, id: string) {
   }
 
   return { event, contacts: data ?? [] };
+}
+
+export async function getEventReportExportMeta(churchId: string, id: string) {
+  const supabase = await createClient();
+  const { data: event, error } = await supabase
+    .from("events")
+    .select("id, name")
+    .eq("church_id", churchId)
+    .eq("id", id)
+    .single();
+
+  if (error || !event) {
+    notFound();
+  }
+
+  return event;
+}
+
+export async function getEventReportContactsPage(churchId: string, id: string, offset: number, limit: number) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("contacts")
+    .select("id, full_name, phone, area, status, urgency, created_at, contact_interests(interest)")
+    .eq("church_id", churchId)
+    .eq("event_id", id)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []) as unknown as EventReportExportContact[];
 }

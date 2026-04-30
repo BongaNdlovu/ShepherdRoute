@@ -435,9 +435,17 @@ create index if not exists contact_interests_church_interest_idx on public.conta
 create index if not exists follow_ups_contact_idx on public.follow_ups(contact_id, created_at desc);
 create index if not exists follow_ups_church_due_idx on public.follow_ups(church_id, due_at) where completed_at is null;
 create index if not exists follow_ups_church_status_idx on public.follow_ups(church_id, status, completed_at);
+create index if not exists follow_ups_church_queue_idx
+on public.follow_ups(church_id, completed_at, due_at, status, assigned_to);
+create index if not exists follow_ups_church_assigned_due_idx
+on public.follow_ups(church_id, assigned_to, due_at)
+where completed_at is null;
 create index if not exists prayer_requests_contact_idx on public.prayer_requests(contact_id, created_at desc);
 create index if not exists prayer_requests_visibility_idx on public.prayer_requests(church_id, visibility);
 create index if not exists generated_messages_contact_idx on public.generated_messages(contact_id, created_at desc);
+create index if not exists generated_messages_suggested_queue_idx
+on public.generated_messages(church_id, contact_id, created_at desc)
+where purpose = 'suggested_whatsapp';
 create unique index if not exists generated_messages_one_suggestion_per_contact_idx
 on public.generated_messages(contact_id)
 where purpose = 'suggested_whatsapp';
@@ -1875,6 +1883,188 @@ grant execute on function public.search_contacts(
   public.interest_tag,
   uuid,
   boolean,
+  integer,
+  integer
+) to authenticated;
+
+drop function if exists public.search_follow_ups(
+  uuid,
+  text,
+  public.follow_up_status,
+  uuid,
+  boolean,
+  text,
+  integer,
+  integer
+);
+
+create or replace function public.search_follow_ups(
+  p_church_id uuid,
+  p_q text default null,
+  p_status public.follow_up_status default null,
+  p_assigned_to uuid default null,
+  p_unassigned boolean default false,
+  p_due_state text default 'open_due',
+  p_limit integer default 25,
+  p_offset integer default 0
+)
+returns table (
+  id uuid,
+  contact_id uuid,
+  assigned_to uuid,
+  status public.follow_up_status,
+  channel public.follow_up_channel,
+  next_action text,
+  notes text,
+  due_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz,
+  contact_full_name text,
+  contact_phone text,
+  contact_email text,
+  contact_area text,
+  contact_status public.follow_up_status,
+  contact_urgency public.urgency_level,
+  contact_do_not_contact boolean,
+  event_id uuid,
+  event_name text,
+  assigned_name text,
+  interests public.interest_tag[],
+  suggested_message_id uuid,
+  suggested_message_text text,
+  suggested_wa_link text,
+  suggested_opened_at timestamptz,
+  total_count bigint
+)
+language sql
+security invoker
+set search_path = public
+as $$
+  with filtered as (
+    select
+      follow_ups.id,
+      follow_ups.contact_id,
+      follow_ups.assigned_to,
+      follow_ups.status,
+      follow_ups.channel,
+      follow_ups.next_action,
+      follow_ups.notes,
+      follow_ups.due_at,
+      follow_ups.completed_at,
+      follow_ups.created_at,
+      contacts.full_name as contact_full_name,
+      contacts.phone as contact_phone,
+      contacts.email as contact_email,
+      contacts.area as contact_area,
+      contacts.status as contact_status,
+      contacts.urgency as contact_urgency,
+      contacts.do_not_contact as contact_do_not_contact,
+      events.id as event_id,
+      events.name as event_name,
+      team_members.display_name as assigned_name,
+      generated_messages.id as suggested_message_id,
+      generated_messages.message_text as suggested_message_text,
+      generated_messages.wa_link as suggested_wa_link,
+      generated_messages.opened_at as suggested_opened_at,
+      count(*) over() as total_count
+    from public.follow_ups
+    join public.contacts on contacts.id = follow_ups.contact_id
+    left join public.events on events.id = contacts.event_id
+    left join public.team_members on team_members.id = follow_ups.assigned_to
+    left join public.generated_messages on generated_messages.contact_id = contacts.id
+      and generated_messages.church_id = follow_ups.church_id
+      and generated_messages.purpose = 'suggested_whatsapp'
+    where follow_ups.church_id = p_church_id
+      and contacts.church_id = p_church_id
+      and contacts.deleted_at is null
+      and contacts.archived_at is null
+      and (
+        case coalesce(nullif(p_due_state, ''), 'open_due')
+          when 'all' then true
+          when 'overdue' then follow_ups.completed_at is null and follow_ups.due_at < now()
+          when 'due_today' then follow_ups.completed_at is null and follow_ups.due_at >= date_trunc('day', now()) and follow_ups.due_at < date_trunc('day', now()) + interval '1 day'
+          when 'upcoming' then follow_ups.completed_at is null and follow_ups.due_at >= date_trunc('day', now()) + interval '1 day'
+          when 'completed' then follow_ups.completed_at is not null
+          else follow_ups.completed_at is null and follow_ups.due_at < date_trunc('day', now()) + interval '1 day'
+        end
+      )
+      and (p_status is null or follow_ups.status = p_status)
+      and (
+        case
+          when p_unassigned then follow_ups.assigned_to is null
+          when p_assigned_to is not null then follow_ups.assigned_to = p_assigned_to
+          else true
+        end
+      )
+      and (
+        nullif(trim(coalesce(p_q, '')), '') is null
+        or contacts.full_name ilike '%' || trim(p_q) || '%'
+        or contacts.phone ilike '%' || trim(p_q) || '%'
+        or contacts.email ilike '%' || trim(p_q) || '%'
+        or contacts.area ilike '%' || trim(p_q) || '%'
+        or follow_ups.next_action ilike '%' || trim(p_q) || '%'
+        or follow_ups.notes ilike '%' || trim(p_q) || '%'
+        or events.name ilike '%' || trim(p_q) || '%'
+      )
+    order by follow_ups.due_at asc nulls last, follow_ups.created_at desc
+    limit greatest(1, least(coalesce(p_limit, 25), 100))
+    offset greatest(0, coalesce(p_offset, 0))
+  )
+  select
+    filtered.id,
+    filtered.contact_id,
+    filtered.assigned_to,
+    filtered.status,
+    filtered.channel,
+    filtered.next_action,
+    filtered.notes,
+    filtered.due_at,
+    filtered.completed_at,
+    filtered.created_at,
+    filtered.contact_full_name,
+    filtered.contact_phone,
+    filtered.contact_email,
+    filtered.contact_area,
+    filtered.contact_status,
+    filtered.contact_urgency,
+    filtered.contact_do_not_contact,
+    filtered.event_id,
+    filtered.event_name,
+    filtered.assigned_name,
+    coalesce(
+      (
+        select array_agg(contact_interests.interest order by contact_interests.interest::text)
+        from public.contact_interests
+        where contact_interests.contact_id = filtered.contact_id
+      ),
+      array[]::public.interest_tag[]
+    ) as interests,
+    filtered.suggested_message_id,
+    filtered.suggested_message_text,
+    filtered.suggested_wa_link,
+    filtered.suggested_opened_at,
+    filtered.total_count
+  from filtered;
+$$;
+
+revoke all on function public.search_follow_ups(
+  uuid,
+  text,
+  public.follow_up_status,
+  uuid,
+  boolean,
+  text,
+  integer,
+  integer
+) from public, anon, authenticated;
+
+grant execute on function public.search_follow_ups(
+  uuid,
+  text,
+  public.follow_up_status,
+  uuid,
+  boolean,
+  text,
   integer,
   integer
 ) to authenticated;
