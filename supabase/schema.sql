@@ -143,9 +143,15 @@ create table if not exists public.profiles (
   full_name text not null,
   email text,
   avatar_url text,
+  phone text,
+  preferences jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table if exists public.profiles
+  add column if not exists phone text,
+  add column if not exists preferences jsonb not null default '{}'::jsonb;
 
 create table if not exists public.church_memberships (
   id uuid primary key default gen_random_uuid(),
@@ -1093,6 +1099,34 @@ with check (
     join public.app_admins on app_admins.user_id = church_memberships.user_id
     where church_memberships.id = team_members.membership_id
       and app_admins.is_protected_owner = true
+  )
+);
+
+drop policy if exists "Users can update own linked team profile" on public.team_members;
+create policy "Users can update own linked team profile"
+on public.team_members for update
+using (
+  exists (
+    select 1
+    from public.church_memberships
+    where church_memberships.id = team_members.membership_id
+      and church_memberships.user_id = auth.uid()
+      and church_memberships.status = 'active'
+      and church_memberships.church_id = team_members.church_id
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.church_memberships
+    join public.profiles on profiles.id = church_memberships.user_id
+    where church_memberships.id = team_members.membership_id
+      and church_memberships.user_id = auth.uid()
+      and church_memberships.status = 'active'
+      and church_memberships.church_id = team_members.church_id
+      and team_members.role = church_memberships.role
+      and team_members.email is not distinct from profiles.email
+      and team_members.is_active = true
   )
 );
 

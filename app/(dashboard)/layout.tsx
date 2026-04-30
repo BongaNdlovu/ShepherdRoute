@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, Church, ClipboardList, LogOut, QrCode, Settings2, ShieldCheck, UserCog, UsersRound } from "lucide-react";
+import { BarChart3, Church, ClipboardList, LogOut, QrCode, Settings2, ShieldCheck, UserCog, UserRound, UsersRound } from "lucide-react";
 import { logoutAction } from "@/app/(auth)/actions";
 import { switchChurchAction } from "@/app/(dashboard)/actions";
 import { BrandLogo } from "@/components/app/brand-logo";
@@ -13,6 +13,8 @@ const navItems: Array<{ href: string; label: string; icon: typeof Church }> = [
   { href: "/contacts", label: "Contacts", icon: UsersRound },
   { href: "/follow-ups", label: "Follow-ups", icon: ClipboardList },
   { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/profile", label: "Profile", icon: UserRound },
+  { href: "/settings", label: "Settings", icon: Settings2 },
   { href: "/settings/team", label: "Team", icon: UserCog },
   { href: "/settings/health", label: "Setup", icon: Settings2 }
 ];

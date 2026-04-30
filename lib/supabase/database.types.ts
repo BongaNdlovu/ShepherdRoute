@@ -438,6 +438,8 @@ export type Database = {
           full_name: string;
           email: string | null;
           avatar_url: string | null;
+          phone: string | null;
+          preferences: Json;
           created_at: Timestamp;
           updated_at: Timestamp;
         };
@@ -446,6 +448,8 @@ export type Database = {
           full_name: string;
           email?: string | null;
           avatar_url?: string | null;
+          phone?: string | null;
+          preferences?: Json;
           created_at?: Timestamp;
           updated_at?: Timestamp;
         };

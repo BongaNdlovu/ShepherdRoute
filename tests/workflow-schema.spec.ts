@@ -348,4 +348,52 @@ test.describe("workflow helpers", () => {
     expect(seed).toContain("generated_messages");
     expect(seed).toContain("follow_ups");
   });
+
+  test("profile and settings schema supports user phone and preferences", () => {
+    expect(schema).toContain("add column if not exists phone text");
+    expect(schema).toContain("add column if not exists preferences jsonb not null default '{}'::jsonb");
+    expect(schema).toContain("Users can update own profile");
+  });
+
+  test("profile page updates only the logged-in user's profile", () => {
+    const profilePage = readFileSync("app/(dashboard)/profile/page.tsx", "utf8");
+    const profileActions = readFileSync("app/(dashboard)/_actions/profile.ts", "utf8");
+    expect(profilePage).toContain("updateProfileAction");
+    expect(profilePage).toContain("readOnly");
+    expect(profileActions).toContain(".eq(\"id\", context.userId)");
+    expect(profileActions).toContain("profiles");
+    expect(profileActions).toContain("team_members");
+  });
+
+  test("settings page stores simple profile preferences without overbuilding notifications", () => {
+    const settingsPage = readFileSync("app/(dashboard)/settings/page.tsx", "utf8");
+    const profileActions = readFileSync("app/(dashboard)/_actions/profile.ts", "utf8");
+    expect(settingsPage).toContain("updateAccountSettingsAction");
+    expect(settingsPage).toContain("Notification delivery can be connected in a later release");
+    expect(profileActions).toContain("preferences: parsed.data");
+  });
+
+  test("dashboard navigation exposes profile and settings pages", () => {
+    const layout = readFileSync("app/(dashboard)/layout.tsx", "utf8");
+    expect(layout).toContain("/profile");
+    expect(layout).toContain("/settings");
+  });
+
+  test("schema allows non-leaders to update own linked team profile with narrow constraints", () => {
+    expect(schema).toContain('drop policy if exists "Users can update own linked team profile" on public.team_members');
+    expect(schema).toContain('create policy "Users can update own linked team profile"');
+    expect(schema).toContain("church_memberships.user_id = auth.uid()");
+    expect(schema).toContain("church_memberships.status = 'active'");
+    expect(schema).toContain("church_memberships.church_id = team_members.church_id");
+    expect(schema).toContain("team_members.role = church_memberships.role");
+    expect(schema).toContain("team_members.email is not distinct from profiles.email");
+    expect(schema).toContain("team_members.is_active = true");
+  });
+
+  test("profile action surfaces team sync failures instead of silent success", () => {
+    const profileActions = readFileSync("app/(dashboard)/_actions/profile.ts", "utf8");
+    expect(profileActions).toContain("error: teamError");
+    expect(profileActions).toContain("Profile saved, but team sync failed");
+    expect(profileActions).toContain("team_members");
+  });
 });
