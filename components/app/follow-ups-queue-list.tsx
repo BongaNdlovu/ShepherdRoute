@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { CheckCircle2, MessageCircle } from "lucide-react";
-import { markFollowUpContactedAction, openSuggestedWhatsappAction } from "@/app/(dashboard)/actions";
+import { MessageCircle } from "lucide-react";
+import { openSuggestedWhatsappAction } from "@/app/(dashboard)/actions";
+import { MarkContactedConfirmForm } from "@/components/app/mark-contacted-confirm-form";
 import { InterestPills } from "@/components/app/interest-pills";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
@@ -68,17 +69,14 @@ export function FollowUpsQueueList({
                 <input type="hidden" name="messageId" value={item.suggested_message?.id ?? ""} />
                 <Button type="submit" variant="success" size="sm" className="w-full" disabled={!item.suggested_message || item.contact.do_not_contact}>
                   <MessageCircle className="h-4 w-4" />
-                  {item.contact.do_not_contact ? "Opted out" : item.suggested_message?.opened_at ? "Open again" : "Approve & open WhatsApp"}
+                  {item.contact.do_not_contact ? "Opted out" : item.suggested_message?.opened_at ? "Open WhatsApp again" : "Open WhatsApp"}
                 </Button>
               </form>
-              <form action={markFollowUpContactedAction}>
-                <input type="hidden" name="followUpId" value={item.id} />
-                <input type="hidden" name="contactId" value={item.contact_id} />
-                <Button type="submit" variant="outline" size="sm" className="w-full" disabled={Boolean(item.completed_at)}>
-                  <CheckCircle2 className="h-4 w-4" />
-                  Mark contacted
-                </Button>
-              </form>
+              <MarkContactedConfirmForm
+                followUpId={item.id}
+                contactId={item.contact_id}
+                disabled={Boolean(item.completed_at)}
+              />
             </div>
           </div>
         ))}

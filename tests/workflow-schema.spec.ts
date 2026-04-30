@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { defaultDueDate } from "@/lib/followUp";
 import { canChangeChurchRole, canInviteRole, canManageMembershipStatus, canManageTeam } from "@/lib/permissions";
-import { generateMessage } from "@/lib/whatsapp";
+import { createWhatsappLink, generateMessage, normalizeWhatsappPhone } from "@/lib/whatsapp";
 
 const schema = readFileSync("supabase/schema.sql", "utf8");
 const dashboardLayout = readFileSync("app/(dashboard)/layout.tsx", "utf8");
@@ -258,17 +258,19 @@ test.describe("workflow helpers", () => {
     expect(dashboardPage).toContain("todayFollowUps");
     const todaysFollowUpsCard = readFileSync("components/app/todays-follow-ups-card.tsx", "utf8");
     expect(todaysFollowUpsCard).toContain("openSuggestedWhatsappAction");
-    expect(todaysFollowUpsCard).toContain("markFollowUpContactedAction");
+    expect(todaysFollowUpsCard).toContain("MarkContactedConfirmForm");
   });
 
-  test("opening suggested WhatsApp validates follow-up and updates approval timestamps", () => {
+  test("opening suggested WhatsApp validates follow-up and records opening without approval", () => {
     const messagesActions = readFileSync("app/(dashboard)/_actions/messages.ts", "utf8");
+
     expect(messagesActions).toContain("openSuggestedWhatsappAction");
     expect(messagesActions).toContain(".from(\"follow_ups\")");
     expect(messagesActions).toContain(".eq(\"purpose\", \"suggested_whatsapp\")");
-    expect(messagesActions).toContain("approved_at: now");
+    expect(messagesActions).toContain("createWhatsappLink");
     expect(messagesActions).toContain("opened_at: now");
-    expect(messagesActions).toContain("updateError");
+    expect(messagesActions).not.toContain("approved_at: now");
+    expect(messagesActions).toContain("Add%20a%20valid%20WhatsApp%20number");
   });
 
   test("mark contacted action validates open follow-up before updating contact", () => {
@@ -277,6 +279,35 @@ test.describe("workflow helpers", () => {
     expect(contactsActions).toContain("Open%20follow-up%20task%20not%20found");
     expect(contactsActions).toContain("status: \"contacted\"");
     expect(contactsActions).toContain("completed_at: now");
+  });
+
+  test("follow-up WhatsApp buttons do not present opening WhatsApp as approval", () => {
+    const queueList = readFileSync("components/app/follow-ups-queue-list.tsx", "utf8");
+    const todaysCard = readFileSync("components/app/todays-follow-ups-card.tsx", "utf8");
+
+    expect(queueList).not.toContain("Approve & open WhatsApp");
+    expect(todaysCard).not.toContain("Approve & open WhatsApp");
+    expect(queueList).toContain("Open WhatsApp");
+    expect(todaysCard).toContain("Open WhatsApp");
+  });
+
+  test("mark contacted requires explicit confirmation in the UI", () => {
+    const confirmForm = readFileSync("components/app/mark-contacted-confirm-form.tsx", "utf8");
+
+    expect(confirmForm).toContain("window.confirm");
+    expect(confirmForm).toContain("Only continue if you actually contacted");
+    expect(confirmForm).toContain("markFollowUpContactedAction");
+  });
+
+  test("WhatsApp phone helper rejects invalid numbers", () => {
+    expect(normalizeWhatsappPhone("abc")).toBeNull();
+    expect(normalizeWhatsappPhone("123")).toBeNull();
+    expect(createWhatsappLink("abc", "Hello")).toBeNull();
+  });
+
+  test("WhatsApp phone helper normalizes South African local numbers", () => {
+    expect(normalizeWhatsappPhone("082 000 0000")).toBe("27820000000");
+    expect(createWhatsappLink("082 000 0000", "Hello")).toContain("https://wa.me/27820000000");
   });
 
   test("new actions are exported from dashboard actions barrel", () => {

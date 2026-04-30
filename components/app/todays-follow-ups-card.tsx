@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { CheckCircle2, MessageCircle } from "lucide-react";
-import { markFollowUpContactedAction, openSuggestedWhatsappAction } from "@/app/(dashboard)/actions";
+import { MessageCircle } from "lucide-react";
+import { openSuggestedWhatsappAction } from "@/app/(dashboard)/actions";
+import { MarkContactedConfirmForm } from "@/components/app/mark-contacted-confirm-form";
 import { InterestPills } from "@/components/app/interest-pills";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ export function TodaysFollowUpsCard({ items }: { items: TodayFollowUpItem[] }) {
       <CardHeader className="flex-row items-start justify-between gap-3">
         <div>
           <CardTitle>{"Today's Follow-Ups"}</CardTitle>
-          <CardDescription>Approve the suggested WhatsApp, open it, then mark the contact as contacted.</CardDescription>
+          <CardDescription>Open the suggested WhatsApp message, then mark contacted only after you actually reach the person.</CardDescription>
         </div>
         <Button asChild variant="outline" size="sm">
           <Link href="/follow-ups">View queue</Link>
@@ -54,17 +55,10 @@ export function TodaysFollowUpsCard({ items }: { items: TodayFollowUpItem[] }) {
                     <input type="hidden" name="messageId" value={item.suggested_message?.id ?? ""} />
                     <Button type="submit" variant="success" className="w-full" disabled={!item.suggested_message || item.contact.do_not_contact}>
                       <MessageCircle className="h-4 w-4" />
-                      {item.contact.do_not_contact ? "Opted out" : item.suggested_message?.opened_at ? "Open again" : "Approve & open WhatsApp"}
+                      {item.contact.do_not_contact ? "Opted out" : item.suggested_message?.opened_at ? "Open WhatsApp again" : "Open WhatsApp"}
                     </Button>
                   </form>
-                  <form action={markFollowUpContactedAction}>
-                    <input type="hidden" name="followUpId" value={item.id} />
-                    <input type="hidden" name="contactId" value={item.contact_id} />
-                    <Button type="submit" variant="outline" className="w-full">
-                      <CheckCircle2 className="h-4 w-4" />
-                      Mark contacted
-                    </Button>
-                  </form>
+                  <MarkContactedConfirmForm followUpId={item.id} contactId={item.contact_id} size="default" />
                 </div>
               </div>
             </div>

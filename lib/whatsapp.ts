@@ -51,14 +51,40 @@ export function generateMessage(contact: MessageContact) {
   return `Good day ${firstName}, thank you for visiting ${churchName}${eventLine}. We are grateful you connected with us. Would it be okay if one of our team members follows up with you this week?`;
 }
 
-export function waLink(phone: string, message: string) {
-  let digits = phone.replace(/[^0-9]/g, "");
+export function normalizeWhatsappPhone(phone: string | null | undefined) {
+  const digits = String(phone ?? "").replace(/[^0-9]/g, "");
 
-  if (digits.startsWith("0")) {
-    digits = `27${digits.slice(1)}`;
+  if (!digits) {
+    return null;
   }
 
-  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+  const normalized = digits.startsWith("0") ? `27${digits.slice(1)}` : digits;
+
+  if (normalized.length < 8 || normalized.length > 15) {
+    return null;
+  }
+
+  return normalized;
+}
+
+export function createWhatsappLink(phone: string | null | undefined, message: string) {
+  const normalizedPhone = normalizeWhatsappPhone(phone);
+
+  if (!normalizedPhone) {
+    return null;
+  }
+
+  return `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`;
+}
+
+export function waLink(phone: string, message: string) {
+  const link = createWhatsappLink(phone, message);
+
+  if (!link) {
+    throw new Error("Invalid WhatsApp phone number.");
+  }
+
+  return link;
 }
 
 function chooseTemplateMessage(

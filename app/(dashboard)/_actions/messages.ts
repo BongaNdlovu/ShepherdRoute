@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getChurchContext } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
-import { waLink } from "@/lib/whatsapp";
+import { createWhatsappLink } from "@/lib/whatsapp";
 
 const generatedMessageSchema = z.object({
   contactId: z.string().uuid(),
@@ -31,7 +31,11 @@ export async function saveGeneratedMessageAction(formData: FormData) {
     redirect("/contacts?error=Could%20not%20open%20WhatsApp%20message.");
   }
 
-  const link = waLink(parsed.data.phone, parsed.data.message);
+  const link = createWhatsappLink(parsed.data.phone, parsed.data.message);
+
+  if (!link) {
+    redirect("/contacts?error=Add%20a%20valid%20WhatsApp%20phone%20number%20before%20opening%20WhatsApp.");
+  }
   const supabase = await createClient();
   await supabase.from("generated_messages").insert({
     church_id: context.churchId,
@@ -73,7 +77,7 @@ export async function openSuggestedWhatsappAction(formData: FormData) {
 
   const { data: contact } = await supabase
     .from("contacts")
-    .select("id, do_not_contact")
+    .select("id, phone, whatsapp_number, do_not_contact")
     .eq("church_id", context.churchId)
     .eq("id", parsed.data.contactId)
     .maybeSingle();
@@ -84,21 +88,27 @@ export async function openSuggestedWhatsappAction(formData: FormData) {
 
   const { data: message, error } = await supabase
     .from("generated_messages")
-    .select("id, wa_link")
+    .select("id, message_text, wa_link")
     .eq("church_id", context.churchId)
     .eq("contact_id", parsed.data.contactId)
     .eq("id", parsed.data.messageId)
     .eq("purpose", "suggested_whatsapp")
     .maybeSingle();
 
-  if (error || !message?.wa_link) {
-    redirect(`/contacts/${parsed.data.contactId}?error=Suggested%20WhatsApp%20message%20not%20found.`);
+  if (error || !message) {
+    redirect(`/follow-ups?error=Suggested%20WhatsApp%20message%20not%20found.`);
+  }
+
+  const link = createWhatsappLink(contact.whatsapp_number ?? contact.phone, message.message_text);
+
+  if (!link) {
+    redirect("/follow-ups?error=Add%20a%20valid%20WhatsApp%20number%20before%20opening%20WhatsApp.");
   }
 
   const now = new Date().toISOString();
   const { error: updateError } = await supabase
     .from("generated_messages")
-    .update({ approved_at: now, opened_at: now })
+    .update({ opened_at: now, wa_link: link })
     .eq("church_id", context.churchId)
     .eq("contact_id", parsed.data.contactId)
     .eq("id", parsed.data.messageId)
@@ -109,6 +119,7 @@ export async function openSuggestedWhatsappAction(formData: FormData) {
   }
 
   revalidatePath("/dashboard");
+  revalidatePath("/follow-ups");
   revalidatePath(`/contacts/${parsed.data.contactId}`);
-  redirect(message.wa_link);
+  redirect(link);
 }
