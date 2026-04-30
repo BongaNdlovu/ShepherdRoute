@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Church, LogIn, UserPlus } from "lucide-react";
 import { acceptTeamInvitationAction } from "@/app/invite/[token]/actions";
+import { BrandLogo } from "@/components/app/brand-logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,9 +42,7 @@ export default async function InvitePage({
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Church className="h-6 w-6" />
-          </div>
+          <BrandLogo className="mx-auto mb-3 h-20 w-auto object-contain" priority />
           <CardTitle className="text-2xl">Join {preview.church_name}</CardTitle>
           <CardDescription>{preview.display_name} has been invited to ShepherdRoute.</CardDescription>
         </CardHeader>

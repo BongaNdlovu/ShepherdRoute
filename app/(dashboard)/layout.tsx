@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { BarChart3, Church, ClipboardList, LogOut, QrCode, Settings2, ShieldCheck, UserCog, UsersRound } from "lucide-react";
+import { BarChart3, Church, LogOut, QrCode, Settings2, ShieldCheck, UserCog, UsersRound } from "lucide-react";
 import { logoutAction } from "@/app/(auth)/actions";
 import { switchChurchAction } from "@/app/(dashboard)/actions";
+import { BrandLogo } from "@/components/app/brand-logo";
 import { Button } from "@/components/ui/button";
 import { roleLabels } from "@/lib/constants";
 import { getChurchContext } from "@/lib/data";
@@ -23,8 +24,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <div className="mx-auto flex max-w-7xl flex-col gap-4 p-3 md:flex-row md:p-6">
         <aside className="flex flex-col rounded-lg border bg-white p-4 shadow-sm md:sticky md:top-6 md:h-[calc(100vh-3rem)] md:w-72 md:overflow-hidden">
           <Link href="/dashboard" className="flex items-center gap-3 rounded-lg bg-primary p-4 text-primary-foreground">
-            <div className="rounded-md bg-white/10 p-3">
-              <ClipboardList className="h-6 w-6" />
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-white p-1.5">
+              <BrandLogo className="h-full w-full object-contain" priority />
             </div>
             <div>
               <p className="text-xs text-white/60">ShepherdRoute</p>

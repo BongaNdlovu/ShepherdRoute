@@ -1,7 +1,8 @@
-const CACHE_NAME = "shepherdroute-v1";
+const CACHE_NAME = "shepherdroute-v2";
 const STATIC_ASSETS = [
   "/login",
   "/manifest.webmanifest",
+  "/shepherd-logo.svg",
   "/icon.svg",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
@@ -32,6 +33,7 @@ self.addEventListener("fetch", (event) => {
   const isStaticAsset =
     url.pathname.startsWith("/_next/static/") ||
     url.pathname === "/manifest.webmanifest" ||
+    url.pathname === "/shepherd-logo.svg" ||
     url.pathname === "/icon.svg" ||
     url.pathname.startsWith("/icons/") ||
     CACHEABLE_DESTINATIONS.has(event.request.destination);
