@@ -10,12 +10,15 @@ export const metadata: Metadata = {
   description: "The follow-up pathway for churches that care.",
   icons: {
     icon: [
+      { url: "/brand-favicon.png?v=2", sizes: "32x32", type: "image/png" },
+      { url: "/favicon.ico?v=2", sizes: "32x32" },
+      { url: "/favicon.png?v=2", sizes: "32x32", type: "image/png" },
       { url: "/shepherd-logo.svg", type: "image/svg+xml" },
       { url: "/icon.svg", type: "image/svg+xml" },
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" }
     ],
-    shortcut: "/shepherd-logo.svg",
+    shortcut: "/favicon.ico?v=2",
     apple: "/icons/apple-touch-icon.png"
   },
   manifest: "/manifest.webmanifest",
