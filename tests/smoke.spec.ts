@@ -18,7 +18,7 @@ test("public auth pages load", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible();
 
   await page.goto("/signup");
-  await expect(page.getByRole("heading", { name: /start shepardroute/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /start shepherdroute/i })).toBeVisible();
   await expect(page.getByLabel("Signup code")).toBeVisible();
 });
 

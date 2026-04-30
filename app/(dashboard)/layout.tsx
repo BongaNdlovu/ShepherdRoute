@@ -27,7 +27,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <ClipboardList className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-xs text-white/60">ShepardRoute</p>
+              <p className="text-xs text-white/60">ShepherdRoute</p>
               <h1 className="text-base font-bold leading-tight">{context.churchName}</h1>
             </div>
           </Link>
@@ -102,7 +102,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <main className="min-w-0 flex-1">
           {children}
           <footer className="mt-6 flex flex-col gap-2 rounded-lg border bg-white p-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-            <p>Copyright (c) {new Date().getFullYear()} ShepardRoute. All rights reserved.</p>
+            <p>Copyright (c) {new Date().getFullYear()} ShepherdRoute. All rights reserved.</p>
             <div className="flex gap-3">
               <Link href="/privacy" className="font-semibold underline-offset-4 hover:underline">Privacy notice</Link>
               <Link href="/copyright" className="font-semibold underline-offset-4 hover:underline">Copyright notice</Link>

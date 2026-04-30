@@ -1,8 +1,8 @@
-# ShepardRoute
+# ShepherdRoute
 
 The follow-up pathway for churches that care.
 
-ShepardRoute is a production-ready MVP for church visitor capture and follow-up. Churches create QR-code events for services, health expos, prophecy seminars, Bible studies, cooking classes, and youth programs. Visitors submit a public form with consent, and the church team tracks assignments, statuses, reports, and WhatsApp follow-up.
+ShepherdRoute is a production-ready MVP for church visitor capture and follow-up. Churches create QR-code events for services, health expos, prophecy seminars, Bible studies, cooking classes, and youth programs. Visitors submit a public form with consent, and the church team tracks assignments, statuses, reports, and WhatsApp follow-up.
 
 ## What The App Includes
 
@@ -52,7 +52,7 @@ Open `http://localhost:3000`.
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SHEPARDROUTE_SIGNUP_CODE=choose-a-long-private-code
+SHEPHERDROUTE_SIGNUP_CODE=choose-a-long-private-code
 ```
 
 7. In Authentication settings, add these redirect URLs:
@@ -67,13 +67,13 @@ For local testing, open the app at `http://localhost:3000/login`. Avoid switchin
 
 The signup flow stores `church_name` and `full_name` in Supabase Auth metadata. The database trigger creates the church workspace and admin profile automatically.
 
-Normal new-church signup requires `SHEPARDROUTE_SIGNUP_CODE`. Team invitation signups do not require this code because invite links are already token-protected and tied to the invited email address.
+Normal new-church signup requires `SHEPHERDROUTE_SIGNUP_CODE`. Team invitation signups do not require this code because invite links are already token-protected and tied to the invited email address.
 
 If you tried signing up before running the SQL, run the SQL now. It includes a backfill block that creates missing church profiles for existing auth users.
 
 ## Product Owner Admin
 
-After you sign up with your own email, you can make that account a ShepardRoute owner admin.
+After you sign up with your own email, you can make that account a ShepherdRoute owner admin.
 
 Open Supabase SQL Editor and run `supabase/make-owner.sql`, replacing `your-email@example.com` with your signup email:
 
@@ -99,7 +99,7 @@ https://wa.me/27712345678?text=Your%20message
 
 When a team member clicks **Open in WhatsApp**, the browser opens WhatsApp Web or the WhatsApp mobile app with a pre-filled message. The user still reviews and sends the message manually, which is safer for consent and pastoral tone.
 
-For automatic messaging later, ShepardRoute would need:
+For automatic messaging later, ShepherdRoute would need:
 
 - A Meta Business account
 - A verified WhatsApp Business phone number

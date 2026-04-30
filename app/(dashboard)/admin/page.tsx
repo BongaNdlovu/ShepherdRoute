@@ -40,7 +40,7 @@ export default async function OwnerAdminPage({
   return (
     <section className="space-y-4">
       <header className="rounded-lg border bg-white p-5 shadow-sm">
-        <h2 className="text-2xl font-black tracking-tight">ShepardRoute owner admin</h2>
+        <h2 className="text-2xl font-black tracking-tight">ShepherdRoute owner admin</h2>
         <p className="mt-1 text-sm text-muted-foreground">SaaS-level workspace and account controls without exposing prayer request contents.</p>
       </header>
 

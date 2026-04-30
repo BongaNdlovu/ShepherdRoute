@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ShepardRoute icon">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ShepherdRoute icon">
   <rect width="512" height="512" rx="108" fill="#111827"/>
   <path d="M256 84v56M198 140h116M146 206l110-62 110 62M166 206v194h180V206" fill="none" stroke="#fbbf24" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M226 400v-78a30 30 0 0 1 60 0v78" fill="none" stroke="#ffffff" stroke-width="28" stroke-linecap="round"/>

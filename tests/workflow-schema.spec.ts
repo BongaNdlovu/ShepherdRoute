@@ -51,8 +51,8 @@ test.describe("accountability and privacy workflow schema", () => {
     expect(schema).toContain("owner_update_membership_status");
     expect(schema).toContain("owner_update_membership_role");
     expect(schema).toContain("if not private.is_app_owner() then");
-    expect(schema).toContain("Only ShepardRoute app owners can update account access.");
-    expect(schema).toContain("Only ShepardRoute app owners can update church roles.");
+    expect(schema).toContain("Only ShepherdRoute app owners can update account access.");
+    expect(schema).toContain("Only ShepherdRoute app owners can update church roles.");
     expect(schema).toContain("Protected owner access cannot be deactivated from the app.");
     expect(schema).toContain("Every church must keep at least one active admin or pastor.");
     expect(schema).toContain("membership.status_changed");

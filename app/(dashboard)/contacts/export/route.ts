@@ -38,7 +38,7 @@ export async function GET(request: Request) {
   });
 
   return csvResponse(
-    "shepardroute-contacts.csv",
+    "shepherdroute-contacts.csv",
     toCsv(
       ["Name", "Phone", "Email", "Area", "Language", "Event", "Interests", "Status", "Urgency", "Assigned To", "Do Not Contact", "Journey Match", "Best Time", "Created At"],
       rows

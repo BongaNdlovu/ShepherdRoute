@@ -25,20 +25,20 @@ Set these environment variables in Vercel for Preview and Production:
 NEXT_PUBLIC_SITE_URL
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
-SHEPARDROUTE_SIGNUP_CODE
+SHEPHERDROUTE_SIGNUP_CODE
 ```
 
 Use the production domain for `NEXT_PUBLIC_SITE_URL`, for example:
 
 ```text
-https://shepardroute.com
+https://shepherdroute.com
 ```
 
-`SHEPARDROUTE_SIGNUP_CODE` is server-only. Do not prefix it with `NEXT_PUBLIC_`. Rotate it in Vercel if it is shared too widely.
+`SHEPHERDROUTE_SIGNUP_CODE` is server-only. Do not prefix it with `NEXT_PUBLIC_`. Rotate it in Vercel if it is shared too widely.
 
 In Supabase Auth URL settings, add the Vercel production domain and preview domain pattern you use.
 
-After Vercel redeploys, sign in and open **Setup** from the ShepardRoute sidebar. The health page checks environment variables, Supabase Auth, church membership rows, the contacts search RPC, and the public event view.
+After Vercel redeploys, sign in and open **Setup** from the ShepherdRoute sidebar. The health page checks environment variables, Supabase Auth, church membership rows, the contacts search RPC, and the public event view.
 
 ## Logs
 

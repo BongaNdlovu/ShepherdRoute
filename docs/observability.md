@@ -1,11 +1,11 @@
-# ShepardRoute Observability
+# ShepherdRoute Observability
 
 Version 1 uses Vercel and Supabase logs as the source of truth.
 
 ## Vercel
 
-- Open **Vercel > ShepardRoute > Deployments > latest deployment > Runtime Logs**.
-- Match user-facing error digests from ShepardRoute error screens to server logs.
+- Open **Vercel > ShepherdRoute > Deployments > latest deployment > Runtime Logs**.
+- Match user-facing error digests from ShepherdRoute error screens to server logs.
 - Confirm environment variables after every production deployment:
   - `NEXT_PUBLIC_SITE_URL`
   - `NEXT_PUBLIC_SUPABASE_URL`

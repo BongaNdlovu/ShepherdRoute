@@ -4,8 +4,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "ShepardRoute",
-    template: "%s | ShepardRoute"
+    default: "ShepherdRoute",
+    template: "%s | ShepherdRoute"
   },
   description: "The follow-up pathway for churches that care.",
   icons: {
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "ShepardRoute",
+    title: "ShepherdRoute",
     statusBarStyle: "default"
   }
 };

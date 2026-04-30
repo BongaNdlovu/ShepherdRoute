@@ -149,7 +149,7 @@ export default async function PublicEventPage({
           </CardContent>
         </Card>
         <footer className="mt-4 flex flex-col items-center justify-center gap-2 text-center text-xs text-slate-600 sm:flex-row">
-          <span>Copyright (c) {new Date().getFullYear()} ShepardRoute.</span>
+          <span>Copyright (c) {new Date().getFullYear()} ShepherdRoute.</span>
           <Link href="/privacy" className="font-semibold underline-offset-4 hover:underline">Privacy notice</Link>
           <Link href="/copyright" className="font-semibold underline-offset-4 hover:underline">Copyright notice</Link>
         </footer>

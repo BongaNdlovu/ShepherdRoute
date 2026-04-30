@@ -1351,7 +1351,7 @@ set search_path = public
 as $$
 begin
   if not private.is_app_admin() then
-    raise exception 'Only ShepardRoute app admins can view owner summaries.';
+    raise exception 'Only ShepherdRoute app admins can view owner summaries.';
   end if;
 
   return query
@@ -1403,7 +1403,7 @@ set search_path = public
 as $$
 begin
   if not private.is_app_admin() then
-    raise exception 'Only ShepardRoute app admins can view account rows.';
+    raise exception 'Only ShepherdRoute app admins can view account rows.';
   end if;
 
   return query
@@ -1479,7 +1479,7 @@ set search_path = public
 as $$
 begin
   if not private.is_app_admin() then
-    raise exception 'Only ShepardRoute app admins can view invitation rows.';
+    raise exception 'Only ShepherdRoute app admins can view invitation rows.';
   end if;
 
   return query
@@ -1528,7 +1528,7 @@ declare
   active_leader_count integer := 0;
 begin
   if not private.is_app_owner() then
-    raise exception 'Only ShepardRoute app owners can update account access.';
+    raise exception 'Only ShepherdRoute app owners can update account access.';
   end if;
 
   select *
@@ -1622,7 +1622,7 @@ declare
   active_leader_count integer := 0;
 begin
   if not private.is_app_owner() then
-    raise exception 'Only ShepardRoute app owners can update church roles.';
+    raise exception 'Only ShepherdRoute app owners can update church roles.';
   end if;
 
   select *

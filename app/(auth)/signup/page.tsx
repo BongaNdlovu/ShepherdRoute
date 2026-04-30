@@ -25,7 +25,7 @@ export default async function SignupPage({
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Church className="h-6 w-6" />
           </div>
-          <CardTitle className="text-2xl">{params.invite ? "Create your team account" : "Start ShepardRoute"}</CardTitle>
+          <CardTitle className="text-2xl">{params.invite ? "Create your team account" : "Start ShepherdRoute"}</CardTitle>
           <CardDescription>
             {params.invite ? "Use the invited email address to join the church workspace." : "Create your church workspace with the private platform signup code."}
           </CardDescription>

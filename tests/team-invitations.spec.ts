@@ -42,7 +42,7 @@ test.describe("team invitation workflow", () => {
     expect(signupPage).toContain("name=\"platformSignupCode\"");
     expect(signupPage).toContain("Signup code");
     expect(authActions).toContain("platformSignupCode: formData.get(\"platformSignupCode\")");
-    expect(authActions).toContain("SHEPARDROUTE_SIGNUP_CODE");
+    expect(authActions).toContain("SHEPHERDROUTE_SIGNUP_CODE");
     expect(authActions).toContain("timingSafeEqual");
     expect(authActions).toContain("The signup code is not correct.");
   });
@@ -55,9 +55,9 @@ test.describe("team invitation workflow", () => {
   });
 
   test("signup code is documented as a server-only environment variable", () => {
-    expect(envExample).toContain("SHEPARDROUTE_SIGNUP_CODE=");
-    expect(deploymentDocs).toContain("SHEPARDROUTE_SIGNUP_CODE");
+    expect(envExample).toContain("SHEPHERDROUTE_SIGNUP_CODE=");
+    expect(deploymentDocs).toContain("SHEPHERDROUTE_SIGNUP_CODE");
     expect(deploymentDocs).toContain("Do not prefix it with `NEXT_PUBLIC_`");
-    expect(setupDocs).toContain("SHEPARDROUTE_SIGNUP_CODE");
+    expect(setupDocs).toContain("SHEPHERDROUTE_SIGNUP_CODE");
   });
 });

@@ -1,6 +1,6 @@
 {
-  "name": "ShepardRoute",
-  "short_name": "ShepardRoute",
+  "name": "ShepherdRoute",
+  "short_name": "ShepherdRoute",
   "description": "The follow-up pathway for churches that care.",
   "start_url": "/dashboard",
   "scope": "/",

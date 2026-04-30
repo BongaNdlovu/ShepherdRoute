@@ -144,7 +144,9 @@ function normalizeInviteToken(value: FormDataEntryValue | null) {
 }
 
 function hasValidPlatformSignupCode(submittedCode: string | undefined) {
-  const configuredCode = process.env.SHEPARDROUTE_SIGNUP_CODE?.trim();
+  const configuredCode =
+    process.env.SHEPHERDROUTE_SIGNUP_CODE?.trim() ||
+    process.env.SHEPARDROUTE_SIGNUP_CODE?.trim();
 
   if (!configuredCode || !submittedCode) {
     return false;

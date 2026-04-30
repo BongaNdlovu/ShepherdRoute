@@ -20,7 +20,7 @@ export default function GlobalError({
                 <AlertTriangle className="h-5 w-5" />
               </div>
               <div>
-                <h1 className="text-xl font-black">ShepardRoute could not load</h1>
+                <h1 className="text-xl font-black">ShepherdRoute could not load</h1>
                 <p className="text-sm text-muted-foreground">This is usually a configuration, database, or deployment issue.</p>
               </div>
             </div>

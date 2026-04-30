@@ -45,7 +45,7 @@ export default async function InvitePage({
             <Church className="h-6 w-6" />
           </div>
           <CardTitle className="text-2xl">Join {preview.church_name}</CardTitle>
-          <CardDescription>{preview.display_name} has been invited to ShepardRoute.</CardDescription>
+          <CardDescription>{preview.display_name} has been invited to ShepherdRoute.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           {query.error ? (

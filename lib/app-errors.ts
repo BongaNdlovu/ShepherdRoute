@@ -14,7 +14,7 @@ export function friendlyAuthError(message: string) {
   }
 
   if (normalized.includes("fetch failed") || normalized.includes("network")) {
-    return "ShepardRoute could not reach Supabase. Check the project URL, API key, and your connection.";
+    return "ShepherdRoute could not reach Supabase. Check the project URL, API key, and your connection.";
   }
 
   return message;

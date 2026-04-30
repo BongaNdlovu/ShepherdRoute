@@ -11,7 +11,7 @@ export default function HomePage() {
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Church className="h-6 w-6" />
           </div>
-          <CardTitle className="text-2xl">ShepardRoute</CardTitle>
+          <CardTitle className="text-2xl">ShepherdRoute</CardTitle>
           <CardDescription>The follow-up pathway for churches that care.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">

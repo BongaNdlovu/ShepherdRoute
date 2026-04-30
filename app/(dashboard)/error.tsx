@@ -16,7 +16,7 @@ export default function DashboardError({ error, reset }: { error: Error & { dige
       </CardHeader>
       <CardContent>
         <p className="text-sm text-muted-foreground">
-          ShepardRoute could not load this workspace view. Check that the Supabase schema has been run, then try again.
+          ShepherdRoute could not load this workspace view. Check that the Supabase schema has been run, then try again.
         </p>
         <div className="mt-4 rounded-md bg-muted p-3 text-sm text-muted-foreground">
           {error.message || "No extra error detail was provided by the server."}

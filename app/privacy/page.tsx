@@ -14,14 +14,14 @@ export default function PrivacyPage() {
           <CardHeader>
             <div className="flex items-center gap-2 text-amber-700">
               <ShieldCheck className="h-5 w-5" />
-              <span className="text-sm font-bold uppercase tracking-[0.18em]">ShepardRoute</span>
+              <span className="text-sm font-bold uppercase tracking-[0.18em]">ShepherdRoute</span>
             </div>
             <CardTitle>Privacy notice</CardTitle>
-            <CardDescription>How churches using ShepardRoute should handle visitor and member follow-up data.</CardDescription>
+            <CardDescription>How churches using ShepherdRoute should handle visitor and member follow-up data.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5 text-sm leading-6 text-slate-700">
             <p>
-              ShepardRoute helps a church record contact details, ministry interests, consent, prayer request visibility, follow-up ownership, and event journey history.
+              ShepherdRoute helps a church record contact details, ministry interests, consent, prayer request visibility, follow-up ownership, and event journey history.
               Churches are responsible for using this information only for the follow-up purpose the person agreed to.
             </p>
             <div>
@@ -43,7 +43,7 @@ export default function PrivacyPage() {
             <p className="rounded-lg bg-muted p-4 text-xs leading-5 text-muted-foreground">
               This notice is a product notice, not legal advice. Each church should adapt its privacy practices to local law and denominational policy.
             </p>
-            <Link href="/" className="font-semibold text-amber-700 underline-offset-4 hover:underline">Back to ShepardRoute</Link>
+            <Link href="/" className="font-semibold text-amber-700 underline-offset-4 hover:underline">Back to ShepherdRoute</Link>
           </CardContent>
         </Card>
       </section>

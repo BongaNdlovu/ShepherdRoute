@@ -1,4 +1,4 @@
-const CACHE_NAME = "shepardroute-v1";
+const CACHE_NAME = "shepherdroute-v1";
 const STATIC_ASSETS = [
   "/login",
   "/manifest.webmanifest",
