@@ -5,7 +5,7 @@ import { FollowUpsPagination } from "@/components/app/follow-ups-pagination";
 import { FollowUpsQueueList } from "@/components/app/follow-ups-queue-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getChurchContext, getFollowUpsPage, getTeamMembers } from "@/lib/data";
+import { getChurchContext, getFollowUpsPage, getTeamMembers, getUserAccountPreferences } from "@/lib/data";
 
 export const metadata = {
   title: "Follow-Ups"
@@ -18,9 +18,10 @@ export default async function FollowUpsPage({
 }) {
   const params = await searchParams;
   const context = await getChurchContext();
-  const [followUpsPage, team] = await Promise.all([
+  const [followUpsPage, team, preferences] = await Promise.all([
     getFollowUpsPage(context.churchId, params),
-    getTeamMembers(context.churchId)
+    getTeamMembers(context.churchId),
+    getUserAccountPreferences(context.userId)
   ]);
 
   return (
@@ -55,7 +56,7 @@ export default async function FollowUpsPage({
             total={followUpsPage.total}
             visibleCount={followUpsPage.items.length}
           />
-          <FollowUpsQueueList items={followUpsPage.items} />
+          <FollowUpsQueueList items={followUpsPage.items} compactLists={preferences.compactLists} />
         </CardContent>
       </Card>
     </section>

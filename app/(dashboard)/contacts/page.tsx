@@ -6,7 +6,7 @@ import { ContactsPagination } from "@/components/app/contacts-pagination";
 import { QuickContactForm } from "@/components/app/quick-contact-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getChurchContext, getContactsPage, getEvents, getTeamMembers } from "@/lib/data";
+import { getChurchContext, getContactsPage, getEvents, getTeamMembers, getUserAccountPreferences } from "@/lib/data";
 
 export const metadata = {
   title: "Contacts"
@@ -19,10 +19,11 @@ export default async function ContactsPage({
 }) {
   const params = await searchParams;
   const context = await getChurchContext();
-  const [contactsPage, events, team] = await Promise.all([
+  const [contactsPage, events, team, preferences] = await Promise.all([
     getContactsPage(context.churchId, params),
     getEvents(context.churchId),
-    getTeamMembers(context.churchId)
+    getTeamMembers(context.churchId),
+    getUserAccountPreferences(context.userId)
   ]);
   const { contacts, total, page, pageCount } = contactsPage;
   const exportHref = () => {
@@ -73,7 +74,7 @@ export default async function ContactsPage({
             total={total}
             visibleCount={contacts.length}
           />
-          <ContactList churchName={context.churchName} contacts={contacts} team={team} />
+          <ContactList churchName={context.churchName} contacts={contacts} team={team} compactLists={preferences.compactLists} />
         </CardContent>
       </Card>
 

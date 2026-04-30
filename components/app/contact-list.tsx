@@ -6,15 +6,17 @@ import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
 import { statusLabels, statusOptions } from "@/lib/constants";
 import type { ContactListItem } from "@/lib/data";
+import { cn } from "@/lib/utils";
 import { generateMessage, waLink } from "@/lib/whatsapp";
 
 type ContactListProps = {
   churchName: string;
   contacts: ContactListItem[];
   team: Array<{ id: string; display_name: string }>;
+  compactLists?: boolean;
 };
 
-export function ContactList({ churchName, contacts, team }: ContactListProps) {
+export function ContactList({ churchName, contacts, team, compactLists = false }: ContactListProps) {
   return (
     <div className="mt-5 overflow-hidden rounded-lg border">
       <div className="hidden grid-cols-[1.15fr_1fr_1.1fr_1.2fr] bg-muted px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground xl:grid">
@@ -36,7 +38,10 @@ export function ContactList({ churchName, contacts, team }: ContactListProps) {
           return (
             <div
               key={contact.id}
-              className="grid gap-4 px-4 py-4 transition hover:bg-amber-50 xl:grid-cols-[1.15fr_1fr_1.1fr_1.2fr] xl:items-center"
+              className={cn(
+                "grid transition hover:bg-amber-50 xl:grid-cols-[1.15fr_1fr_1.1fr_1.2fr] xl:items-center",
+                compactLists ? "gap-2 px-3 py-2" : "gap-4 px-4 py-4"
+              )}
             >
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -47,18 +52,18 @@ export function ContactList({ churchName, contacts, team }: ContactListProps) {
                   {contact.do_not_contact ? <span className="rounded-md bg-slate-200 px-2 py-1 text-xs font-bold text-slate-700">Do not contact</span> : null}
                   {contact.duplicate_of_contact_id ? <span className="rounded-md bg-amber-100 px-2 py-1 text-xs font-bold text-amber-800">Journey match</span> : null}
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">{contact.phone} {contact.email ? `- ${contact.email}` : ""} {contact.area ? `- ${contact.area}` : ""}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className={cn(compactLists ? "mt-0.5 text-xs" : "mt-1 text-sm", "text-muted-foreground")}>{contact.phone} {contact.email ? `- ${contact.email}` : ""} {contact.area ? `- ${contact.area}` : ""}</p>
+                <p className={cn(compactLists ? "mt-0.5" : "mt-1", "text-xs text-muted-foreground")}>
                   {contact.event_name ?? "Manual contact"}
                   {contact.best_time_to_contact ? ` - ${contact.best_time_to_contact}` : ""}
                 </p>
               </div>
               <InterestPills interests={contact.interests} />
-              <div className="space-y-2">
+              <div className={cn(compactLists ? "space-y-1" : "space-y-2")}>
                 <StatusBadge status={contact.status} />
                 <p className="text-sm font-semibold text-slate-600">{contact.assigned_name ?? "Unassigned"}</p>
               </div>
-              <div className="grid gap-2">
+              <div className={cn("grid", compactLists ? "gap-1.5" : "gap-2")}>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <form action={updateContactAction} className="flex gap-2">
                     <input type="hidden" name="contactId" value={contact.id} />

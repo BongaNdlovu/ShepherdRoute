@@ -5,16 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { getChurchContext, getUserProfileSettings } from "@/lib/data";
+import { normalizeAccountPreferences } from "@/lib/data-profile";
 
 export const metadata = {
   title: "Settings"
-};
-
-type Preferences = {
-  defaultDashboardView?: string;
-  compactLists?: boolean;
-  emailNotifications?: boolean;
-  whatsappReminders?: boolean;
 };
 
 export default async function SettingsPage({
@@ -25,7 +19,7 @@ export default async function SettingsPage({
   const params = await searchParams;
   const context = await getChurchContext();
   const profile = await getUserProfileSettings(context.userId);
-  const preferences = (profile?.preferences ?? {}) as Preferences;
+  const preferences = normalizeAccountPreferences(profile?.preferences);
   const canManageChurch = ["admin", "pastor"].includes(context.role) || context.isAppAdmin;
 
   return (
@@ -42,7 +36,7 @@ export default async function SettingsPage({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Bell className="h-5 w-5" /> Account preferences</CardTitle>
-            <CardDescription>These preferences are saved to your profile. Notification delivery can be connected in a later release.</CardDescription>
+            <CardDescription>These preferences change your own ShepherdRoute workspace.</CardDescription>
           </CardHeader>
           <CardContent>
             <form action={updateAccountSettingsAction} className="grid gap-4">
@@ -59,14 +53,15 @@ export default async function SettingsPage({
                 <input name="compactLists" type="checkbox" defaultChecked={Boolean(preferences.compactLists)} className="mt-1 h-4 w-4 rounded border-input" />
                 <span>Prefer compact list layouts where available</span>
               </label>
-              <label className="flex items-start gap-3 rounded-lg border bg-muted p-3 text-sm font-semibold">
-                <input name="emailNotifications" type="checkbox" defaultChecked={Boolean(preferences.emailNotifications)} className="mt-1 h-4 w-4 rounded border-input" />
-                <span>Email notification preference</span>
-              </label>
-              <label className="flex items-start gap-3 rounded-lg border bg-muted p-3 text-sm font-semibold">
-                <input name="whatsappReminders" type="checkbox" defaultChecked={Boolean(preferences.whatsappReminders)} className="mt-1 h-4 w-4 rounded border-input" />
-                <span>WhatsApp reminder preference</span>
-              </label>
+              <div className="rounded-lg border bg-muted p-3 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 font-semibold text-slate-700">
+                  <Bell className="h-4 w-4" />
+                  Notifications
+                </div>
+                <p className="mt-1 leading-6">
+                  Email notifications and automated WhatsApp reminders need a delivery provider before they can be enabled.
+                </p>
+              </div>
               <Button type="submit">Save settings</Button>
             </form>
           </CardContent>

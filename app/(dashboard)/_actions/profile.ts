@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getChurchContext } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
+import { defaultDashboardViewOptions } from "@/lib/data-profile";
 
 const optionalPhoneSchema = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -17,10 +18,8 @@ const profileSchema = z.object({
 });
 
 const settingsSchema = z.object({
-  defaultDashboardView: z.enum(["dashboard", "follow-ups", "contacts", "reports"]),
-  compactLists: z.boolean(),
-  emailNotifications: z.boolean(),
-  whatsappReminders: z.boolean()
+  defaultDashboardView: z.enum(defaultDashboardViewOptions),
+  compactLists: z.boolean()
 });
 
 function actionError(error: unknown, fallback: string) {
@@ -84,9 +83,7 @@ export async function updateAccountSettingsAction(formData: FormData) {
   const context = await getChurchContext();
   const parsed = settingsSchema.safeParse({
     defaultDashboardView: formData.get("defaultDashboardView"),
-    compactLists: formData.get("compactLists") === "on",
-    emailNotifications: formData.get("emailNotifications") === "on",
-    whatsappReminders: formData.get("whatsappReminders") === "on"
+    compactLists: formData.get("compactLists") === "on"
   });
 
   if (!parsed.success) {

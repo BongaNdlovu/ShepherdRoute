@@ -1,6 +1,56 @@
 import type { Json } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
+export const defaultDashboardViewOptions = ["dashboard", "follow-ups", "contacts", "reports"] as const;
+
+export type DefaultDashboardView = (typeof defaultDashboardViewOptions)[number];
+
+export type AccountPreferences = {
+  defaultDashboardView: DefaultDashboardView;
+  compactLists: boolean;
+};
+
+export const dashboardViewRoutes: Record<DefaultDashboardView, string> = {
+  dashboard: "/dashboard",
+  "follow-ups": "/follow-ups",
+  contacts: "/contacts",
+  reports: "/reports"
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function normalizeAccountPreferences(preferences: Json | null | undefined): AccountPreferences {
+  const value = isRecord(preferences) ? preferences : {};
+  const defaultDashboardView = defaultDashboardViewOptions.includes(value.defaultDashboardView as DefaultDashboardView)
+    ? (value.defaultDashboardView as DefaultDashboardView)
+    : "dashboard";
+
+  return {
+    defaultDashboardView,
+    compactLists: value.compactLists === true
+  };
+}
+
+export async function getUserAccountPreferences(userId: string): Promise<AccountPreferences> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("preferences")
+    .eq("id", userId)
+    .maybeSingle();
+
+  return normalizeAccountPreferences(data?.preferences);
+}
+
+export async function getPreferredDashboardPathForUser(userId: string | null | undefined): Promise<string> {
+  if (!userId) return "/dashboard";
+
+  const preferences = await getUserAccountPreferences(userId);
+  return dashboardViewRoutes[preferences.defaultDashboardView] ?? "/dashboard";
+}
+
 export type UserProfileSettings = {
   id: string;
   full_name: string;

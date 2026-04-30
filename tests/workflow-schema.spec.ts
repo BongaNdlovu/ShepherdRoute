@@ -12,6 +12,7 @@ const eventDetailPage = readFileSync("app/(dashboard)/events/[id]/page.tsx", "ut
 const eventActions = readFileSync("app/(dashboard)/_actions/events.ts", "utf8");
 const teamActions = readFileSync("app/(dashboard)/_actions/team.ts", "utf8");
 const publicEventPage = readFileSync("app/e/[slug]/page.tsx", "utf8");
+const authActions = readFileSync("app/(auth)/actions.ts", "utf8");
 
 test.describe("accountability and privacy workflow schema", () => {
   test("schema includes duplicate-aware people and journey storage", () => {
@@ -365,12 +366,18 @@ test.describe("workflow helpers", () => {
     expect(profileActions).toContain("team_members");
   });
 
-  test("settings page stores simple profile preferences without overbuilding notifications", () => {
+  test("settings page stores only operational profile preferences", () => {
     const settingsPage = readFileSync("app/(dashboard)/settings/page.tsx", "utf8");
     const profileActions = readFileSync("app/(dashboard)/_actions/profile.ts", "utf8");
+
     expect(settingsPage).toContain("updateAccountSettingsAction");
-    expect(settingsPage).toContain("Notification delivery can be connected in a later release");
-    expect(profileActions).toContain("preferences: parsed.data");
+    expect(settingsPage).toContain("normalizeAccountPreferences");
+    expect(settingsPage).not.toContain('name="emailNotifications"');
+    expect(settingsPage).not.toContain('name="whatsappReminders"');
+    expect(profileActions).toContain("defaultDashboardView");
+    expect(profileActions).toContain("compactLists");
+    expect(profileActions).not.toContain("emailNotifications: z.boolean()");
+    expect(profileActions).not.toContain("whatsappReminders: z.boolean()");
   });
 
   test("dashboard navigation exposes profile and settings pages", () => {
@@ -395,5 +402,35 @@ test.describe("workflow helpers", () => {
     expect(profileActions).toContain("error: teamError");
     expect(profileActions).toContain("Profile saved, but team sync failed");
     expect(profileActions).toContain("team_members");
+  });
+
+  test("login redirects to the saved default working area", () => {
+    expect(authActions).toContain("getPreferredDashboardPathForUser");
+    expect(authActions).toContain("data.user?.id");
+    expect(authActions).toContain("redirect(await getPreferredDashboardPathForUser");
+  });
+
+  test("preference helper constrains dashboard routes and defaults safely", () => {
+    const dataProfile = readFileSync("lib/data-profile.ts", "utf8");
+
+    expect(dataProfile).toContain("defaultDashboardViewOptions");
+    expect(dataProfile).toContain("dashboardViewRoutes");
+    expect(dataProfile).toContain("normalizeAccountPreferences");
+    expect(dataProfile).toContain('return "/dashboard"');
+    expect(dataProfile).toContain('"follow-ups": "/follow-ups"');
+  });
+
+  test("compact list preference is passed into contacts and follow-up lists", () => {
+    const contactsPage = readFileSync("app/(dashboard)/contacts/page.tsx", "utf8");
+    const followUpsPage = readFileSync("app/(dashboard)/follow-ups/page.tsx", "utf8");
+    const contactList = readFileSync("components/app/contact-list.tsx", "utf8");
+    const followUpsList = readFileSync("components/app/follow-ups-queue-list.tsx", "utf8");
+
+    expect(contactsPage).toContain("getUserAccountPreferences");
+    expect(contactsPage).toContain("compactLists={preferences.compactLists}");
+    expect(followUpsPage).toContain("getUserAccountPreferences");
+    expect(followUpsPage).toContain("compactLists={preferences.compactLists}");
+    expect(contactList).toContain("compactLists = false");
+    expect(followUpsList).toContain("compactLists = false");
   });
 });

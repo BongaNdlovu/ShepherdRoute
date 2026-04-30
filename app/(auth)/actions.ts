@@ -7,6 +7,7 @@ import { timingSafeEqual } from "node:crypto";
 import { friendlyAuthError } from "@/lib/app-errors";
 import { createClient } from "@/lib/supabase/server";
 import { absoluteUrl } from "@/lib/utils";
+import { getPreferredDashboardPathForUser } from "@/lib/data-profile";
 
 const optionalInviteTokenSchema = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -66,7 +67,7 @@ export async function loginAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email: parsed.data.email,
     password: parsed.data.password
   });
@@ -87,7 +88,7 @@ export async function loginAction(formData: FormData) {
     await setSelectedChurchCookie(churchId);
   }
 
-  redirect("/dashboard");
+  redirect(await getPreferredDashboardPathForUser(data.user?.id));
 }
 
 export async function signupAction(formData: FormData) {
