@@ -1,3 +1,4 @@
+import type { FollowUpStatus, Interest } from "@/lib/constants";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getEvent } from "@/lib/data-events";
@@ -36,6 +37,33 @@ export type EventReportSummary = {
   follow_up_count: number;
   status_counts: Record<string, number>;
   interest_counts: Record<string, number>;
+};
+
+export type TodayFollowUpItem = {
+  id: string;
+  contact_id: string;
+  assigned_to: string | null;
+  status: FollowUpStatus;
+  next_action: string | null;
+  due_at: string | null;
+  contact: {
+    id: string;
+    full_name: string;
+    phone: string;
+    status: FollowUpStatus;
+    urgency: "low" | "medium" | "high";
+    assigned_to: string | null;
+    do_not_contact: boolean;
+    event_name: string | null;
+    interests: Interest[];
+  };
+  assigned_name: string | null;
+  suggested_message: {
+    id: string;
+    message_text: string;
+    wa_link: string | null;
+    opened_at: string | null;
+  } | null;
 };
 
 const emptyOutreachSummary: OutreachReportSummary = {
@@ -114,9 +142,90 @@ function parseEventSummary(row: Partial<EventReportSummary> | null | undefined):
   };
 }
 
+export async function getTodayFollowUps(churchId: string): Promise<TodayFollowUpItem[]> {
+  const supabase = await createClient();
+  const tomorrow = new Date();
+  tomorrow.setHours(24, 0, 0, 0);
+
+  const { data, error } = await supabase
+    .from("follow_ups")
+    .select(`
+      id,
+      contact_id,
+      assigned_to,
+      status,
+      next_action,
+      due_at,
+      contacts(
+        id,
+        full_name,
+        phone,
+        status,
+        urgency,
+        assigned_to,
+        do_not_contact,
+        events(name),
+        contact_interests(interest),
+        generated_messages(id, message_text, wa_link, opened_at, purpose, created_at)
+      ),
+      team_members(display_name)
+    `)
+    .eq("church_id", churchId)
+    .is("completed_at", null)
+    .lt("due_at", tomorrow.toISOString())
+    .neq("status", "closed")
+    .order("due_at", { ascending: true })
+    .limit(12);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).flatMap((row) => {
+    const contactRow = Array.isArray(row.contacts) ? row.contacts[0] ?? null : row.contacts;
+    if (!contactRow || contactRow.status === "closed") return [];
+
+    const event = Array.isArray(contactRow.events) ? contactRow.events[0] ?? null : contactRow.events;
+    const teamMember = Array.isArray(row.team_members) ? row.team_members[0] ?? null : row.team_members;
+    const messages = Array.isArray(contactRow.generated_messages) ? contactRow.generated_messages : [];
+    const suggestedMessage = messages
+      .filter((message) => message.purpose === "suggested_whatsapp")
+      .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0] ?? null;
+
+    return [{
+      id: row.id,
+      contact_id: row.contact_id,
+      assigned_to: row.assigned_to,
+      status: row.status,
+      next_action: row.next_action,
+      due_at: row.due_at,
+      contact: {
+        id: contactRow.id,
+        full_name: contactRow.full_name,
+        phone: contactRow.phone,
+        status: contactRow.status,
+        urgency: contactRow.urgency,
+        assigned_to: contactRow.assigned_to,
+        do_not_contact: contactRow.do_not_contact,
+        event_name: event?.name ?? null,
+        interests: (contactRow.contact_interests ?? []).map((item) => item.interest)
+      },
+      assigned_name: teamMember?.display_name ?? null,
+      suggested_message: suggestedMessage
+        ? {
+          id: suggestedMessage.id,
+          message_text: suggestedMessage.message_text,
+          wa_link: suggestedMessage.wa_link,
+          opened_at: suggestedMessage.opened_at
+        }
+        : null
+    }];
+  });
+}
+
 export async function getDashboardData(churchId: string) {
   const supabase = await createClient();
-  const [{ data: contacts }, { data: events }, { data: team }, summary] = await Promise.all([
+  const [{ data: contacts }, { data: events }, { data: team }, summary, todayFollowUps] = await Promise.all([
     supabase
       .from("contacts")
       .select("id, full_name, phone, area, status, urgency, created_at, events(name), contact_interests(interest)")
@@ -135,14 +244,16 @@ export async function getDashboardData(churchId: string) {
       .eq("church_id", churchId)
       .eq("is_active", true)
       .order("display_name"),
-    getOutreachReportSummary(churchId)
+    getOutreachReportSummary(churchId),
+    getTodayFollowUps(churchId)
   ]);
 
   return {
     contacts: contacts ?? [],
     events: events ?? [],
     team: team ?? [],
-    summary
+    summary,
+    todayFollowUps
   };
 }
 

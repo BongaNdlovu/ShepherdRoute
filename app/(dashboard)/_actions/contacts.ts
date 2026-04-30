@@ -3,11 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { chooseWorkflowOwner, saveSuggestedWhatsappMessage } from "@/lib/contactWorkflow";
 import { classifyContact } from "@/lib/classifyContact";
 import { followUpChannelOptions, interestOptions, statusOptions } from "@/lib/constants";
 import { getChurchContext } from "@/lib/data";
 import { defaultDueDate, prayerVisibilityOptions } from "@/lib/followUp";
 import { createClient } from "@/lib/supabase/server";
+import { generateMessage } from "@/lib/whatsapp";
 
 const contactUpdateSchema = z.object({
   contactId: z.string().uuid(),
@@ -41,6 +43,11 @@ const followUpNoteSchema = z.object({
 const contactLifecycleSchema = z.object({
   contactId: z.string().uuid(),
   intent: z.enum(["do_not_contact", "archive", "delete"])
+});
+
+const markContactedSchema = z.object({
+  followUpId: z.string().uuid(),
+  contactId: z.string().uuid()
 });
 
 export async function updateContactAction(formData: FormData) {
@@ -258,6 +265,13 @@ export async function addQuickContactAction(formData: FormData) {
     classification.recommended_assigned_role,
     classification.recommended_tags
   ).toISOString();
+  const { data: team } = await supabase
+    .from("team_members")
+    .select("id, role, display_name")
+    .eq("church_id", context.churchId)
+    .eq("is_active", true)
+    .order("display_name");
+  const assignedTo = chooseWorkflowOwner(team ?? [], classification.recommended_assigned_role);
   const { data: contact, error } = await supabase
     .from("contacts")
     .insert({
@@ -269,8 +283,9 @@ export async function addQuickContactAction(formData: FormData) {
       whatsapp_number: parsed.data.phone,
       area: parsed.data.area || null,
       language: parsed.data.language || "English",
-      status: "new",
+      status: assignedTo ? "assigned" : "new",
       urgency: classification.urgency,
+      assigned_to: assignedTo,
       consent_given: true,
       consent_at: new Date().toISOString(),
       consent_source: "manual",
@@ -316,12 +331,44 @@ export async function addQuickContactAction(formData: FormData) {
     }
   }
 
+  const { data: eventForMessage } = contact.event_id
+    ? await supabase
+      .from("events")
+      .select("name, event_type")
+      .eq("church_id", context.churchId)
+      .eq("id", contact.event_id)
+      .single()
+    : { data: null };
+  const suggestedMessage = generateMessage({
+    name: parsed.data.fullName,
+    phone: parsed.data.phone,
+    interests: parsed.data.interests,
+    churchName: context.churchName,
+    eventName: eventForMessage?.name,
+    templateType: eventForMessage?.event_type
+  });
+  const { error: suggestedMessageError } = await saveSuggestedWhatsappMessage({
+    supabase,
+    contact: {
+      id: contact.id,
+      church_id: contact.church_id,
+      phone: parsed.data.phone
+    },
+    message: suggestedMessage,
+    generatedBy: context.userId
+  });
+
+  if (suggestedMessageError) {
+    redirect(`/contacts/${contact.id}?error=${actionError(suggestedMessageError, "Contact created, but the suggested WhatsApp message could not be saved.")}`);
+  }
+
   const { error: followUpError } = await supabase.from("follow_ups").insert({
     church_id: context.churchId,
     contact_id: contact.id,
+    assigned_to: assignedTo,
     author_id: context.userId,
     channel: "note",
-    status: "new",
+    status: assignedTo ? "assigned" : "new",
     notes: "Manual intake contact created.",
     next_action: classification.recommended_next_action,
     due_at: dueAt
@@ -332,9 +379,7 @@ export async function addQuickContactAction(formData: FormData) {
   }
 
   if (contact.person_id) {
-    const { data: event } = contact.event_id
-      ? await supabase.from("events").select("id, name, event_type").eq("church_id", context.churchId).eq("id", contact.event_id).single()
-      : { data: null };
+    const event = eventForMessage;
 
     const { error: journeyError } = await supabase.from("contact_journey_events").insert({
       church_id: context.churchId,
@@ -355,6 +400,60 @@ export async function addQuickContactAction(formData: FormData) {
 
   revalidatePath("/contacts");
   redirect(`/contacts/${contact.id}`);
+}
+
+export async function markFollowUpContactedAction(formData: FormData) {
+  const context = await getChurchContext();
+  const parsed = markContactedSchema.safeParse({
+    followUpId: formData.get("followUpId"),
+    contactId: formData.get("contactId")
+  });
+
+  if (!parsed.success) {
+    redirect("/dashboard?error=Could%20not%20mark%20the%20follow-up%20as%20contacted.");
+  }
+
+  const supabase = await createClient();
+  const { data: followUp, error: followUpLookupError } = await supabase
+    .from("follow_ups")
+    .select("id")
+    .eq("church_id", context.churchId)
+    .eq("id", parsed.data.followUpId)
+    .eq("contact_id", parsed.data.contactId)
+    .is("completed_at", null)
+    .maybeSingle();
+
+  if (followUpLookupError || !followUp) {
+    redirect(`/contacts/${parsed.data.contactId}?error=Open%20follow-up%20task%20not%20found.`);
+  }
+
+  const now = new Date().toISOString();
+  const { error: followUpError } = await supabase
+    .from("follow_ups")
+    .update({ status: "contacted", completed_at: now })
+    .eq("church_id", context.churchId)
+    .eq("id", parsed.data.followUpId)
+    .eq("contact_id", parsed.data.contactId)
+    .is("completed_at", null);
+
+  if (followUpError) {
+    redirect(`/contacts/${parsed.data.contactId}?error=${actionError(followUpError, "Could not complete the follow-up task.")}`);
+  }
+
+  const { error: contactError } = await supabase
+    .from("contacts")
+    .update({ status: "contacted" })
+    .eq("church_id", context.churchId)
+    .eq("id", parsed.data.contactId);
+
+  if (contactError) {
+    redirect(`/contacts/${parsed.data.contactId}?error=${actionError(contactError, "Follow-up completed, but contact status could not be updated.")}`);
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/contacts");
+  revalidatePath(`/contacts/${parsed.data.contactId}`);
+  redirect("/dashboard");
 }
 
 function actionError(error: { message?: string } | null | undefined, fallback: string) {

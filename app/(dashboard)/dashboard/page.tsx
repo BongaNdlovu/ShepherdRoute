@@ -6,6 +6,7 @@ import { InterestPills } from "@/components/app/interest-pills";
 import { QrCard } from "@/components/app/qr-card";
 import { StatCard } from "@/components/app/stat-card";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
+import { TodaysFollowUpsCard } from "@/components/app/todays-follow-ups-card";
 import { getChurchContext, getDashboardData } from "@/lib/data";
 import { absoluteRequestUrl } from "@/lib/server-url";
 
@@ -15,7 +16,7 @@ export const metadata = {
 
 export default async function DashboardPage() {
   const context = await getChurchContext();
-  const { contacts, events, summary } = await getDashboardData(context.churchId);
+  const { contacts, events, summary, todayFollowUps } = await getDashboardData(context.churchId);
   const activeEvent = events[0];
   const activeEventPublicUrl = activeEvent ? await absoluteRequestUrl(`/e/${activeEvent.slug}`) : null;
   const allContacts = contacts;
@@ -60,6 +61,8 @@ export default async function DashboardPage() {
         <StatCard icon={HeartPulse} title="Health interests" value={summary.health_count} note="Ready for health ministry follow-up." />
         <StatCard icon={Droplets} title="Baptismal requests" value={summary.baptism_count} note="Bible worker to begin preparation." />
       </div>
+
+      <TodaysFollowUpsCard items={todayFollowUps} />
 
       <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
         <Card>

@@ -28,7 +28,8 @@ export default async function ContactDetailPage({
   const context = await getChurchContext();
   const { contact, prayer, journey, team, followUps, messages } = await getContact(context.churchId, id);
   const interests = contact.contact_interests ?? [];
-  const message = generateMessage({
+  const suggestedMessage = messages.find((item) => item.channel === "whatsapp" && item.purpose === "suggested_whatsapp")?.message_text;
+  const message = suggestedMessage ?? generateMessage({
     name: contact.full_name,
     phone: contact.phone,
     interests: interests.map((item) => item.interest),

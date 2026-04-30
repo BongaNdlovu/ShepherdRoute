@@ -103,7 +103,7 @@ export type ContactDetailResult = {
     created_at: string;
     team_members: { display_name: string } | { display_name: string }[] | null;
   }>;
-  messages: Array<{ id: string; channel: string; message_text: string; wa_link: string | null; created_at: string }>;
+  messages: Array<{ id: string; channel: string; message_text: string; wa_link: string | null; purpose: string; approved_at: string | null; opened_at: string | null; created_at: string }>;
 };
 
 type ContactDetailRow = Omit<ContactDetailResult["contact"], "events"> & {
@@ -202,7 +202,7 @@ export async function getContact(churchId: string, id: string): Promise<ContactD
       .limit(CONTACT_DETAIL_FOLLOW_UP_LIMIT),
     supabase
       .from("generated_messages")
-      .select("id, channel, message_text, wa_link, created_at")
+      .select("id, channel, message_text, wa_link, purpose, approved_at, opened_at, created_at")
       .eq("church_id", churchId)
       .eq("contact_id", id)
       .order("created_at", { ascending: false })

@@ -196,4 +196,104 @@ test.describe("workflow helpers", () => {
     expect(bibleStudy).toBeLessThan(general);
     expect(schema).toContain("else now() + interval '5 days'");
   });
+
+  test("schema includes purpose, approved_at, opened_at columns for suggested WhatsApp workflow", () => {
+    expect(schema).toContain("purpose text not null default 'manual'");
+    expect(schema).toContain("approved_at timestamptz");
+    expect(schema).toContain("opened_at timestamptz");
+  });
+
+  test("schema includes unique partial index for one suggested WhatsApp per contact", () => {
+    expect(schema).toContain("generated_messages_one_suggestion_per_contact_idx");
+    expect(schema).toContain("where purpose = 'suggested_whatsapp'");
+  });
+
+  test("generated message schema is migration-safe and supports timestamp updates", () => {
+    expect(schema).toContain("add column if not exists purpose text not null default 'manual'");
+    expect(schema).toContain("add column if not exists approved_at timestamptz");
+    expect(schema).toContain("add column if not exists opened_at timestamptz");
+    expect(schema).toContain("Members can update generated messages");
+  });
+
+  test("contact workflow helper avoids partial-index upsert and records suggested purpose", () => {
+    const contactWorkflow = readFileSync("lib/contactWorkflow.ts", "utf8");
+    expect(contactWorkflow).toContain("chooseWorkflowOwner");
+    expect(contactWorkflow).toContain("saveSuggestedWhatsappMessage");
+    expect(contactWorkflow).toContain("maybeSingle");
+    expect(contactWorkflow).not.toContain("onConflict: \"contact_id\"");
+    expect(contactWorkflow).toContain("purpose: \"suggested_whatsapp\"");
+  });
+
+  test("manual contact creation assigns owner and saves suggested WhatsApp with generator", () => {
+    const contactsActions = readFileSync("app/(dashboard)/_actions/contacts.ts", "utf8");
+    expect(contactsActions).toContain("chooseWorkflowOwner");
+    expect(contactsActions).toContain("saveSuggestedWhatsappMessage");
+    expect(contactsActions).toContain("assigned_to: assignedTo");
+    expect(contactsActions).toContain("status: assignedTo ? \"assigned\" : \"new\"");
+    expect(contactsActions).toContain("generatedBy: context.userId");
+  });
+
+  test("public registration delegates owner assignment and suggested WhatsApp persistence to RPC", () => {
+    const publicActions = readFileSync("app/e/[slug]/actions.ts", "utf8");
+    expect(publicActions).toContain("submit_event_registration");
+    expect(publicActions).not.toContain("chooseWorkflowOwner");
+    expect(publicActions).not.toContain("saveSuggestedWhatsappMessage");
+    expect(publicActions).not.toContain(".from(\"contacts\")");
+    expect(schema).toContain("assigned_owner_id");
+    expect(schema).toContain("suggested_message");
+    expect(schema).toContain("purpose\n  )\n  values");
+  });
+
+  test("today's follow-ups query exists and returns suggested messages", () => {
+    const dataReports = readFileSync("lib/data-reports.ts", "utf8");
+    expect(dataReports).toContain("getTodayFollowUps");
+    expect(dataReports).toContain("TodayFollowUpItem");
+    expect(dataReports).toContain("suggested_message");
+    expect(dataReports).toContain("purpose === \"suggested_whatsapp\"");
+  });
+
+  test("dashboard includes today's follow-ups card", () => {
+    expect(dashboardPage).toContain("TodaysFollowUpsCard");
+    expect(dashboardPage).toContain("todayFollowUps");
+    const todaysFollowUpsCard = readFileSync("components/app/todays-follow-ups-card.tsx", "utf8");
+    expect(todaysFollowUpsCard).toContain("openSuggestedWhatsappAction");
+    expect(todaysFollowUpsCard).toContain("markFollowUpContactedAction");
+  });
+
+  test("opening suggested WhatsApp validates follow-up and updates approval timestamps", () => {
+    const messagesActions = readFileSync("app/(dashboard)/_actions/messages.ts", "utf8");
+    expect(messagesActions).toContain("openSuggestedWhatsappAction");
+    expect(messagesActions).toContain(".from(\"follow_ups\")");
+    expect(messagesActions).toContain(".eq(\"purpose\", \"suggested_whatsapp\")");
+    expect(messagesActions).toContain("approved_at: now");
+    expect(messagesActions).toContain("opened_at: now");
+    expect(messagesActions).toContain("updateError");
+  });
+
+  test("mark contacted action validates open follow-up before updating contact", () => {
+    const contactsActions = readFileSync("app/(dashboard)/_actions/contacts.ts", "utf8");
+    expect(contactsActions).toContain("markFollowUpContactedAction");
+    expect(contactsActions).toContain("Open%20follow-up%20task%20not%20found");
+    expect(contactsActions).toContain("status: \"contacted\"");
+    expect(contactsActions).toContain("completed_at: now");
+  });
+
+  test("new actions are exported from dashboard actions barrel", () => {
+    const dashboardActions = readFileSync("app/(dashboard)/actions.ts", "utf8");
+    expect(dashboardActions).toContain("openSuggestedWhatsappAction");
+    expect(dashboardActions).toContain("markFollowUpContactedAction");
+  });
+
+  test("contact detail page prefers saved suggested message over live generation", () => {
+    const contactDetailPage = readFileSync("app/(dashboard)/contacts/[id]/page.tsx", "utf8");
+    expect(contactDetailPage).toContain("item.purpose === \"suggested_whatsapp\"");
+    expect(contactDetailPage).toContain("suggestedMessage ?? generateMessage");
+  });
+
+  test("generated message select includes new purpose and timestamp columns", () => {
+    const dataContacts = readFileSync("lib/data-contacts.ts", "utf8");
+    expect(dataContacts).toContain("purpose");
+    expect(dataContacts).toContain("approved_at");
+    expect(dataContacts).toContain("opened_at");
+  });
 });

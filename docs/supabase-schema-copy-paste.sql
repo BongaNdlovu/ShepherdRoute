@@ -389,9 +389,17 @@ create table if not exists public.generated_messages (
   message_text text not null,
   wa_link text,
   prompt_version text not null default 'v1_manual',
+  purpose text not null default 'manual',
+  approved_at timestamptz,
+  opened_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table if exists public.generated_messages
+  add column if not exists purpose text not null default 'manual',
+  add column if not exists approved_at timestamptz,
+  add column if not exists opened_at timestamptz;
 
 create index if not exists church_memberships_user_idx on public.church_memberships(user_id, status);
 create index if not exists church_memberships_church_idx on public.church_memberships(church_id, role, status);
@@ -430,6 +438,9 @@ create index if not exists follow_ups_church_status_idx on public.follow_ups(chu
 create index if not exists prayer_requests_contact_idx on public.prayer_requests(contact_id, created_at desc);
 create index if not exists prayer_requests_visibility_idx on public.prayer_requests(church_id, visibility);
 create index if not exists generated_messages_contact_idx on public.generated_messages(contact_id, created_at desc);
+create unique index if not exists generated_messages_one_suggestion_per_contact_idx
+on public.generated_messages(contact_id)
+where purpose = 'suggested_whatsapp';
 create index if not exists journey_person_created_idx on public.contact_journey_events(person_id, created_at desc);
 create index if not exists journey_church_event_idx on public.contact_journey_events(church_id, event_id, created_at desc);
 
@@ -1247,6 +1258,12 @@ drop policy if exists "Members can create generated messages" on public.generate
 create policy "Members can create generated messages"
 on public.generated_messages for insert
 with check (private.is_church_member(church_id));
+
+drop policy if exists "Members can update generated messages" on public.generated_messages;
+create policy "Members can update generated messages"
+on public.generated_messages for update
+using (private.is_church_member(church_id) or private.is_app_admin())
+with check (private.is_church_member(church_id) or private.is_app_admin());
 
 drop function if exists public.is_church_member(uuid);
 drop function if exists public.is_app_admin();
@@ -2350,6 +2367,7 @@ set search_path = public
 as $$
 declare
   target_event public.events%rowtype;
+  target_church_name text;
   new_contact_id uuid;
   selected_interest public.interest_tag;
   computed_urgency public.urgency_level := coalesce(p_urgency, 'medium'::public.urgency_level);
@@ -2358,6 +2376,12 @@ declare
     p_classification_payload,
     jsonb_build_object('classification_version', 'rule_v1', 'rule_based', true, 'ready_for_ai', false)
   );
+  recommended_role text := coalesce(p_classification_payload->>'recommended_assigned_role', 'elder');
+  assigned_owner_id uuid;
+  suggested_message text;
+  suggested_wa_link text;
+  first_name text;
+  digits text;
   journey_title text;
 begin
   if p_consent_given is distinct from true then
@@ -2379,6 +2403,37 @@ begin
     raise exception 'This event is not available.';
   end if;
 
+  select name into target_church_name
+  from public.churches
+  where id = target_event.church_id;
+
+  select id into assigned_owner_id
+  from public.team_members
+  where church_id = target_event.church_id
+    and is_active = true
+    and role::text = any(
+      case recommended_role
+        when 'pastor' then array['pastor','elder','admin']
+        when 'elder' then array['elder','pastor','admin']
+        when 'bible_worker' then array['bible_worker','pastor','elder','admin']
+        when 'health_leader' then array['health_leader','pastor','elder','admin']
+        when 'prayer_team' then array['prayer_team','pastor','elder','admin']
+        else array['elder','pastor','admin']
+      end
+    )
+  order by array_position(
+    case recommended_role
+      when 'pastor' then array['pastor','elder','admin']
+      when 'elder' then array['elder','pastor','admin']
+      when 'bible_worker' then array['bible_worker','pastor','elder','admin']
+      when 'health_leader' then array['health_leader','pastor','elder','admin']
+      when 'prayer_team' then array['prayer_team','pastor','elder','admin']
+      else array['elder','pastor','admin']
+    end,
+    role::text
+  ), display_name
+  limit 1;
+
   insert into public.contacts (
     church_id,
     event_id,
@@ -2391,6 +2446,7 @@ begin
     best_time_to_contact,
     status,
     urgency,
+    assigned_to,
     consent_given,
     consent_at,
     consent_source,
@@ -2408,8 +2464,9 @@ begin
     nullif(p_area, ''),
     coalesce(nullif(p_language, ''), 'English'),
     nullif(p_best_time_to_contact, ''),
-    'new',
+    case when assigned_owner_id is null then 'new'::public.follow_up_status else 'assigned'::public.follow_up_status end,
     computed_urgency,
+    assigned_owner_id,
     true,
     now(),
     coalesce(nullif(p_consent_source, ''), target_event.event_type::text),
@@ -2432,14 +2489,58 @@ begin
 
   computed_due_at := private.default_follow_up_due_at(computed_urgency, computed_classification_payload);
 
-  insert into public.follow_ups (church_id, contact_id, channel, status, next_action, due_at)
+  insert into public.follow_ups (church_id, contact_id, assigned_to, channel, status, next_action, due_at)
   values (
     target_event.church_id,
     new_contact_id,
+    assigned_owner_id,
     'note',
-    'new',
+    case when assigned_owner_id is null then 'new'::public.follow_up_status else 'assigned'::public.follow_up_status end,
     coalesce(computed_classification_payload->>'recommended_next_action', 'Assign first follow-up within 48 hours.'),
     computed_due_at
+  );
+
+  first_name := coalesce(nullif(split_part(trim(p_full_name), ' ', 1), ''), 'there');
+  suggested_message := case
+    when 'pastoral_visit'::public.interest_tag = any(p_interests) then
+      'Good day ' || first_name || ', thank you for connecting with ' || coalesce(target_church_name, 'our church') || ' after ' || target_event.name || '. You mentioned that you would appreciate a pastoral visit. Would it be okay if one of our pastoral team members contacts you to find a suitable time?'
+    when 'baptism'::public.interest_tag = any(p_interests) then
+      'Good day ' || first_name || ', thank you for reaching out to ' || coalesce(target_church_name, 'our church') || ' after ' || target_event.name || '. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker who can walk with you through preparation. Would it also be helpful if we shared Bible study options with you?'
+    when 'prayer'::public.interest_tag = any(p_interests) then
+      'Good day ' || first_name || ', thank you for trusting ' || coalesce(target_church_name, 'our church') || ' after ' || target_event.name || '. We have your prayer request, and we will handle it with care. Would you like someone from our prayer team to check in with you?'
+    when 'bible_study'::public.interest_tag = any(p_interests) then
+      'Good day ' || first_name || ', thank you for connecting with ' || coalesce(target_church_name, 'our church') || ' after ' || target_event.name || '. We are glad you are interested in Bible study. Would it be okay if one of our Bible workers contacts you and shares the available study options?'
+    when 'health'::public.interest_tag = any(p_interests) then
+      'Good day ' || first_name || ', thank you for connecting with ' || coalesce(target_church_name, 'our church') || ' after ' || target_event.name || '. You showed interest in health resources. Would you like us to send a simple resource and let you know about the next health program?'
+    when 'cooking_class'::public.interest_tag = any(p_interests) then
+      'Good day ' || first_name || ', thank you for connecting with ' || coalesce(target_church_name, 'our church') || ' after ' || target_event.name || '. You selected cooking class updates. Would you like us to send details when the next healthy cooking session is planned?'
+    else
+      'Good day ' || first_name || ', thank you for visiting ' || coalesce(target_church_name, 'our church') || ' after ' || target_event.name || '. We are grateful you connected with us. Would it be okay if one of our team members follows up with you this week?'
+  end;
+
+  digits := regexp_replace(coalesce(p_phone, ''), '[^0-9]', '', 'g');
+  if digits like '0%' then
+    digits := '27' || substring(digits from 2);
+  end if;
+  suggested_wa_link := 'https://wa.me/' || digits || '?text=' || replace(replace(replace(replace(suggested_message, '%', '%25'), ' ', '%20'), '&', '%26'), '?', '%3F');
+
+  insert into public.generated_messages (
+    church_id,
+    contact_id,
+    channel,
+    message_text,
+    wa_link,
+    prompt_version,
+    purpose
+  )
+  values (
+    target_event.church_id,
+    new_contact_id,
+    'whatsapp',
+    suggested_message,
+    suggested_wa_link,
+    'v1_suggested_rpc',
+    'suggested_whatsapp'
   );
 
   journey_title := 'Submitted ' || target_event.name;

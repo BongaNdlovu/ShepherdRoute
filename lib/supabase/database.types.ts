@@ -384,6 +384,9 @@ export type Database = {
           message_text: string;
           wa_link: string | null;
           prompt_version: string;
+          purpose: string;
+          approved_at: Timestamp | null;
+          opened_at: Timestamp | null;
           created_at: Timestamp;
           updated_at: Timestamp;
         };
@@ -396,6 +399,9 @@ export type Database = {
           message_text: string;
           wa_link?: string | null;
           prompt_version?: string;
+          purpose?: string;
+          approved_at?: Timestamp | null;
+          opened_at?: Timestamp | null;
           created_at?: Timestamp;
           updated_at?: Timestamp;
         };

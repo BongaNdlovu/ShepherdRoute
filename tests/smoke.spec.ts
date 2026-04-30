@@ -65,4 +65,23 @@ test.describe("authenticated smoke flow", () => {
     await page.getByRole("button", { name: "Apply" }).click();
     await expect(page.getByRole("link", { name: visitorName })).toBeVisible();
   });
+
+  test("creates a manual contact, verifies Today's Follow-Ups card appears with suggested WhatsApp", async ({ page }) => {
+    await login(page);
+
+    const contactName = `Smoke Manual Contact ${Date.now()}`;
+
+    await page.goto("/contacts#add-contact");
+    await page.locator("#add-contact").getByLabel("Name").fill(contactName);
+    const addContactForm = page.locator("#add-contact");
+    await addContactForm.getByLabel("Phone / WhatsApp").fill("+27 72 000 5678");
+    await addContactForm.getByText("Bible Study").click();
+    await addContactForm.getByLabel("Prayer request or note").fill("Interested in Bible study.");
+    await addContactForm.getByRole("button", { name: "Add contact" }).click();
+
+    await page.goto("/dashboard");
+    await expect(page.getByRole("heading", { name: "Today's Follow-Ups" })).toBeVisible();
+    await expect(page.getByText(contactName)).toBeVisible();
+    await expect(page.getByRole("button", { name: /approve & open whatsapp/i })).toBeVisible();
+  });
 });
