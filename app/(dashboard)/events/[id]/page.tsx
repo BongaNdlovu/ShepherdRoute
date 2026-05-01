@@ -45,6 +45,9 @@ export default async function EventDetailPage({
               <CardDescription>{event.description ?? "QR registration and team follow-up for this outreach event."}</CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline">
+                <Link href={`/events/${event.id}/customize`}>Customize form</Link>
+              </Button>
               <form action={updateEventStatusAction}>
                 <input type="hidden" name="eventId" value={event.id} />
                 <input type="hidden" name="isActive" value={event.is_active ? "false" : "true"} />

@@ -292,6 +292,11 @@ create table if not exists public.events (
 alter table public.events
   add column if not exists archived_at timestamptz;
 
+alter table public.events
+  add column if not exists form_config jsonb not null default '{}'::jsonb,
+  add column if not exists branding_config jsonb not null default '{}'::jsonb,
+  add column if not exists public_info jsonb not null default '{}'::jsonb;
+
 create table if not exists public.people (
   id uuid primary key default gen_random_uuid(),
   church_id uuid not null references public.churches(id) on delete cascade,
@@ -1419,7 +1424,10 @@ select
   events.starts_on,
   events.location,
   events.slug,
-  churches.name as church_name
+  churches.name as church_name,
+  events.form_config,
+  events.branding_config,
+  events.public_info
 from public.events
 join public.churches on churches.id = events.church_id
 where events.is_active = true

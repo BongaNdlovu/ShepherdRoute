@@ -19,7 +19,7 @@ export async function getEvents(churchId: string, options: { includeArchived?: b
   const supabase = await createClient();
   let query = supabase
     .from("events")
-    .select("id, name, event_type, starts_on, location, slug, is_active, archived_at, created_at, contacts(count)")
+    .select("id, name, event_type, starts_on, location, slug, is_active, archived_at, created_at, form_config, branding_config, public_info, contacts(count)")
     .eq("church_id", churchId)
     .order("created_at", { ascending: false });
 
@@ -37,7 +37,7 @@ export async function getEvent(churchId: string, id: string) {
   const [{ data: event }, { data: contacts, count }] = await Promise.all([
     supabase
       .from("events")
-      .select("id, name, event_type, starts_on, location, slug, description, is_active, archived_at, created_at, contacts(count)")
+      .select("id, name, event_type, starts_on, location, slug, description, is_active, archived_at, created_at, form_config, branding_config, public_info, contacts(count)")
       .eq("church_id", churchId)
       .eq("id", id)
       .single(),

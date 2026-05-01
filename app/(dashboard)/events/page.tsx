@@ -68,11 +68,9 @@ export default async function EventsPage() {
                 <Button asChild variant="outline">
                   <Link href={`/events/${event.id}`}>View event</Link>
                 </Button>
-                {!event.archived_at && event.is_active ? (
-                  <Button asChild>
-                    <Link href={`/e/${event.slug}`} target="_blank">Open form</Link>
-                  </Button>
-                ) : null}
+                <Button asChild variant="outline">
+                  <Link href={`/events/${event.id}/customize`}>Customize form</Link>
+                </Button>
               </div>
             </CardContent>
           </Card>

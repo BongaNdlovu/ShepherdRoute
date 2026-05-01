@@ -5,7 +5,7 @@ export async function getPublicEvent(slug: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("public_events")
-    .select("id, name, event_type, starts_on, location, slug, church_name")
+    .select("id, name, event_type, starts_on, location, slug, church_name, form_config, branding_config, public_info")
     .eq("slug", slug)
     .single();
 
