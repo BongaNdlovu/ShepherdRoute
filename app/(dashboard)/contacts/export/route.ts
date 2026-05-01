@@ -1,9 +1,9 @@
 import { getChurchContext, getContactsPage } from "@/lib/data";
-import { streamCsvResponse } from "@/lib/csv";
+import { csvResponse, toCsv } from "@/lib/csv";
 import { interestLabels, statusLabels, type FollowUpStatus, type Interest } from "@/lib/constants";
 
 const EXPORT_BATCH_SIZE = 100;
-const CONTACT_EXPORT_HEADERS = ["Name", "Phone", "Email", "Area", "Language", "Event", "Interests", "Status", "Urgency", "Assigned To", "Do Not Contact", "Journey Match", "Best Time", "Created At"];
+const CONTACT_EXPORT_HEADERS = ["Name", "Phone", "Email", "Area", "Language", "Event", "Interests", "Status", "Urgency", "Assigned To", "Do Not Contact", "Duplicate Match", "Best Time", "Created At"];
 
 type ContactExportFilters = {
   q?: string;
@@ -24,10 +24,26 @@ export async function GET(request: Request) {
     assignedTo: url.searchParams.get("assignedTo") ?? undefined
   };
 
-  return streamCsvResponse("shepherdroute-contacts.csv", CONTACT_EXPORT_HEADERS, contactRows(context.churchId, filters));
+  const rows = await collectContactRows(context.churchId, filters);
+  const csv = toCsv(CONTACT_EXPORT_HEADERS, rows);
+  const fileName = createContactExportFileName();
+
+  if (process.env.NODE_ENV !== "production") {
+    console.log("CSV export rows", {
+      churchId: context.churchId,
+      filters,
+      rowCount: rows.length
+    });
+  }
+
+  return csvResponse(fileName, csv);
 }
 
-async function* contactRows(churchId: string, filters: ContactExportFilters) {
+async function collectContactRows(
+  churchId: string,
+  filters: ContactExportFilters
+) {
+  const rows: Array<Array<unknown>> = [];
   let page = 1;
 
   while (true) {
@@ -39,10 +55,10 @@ async function* contactRows(churchId: string, filters: ContactExportFilters) {
 
     for (const contact of result.contacts) {
       const interests = (contact.interests ?? [])
-        .map((interest: Interest) => interestLabels[interest])
+        .map((interest: Interest) => interestLabels[interest] ?? interest)
         .join("; ");
 
-      yield [
+      rows.push([
         contact.full_name,
         contact.phone,
         contact.email ?? "",
@@ -50,14 +66,14 @@ async function* contactRows(churchId: string, filters: ContactExportFilters) {
         contact.language ?? "",
         contact.event_name ?? "Manual contact",
         interests,
-        statusLabels[contact.status as FollowUpStatus],
+        statusLabels[contact.status as FollowUpStatus] ?? contact.status,
         contact.urgency,
         contact.assigned_name ?? "Unassigned",
         contact.do_not_contact ? "Yes" : "No",
         contact.duplicate_of_contact_id ? "Yes" : "No",
         contact.best_time_to_contact ?? "",
         contact.created_at
-      ];
+      ]);
     }
 
     if (!result.contacts.length || page >= result.pageCount) {
@@ -66,4 +82,11 @@ async function* contactRows(churchId: string, filters: ContactExportFilters) {
 
     page += 1;
   }
+
+  return rows;
+}
+
+function createContactExportFileName() {
+  const today = new Date().toISOString().slice(0, 10);
+  return `shepherdroute-contacts-${today}.csv`;
 }

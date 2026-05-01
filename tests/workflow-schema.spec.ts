@@ -381,13 +381,16 @@ test.describe("workflow helpers", () => {
     expect(card).not.toContain("/contacts?status=assigned");
   });
 
-  test("contacts and event report exports stream CSV instead of building all rows", () => {
+  test("contacts export uses collect-first approach, event report export uses streaming", () => {
     const contactsExport = readFileSync("app/(dashboard)/contacts/export/route.ts", "utf8");
     const eventExport = readFileSync("app/(dashboard)/events/[id]/report/export/route.ts", "utf8");
     const csv = readFileSync("lib/csv.ts", "utf8");
     expect(csv).toContain("streamCsvResponse");
     expect(csv).toContain("ReadableStream");
-    expect(contactsExport).toContain("streamCsvResponse");
+    expect(contactsExport).toContain("csvResponse");
+    expect(contactsExport).toContain("toCsv");
+    expect(contactsExport).toContain("collectContactRows");
+    expect(contactsExport).not.toContain("streamCsvResponse");
     expect(contactsExport).toContain("getContactsPage");
     expect(contactsExport).not.toContain("getContacts(");
     expect(eventExport).toContain("streamCsvResponse");

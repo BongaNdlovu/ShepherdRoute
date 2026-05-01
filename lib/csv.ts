@@ -1,8 +1,27 @@
+const DANGEROUS_CSV_FORMULA_STARTS = new Set(["=", "+", "-", "@"]);
+
+export function normalizeCsvValue(value: unknown) {
+  if (value === null || value === undefined) return "";
+  if (Array.isArray(value)) return value.join("; ");
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return String(value);
+}
+
+function startsWithDangerousCsvFormula(text: string) {
+  const trimmedStart = text.trimStart();
+  return (
+    trimmedStart.length > 0 &&
+    DANGEROUS_CSV_FORMULA_STARTS.has(trimmedStart[0])
+  );
+}
+
 export function escapeCsvValue(value: unknown) {
-  let text = value === null || value === undefined ? "" : String(value);
-  if (/^[=+\-@]/.test(text)) {
+  let text = normalizeCsvValue(value);
+
+  if (startsWithDangerousCsvFormula(text)) {
     text = `'${text}`;
   }
+
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
@@ -14,7 +33,7 @@ export function toCsv(headers: string[], rows: Array<Array<unknown>>) {
 }
 
 export function csvResponse(fileName: string, csv: string) {
-  return new Response(csv, {
+  return new Response(`\uFEFF${csv}`, {
     headers: {
       "content-type": "text/csv; charset=utf-8",
       "content-disposition": `attachment; filename="${fileName}"`
