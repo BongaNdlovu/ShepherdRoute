@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Building2, Church, ClipboardList, KeyRound, Mail, UserRoundX, UsersRound } from "lucide-react";
 import { updateOwnerMembershipRoleAction, updateOwnerMembershipStatusAction } from "@/app/(dashboard)/actions";
@@ -40,8 +41,15 @@ export default async function OwnerAdminPage({
   return (
     <section className="space-y-4">
       <header className="rounded-lg border bg-white p-5 shadow-sm">
-        <h2 className="text-2xl font-black tracking-tight">ShepherdRoute owner admin</h2>
-        <p className="mt-1 text-sm text-muted-foreground">SaaS-level workspace and account controls without exposing prayer request contents.</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-black tracking-tight">ShepherdRoute owner admin</h2>
+            <p className="mt-1 text-sm text-muted-foreground">SaaS-level workspace and account controls without exposing prayer request contents.</p>
+          </div>
+          <Button asChild>
+            <Link href="/admin/churches">Manage Churches</Link>
+          </Button>
+        </div>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
