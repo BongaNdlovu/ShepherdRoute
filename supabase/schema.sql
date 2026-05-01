@@ -143,27 +143,30 @@ alter table if exists public.churches
 
 comment on column public.churches.onboarding_dismissed_at is 'When a church member dismissed the onboarding guidance banner';
 
-create or replace function public.dismiss_onboarding_guide(church_id uuid)
+create or replace function public.dismiss_onboarding_guide(p_church_id uuid)
 returns void
 language plpgsql
 security definer
 set search_path = public
 as $$
 begin
-  -- Only allow authenticated church members to dismiss their own church's banner
+  if auth.uid() is null then
+    raise exception 'Login is required.';
+  end if;
+
   if not exists (
-    select 1 from public.church_memberships
-    where church_id = dismiss_onboarding_guide.church_id
-      and user_id = auth.uid()
-      and status = 'active'
+    select 1
+    from public.church_memberships
+    where church_memberships.church_id = p_church_id
+      and church_memberships.user_id = auth.uid()
+      and church_memberships.status = 'active'
   ) then
-    raise exception 'Not a member of this church';
+    raise exception 'You are not allowed to dismiss onboarding for this church.';
   end if;
 
   update public.churches
-  set onboarding_dismissed_at = now()
-  where id = church_id
-    and onboarding_dismissed_at is null;
+  set onboarding_dismissed_at = coalesce(onboarding_dismissed_at, now())
+  where id = p_church_id;
 end;
 $$;
 
