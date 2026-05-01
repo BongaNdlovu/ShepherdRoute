@@ -1,5 +1,3 @@
-const DANGEROUS_CSV_FORMULA_STARTS = new Set(["=", "+", "-", "@"]);
-
 export function normalizeCsvValue(value: unknown) {
   if (value === null || value === undefined) return "";
   if (Array.isArray(value)) return value.join("; ");
@@ -7,18 +5,10 @@ export function normalizeCsvValue(value: unknown) {
   return String(value);
 }
 
-function startsWithDangerousCsvFormula(text: string) {
-  const trimmedStart = text.trimStart();
-  return (
-    trimmedStart.length > 0 &&
-    DANGEROUS_CSV_FORMULA_STARTS.has(trimmedStart[0])
-  );
-}
-
 export function escapeCsvValue(value: unknown) {
   let text = normalizeCsvValue(value);
 
-  if (startsWithDangerousCsvFormula(text)) {
+  if (/^[=+\-@]/.test(text) || /^[\s\t\r\n]*[=+\-@]/.test(text)) {
     text = `'${text}`;
   }
 

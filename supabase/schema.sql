@@ -1016,7 +1016,6 @@ $$;
 create or replace function private.is_app_owner()
 returns boolean
 language sql
-stable
 security definer
 set search_path = public
 as $$
@@ -1582,7 +1581,9 @@ security definer
 set search_path = public, private
 as $$
 begin
-  perform private.require_app_admin();
+  if not private.is_app_admin() then
+    raise exception 'Only ShepherdRoute app admins can view account rows.';
+  end if;
 
   return query
   select
@@ -1656,7 +1657,9 @@ security definer
 set search_path = public, private
 as $$
 begin
-  perform private.require_app_admin();
+  if not private.is_app_admin() then
+    raise exception 'Only ShepherdRoute app admins can view invitation rows.';
+  end if;
 
   return query
   select
@@ -1703,7 +1706,13 @@ declare
   target_is_protected_owner boolean := false;
   active_leader_count integer := 0;
 begin
-  perform private.require_app_admin(array['owner','support_admin']::public.app_admin_role[]);
+  if auth.uid() is null then
+    raise exception 'Login is required.';
+  end if;
+
+  if not private.is_app_owner() then
+    raise exception 'Only ShepherdRoute app owners can update account access.';
+  end if;
 
   select *
   into target_membership
@@ -1796,7 +1805,13 @@ declare
   target_is_protected_owner boolean := false;
   active_leader_count integer := 0;
 begin
-  perform private.require_app_admin(array['owner','support_admin']::public.app_admin_role[]);
+  if auth.uid() is null then
+    raise exception 'Login is required.';
+  end if;
+
+  if not private.is_app_owner() then
+    raise exception 'Only ShepherdRoute app owners can update church roles.';
+  end if;
 
   select *
   into target_membership
