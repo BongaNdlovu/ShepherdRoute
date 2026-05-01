@@ -10,7 +10,7 @@ export async function dismissOnboardingGuideAction() {
   const supabase = await createClient();
 
   const { error } = await supabase.rpc("dismiss_onboarding_guide", {
-    church_id: context.churchId
+    p_church_id: context.churchId
   });
 
   if (error) {
