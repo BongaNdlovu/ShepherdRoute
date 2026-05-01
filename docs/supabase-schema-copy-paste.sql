@@ -2936,3 +2936,124 @@ grant execute on function public.submit_event_registration(
   text,
   boolean
 ) to anon, authenticated;
+
+create or replace function public.owner_church_profiles_page(
+  p_church_id uuid,
+  p_search text default null,
+  p_limit integer default 25,
+  p_offset integer default 0
+)
+returns table (
+  membership_id uuid,
+  user_id uuid,
+  full_name text,
+  email text,
+  phone text,
+  role text,
+  status text,
+  membership_created_at timestamptz,
+  app_admin_role text,
+  is_protected_owner boolean,
+  total_count bigint
+)
+language sql
+security definer
+set search_path = public
+as $$
+  with filtered as (
+    select
+      cm.id as membership_id,
+      cm.user_id,
+      p.full_name,
+      p.email,
+      p.phone,
+      cm.role::text as role,
+      cm.status::text as status,
+      cm.created_at as membership_created_at,
+      aa.role::text as app_admin_role,
+      coalesce(aa.is_protected_owner, false) as is_protected_owner
+    from public.church_memberships cm
+    left join public.profiles p on p.id = cm.user_id
+    left join public.app_admins aa on aa.user_id = cm.user_id
+    where cm.church_id = p_church_id
+      and (
+        p_search is null
+        or p_search = ''
+        or p.full_name ilike ('%' || p_search || '%')
+        or p.email ilike ('%' || p_search || '%')
+        or p.phone ilike ('%' || p_search || '%')
+        or cm.user_id::text ilike ('%' || p_search || '%')
+      )
+  )
+  select
+    filtered.*,
+    count(*) over() as total_count
+  from filtered
+  order by membership_created_at desc
+  limit greatest(1, least(p_limit, 100))
+  offset greatest(0, p_offset);
+$$;
+
+grant execute on function public.owner_church_profiles_page(uuid, text, integer, integer) to authenticated;
+
+create or replace function public.owner_church_events_page(
+  p_church_id uuid,
+  p_search text default null,
+  p_limit integer default 25,
+  p_offset integer default 0
+)
+returns table (
+  id uuid,
+  name text,
+  event_type text,
+  starts_on date,
+  location text,
+  slug text,
+  is_active boolean,
+  archived_at timestamptz,
+  created_at timestamptz,
+  contact_count bigint,
+  total_count bigint
+)
+language sql
+security definer
+set search_path = public
+as $$
+  with filtered as (
+    select
+      e.id,
+      e.name,
+      e.event_type::text as event_type,
+      e.starts_on,
+      e.location,
+      e.slug,
+      e.is_active,
+      e.archived_at,
+      e.created_at,
+      (
+        select count(*)
+        from public.contacts c
+        where c.event_id = e.id
+          and c.church_id = e.church_id
+          and c.deleted_at is null
+      ) as contact_count
+    from public.events e
+    where e.church_id = p_church_id
+      and (
+        p_search is null
+        or p_search = ''
+        or e.name ilike ('%' || p_search || '%')
+        or e.location ilike ('%' || p_search || '%')
+        or e.slug ilike ('%' || p_search || '%')
+      )
+  )
+  select
+    filtered.*,
+    count(*) over() as total_count
+  from filtered
+  order by created_at desc
+  limit greatest(1, least(p_limit, 100))
+  offset greatest(0, p_offset);
+$$;
+
+grant execute on function public.owner_church_events_page(uuid, text, integer, integer) to authenticated;

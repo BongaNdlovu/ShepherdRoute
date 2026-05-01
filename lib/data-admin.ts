@@ -287,41 +287,35 @@ export async function getOwnerChurchProfilesPage(churchId: string, params: Owner
   const page = normalizePage(params.page);
   const pageSize = normalizePageSize(params.pageSize);
   const offset = (page - 1) * pageSize;
-  const q = params.q?.trim();
 
-  let query = supabase
-    .from("church_memberships")
-    .select("id, user_id, role, status, created_at, profiles(full_name, email, phone), app_admins(role, is_protected_owner)", { count: "exact" })
-    .eq("church_id", churchId)
-    .order("created_at", { ascending: false })
-    .range(offset, offset + pageSize - 1);
+  const { data, error } = await supabase.rpc("owner_church_profiles_page", {
+    p_church_id: churchId,
+    p_search: params.q?.trim() || null,
+    p_limit: pageSize,
+    p_offset: offset
+  });
 
-  if (q) {
-    query = query.or(`profiles.full_name.ilike.%${q}%,profiles.email.ilike.%${q}%`);
+  if (error) {
+    throw new Error(error.message);
   }
 
-  const { data, error, count } = await query;
-  if (error) throw new Error(error.message);
+  const rows = data ?? [];
+  const total = Number(rows[0]?.total_count ?? 0);
 
-  const items = (data ?? []).map((row) => {
-    const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
-    const appAdmin = Array.isArray(row.app_admins) ? row.app_admins[0] : row.app_admins;
+  const items = rows.map((row: Record<string, unknown>) => ({
+    membership_id: row.membership_id as string,
+    user_id: row.user_id as string,
+    full_name: row.full_name as string | null,
+    email: row.email as string | null,
+    phone: row.phone as string | null,
+    role: row.role as string,
+    status: row.status as "active" | "invited" | "disabled",
+    membership_created_at: row.membership_created_at as string,
+    app_admin_role: row.app_admin_role as "owner" | "support_admin" | "billing_admin" | null,
+    is_protected_owner: Boolean(row.is_protected_owner)
+  }));
 
-    return {
-      membership_id: row.id,
-      user_id: row.user_id,
-      full_name: profile?.full_name ?? null,
-      email: profile?.email ?? null,
-      phone: profile?.phone ?? null,
-      role: row.role,
-      status: row.status,
-      membership_created_at: row.created_at,
-      app_admin_role: appAdmin?.role ?? null,
-      is_protected_owner: appAdmin?.is_protected_owner ?? false
-    };
-  }) as OwnerChurchProfileRow[];
-
-  return pageResult(items, count ?? 0, page, pageSize);
+  return pageResult(items, total, page, pageSize);
 }
 
 export async function getOwnerChurchEventsPage(churchId: string, params: OwnerPaginationParams): Promise<OwnerPaginatedResult<OwnerChurchEventRow>> {
@@ -329,36 +323,35 @@ export async function getOwnerChurchEventsPage(churchId: string, params: OwnerPa
   const page = normalizePage(params.page);
   const pageSize = normalizePageSize(params.pageSize);
   const offset = (page - 1) * pageSize;
-  const q = params.q?.trim();
 
-  let query = supabase
-    .from("events")
-    .select("id, name, event_type, starts_on, location, slug, is_active, archived_at, created_at, contacts(count)", { count: "exact" })
-    .eq("church_id", churchId)
-    .order("created_at", { ascending: false })
-    .range(offset, offset + pageSize - 1);
+  const { data, error } = await supabase.rpc("owner_church_events_page", {
+    p_church_id: churchId,
+    p_search: params.q?.trim() || null,
+    p_limit: pageSize,
+    p_offset: offset
+  });
 
-  if (q) {
-    query = query.or(`name.ilike.%${q}%,location.ilike.%${q}%`);
+  if (error) {
+    throw new Error(error.message);
   }
 
-  const { data, error, count } = await query;
-  if (error) throw new Error(error.message);
+  const rows = data ?? [];
+  const total = Number(rows[0]?.total_count ?? 0);
 
-  const items = (data ?? []).map((event) => ({
-    id: event.id,
-    name: event.name,
-    event_type: event.event_type,
-    starts_on: event.starts_on,
-    location: event.location,
-    slug: event.slug,
-    is_active: event.is_active,
-    archived_at: event.archived_at,
-    created_at: event.created_at,
-    contact_count: Array.isArray(event.contacts) ? event.contacts[0]?.count ?? 0 : 0
+  const items = rows.map((row: Record<string, unknown>) => ({
+    id: row.id as string,
+    name: row.name as string,
+    event_type: row.event_type as string,
+    starts_on: row.starts_on as string | null,
+    location: row.location as string | null,
+    slug: row.slug as string,
+    is_active: row.is_active as boolean,
+    archived_at: row.archived_at as string | null,
+    created_at: row.created_at as string,
+    contact_count: Number(row.contact_count ?? 0)
   }));
 
-  return pageResult(items, count ?? 0, page, pageSize);
+  return pageResult(items, total, page, pageSize);
 }
 
 export async function getOwnerChurchContactsPage(churchId: string, params: OwnerPaginationParams): Promise<OwnerPaginatedResult<OwnerChurchContactRow>> {
