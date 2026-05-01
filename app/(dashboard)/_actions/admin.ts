@@ -101,7 +101,7 @@ export async function updateOwnerMembershipRoleAction(formData: FormData) {
 export async function updateOwnerWorkspaceStatusAction(formData: FormData) {
   const context = await getChurchContext();
 
-  if (!canManageOwnerAdmin({ role: context.appAdminRole as AppAdminRole | null, isProtectedOwner: context.isProtectedOwner })) {
+  if (!context.isProtectedOwner || context.appAdminRole !== "owner") {
     redirect("/dashboard");
   }
 
@@ -152,7 +152,7 @@ export async function updateOwnerWorkspaceStatusAction(formData: FormData) {
 export async function updateOwnerWorkspaceTypeAction(formData: FormData) {
   const context = await getChurchContext();
 
-  if (!canManageOwnerAdmin({ role: context.appAdminRole as AppAdminRole | null, isProtectedOwner: context.isProtectedOwner })) {
+  if (!context.isProtectedOwner || context.appAdminRole !== "owner") {
     redirect("/dashboard");
   }
 

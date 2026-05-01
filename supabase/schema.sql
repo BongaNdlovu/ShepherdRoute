@@ -199,6 +199,7 @@ begin
 end;
 $$;
 
+revoke all on function public.dismiss_onboarding_guide(uuid) from public;
 grant execute on function public.dismiss_onboarding_guide(uuid) to authenticated;
 
 create table if not exists public.profiles (
@@ -1047,16 +1048,67 @@ as $$
   );
 $$;
 
+create or replace function private.require_app_admin(
+  p_allowed_roles public.app_admin_role[] default array['owner','support_admin']::public.app_admin_role[]
+)
+returns void
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Login is required.';
+  end if;
+
+  if not exists (
+    select 1
+    from public.app_admins
+    where user_id = auth.uid()
+      and role = any(p_allowed_roles)
+  ) then
+    raise exception 'Owner/admin access required.';
+  end if;
+end;
+$$;
+
+create or replace function private.require_protected_owner()
+returns void
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Login is required.';
+  end if;
+
+  if not exists (
+    select 1
+    from public.app_admins
+    where user_id = auth.uid()
+      and role = 'owner'
+      and is_protected_owner = true
+  ) then
+    raise exception 'Protected owner access required.';
+  end if;
+end;
+$$;
+
 revoke all on function private.is_church_member(uuid) from public, anon, authenticated;
 revoke all on function private.is_app_admin() from public, anon, authenticated;
 revoke all on function private.is_app_owner() from public, anon, authenticated;
 revoke all on function private.has_church_role(uuid, public.team_role[]) from public, anon, authenticated;
 revoke all on function private.hash_invite_token(text) from public, anon, authenticated;
 revoke all on function private.accept_team_invitation_for_user(text, uuid, text) from public, anon, authenticated;
+revoke all on function private.require_app_admin(public.app_admin_role[]) from public;
+revoke all on function private.require_protected_owner() from public;
 grant execute on function private.is_church_member(uuid) to anon, authenticated;
 grant execute on function private.is_app_admin() to anon, authenticated;
 grant execute on function private.is_app_owner() to anon, authenticated;
 grant execute on function private.has_church_role(uuid, public.team_role[]) to anon, authenticated;
+grant execute on function private.require_app_admin(public.app_admin_role[]) to authenticated;
+grant execute on function private.require_protected_owner() to authenticated;
 
 alter table public.churches enable row level security;
 alter table public.profiles enable row level security;
@@ -1476,13 +1528,11 @@ returns table (
   new_contact_count bigint
 )
 language plpgsql
-security invoker
-set search_path = public
+security definer
+set search_path = public, private
 as $$
 begin
-  if not private.is_app_admin() then
-    raise exception 'Only ShepherdRoute app admins can view owner summaries.';
-  end if;
+  perform private.require_app_admin();
 
   return query
   select
@@ -1529,12 +1579,10 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, private
 as $$
 begin
-  if not private.is_app_admin() then
-    raise exception 'Only ShepherdRoute app admins can view account rows.';
-  end if;
+  perform private.require_app_admin();
 
   return query
   select
@@ -1604,13 +1652,11 @@ returns table (
   created_at timestamptz
 )
 language plpgsql
-security invoker
-set search_path = public
+security definer
+set search_path = public, private
 as $$
 begin
-  if not private.is_app_admin() then
-    raise exception 'Only ShepherdRoute app admins can view invitation rows.';
-  end if;
+  perform private.require_app_admin();
 
   return query
   select
@@ -1650,16 +1696,14 @@ create or replace function public.owner_update_membership_status(
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, private
 as $$
 declare
   target_membership public.church_memberships%rowtype;
   target_is_protected_owner boolean := false;
   active_leader_count integer := 0;
 begin
-  if not private.is_app_owner() then
-    raise exception 'Only ShepherdRoute app owners can update account access.';
-  end if;
+  perform private.require_app_admin(array['owner','support_admin']::public.app_admin_role[]);
 
   select *
   into target_membership
@@ -1733,6 +1777,7 @@ end;
 $$;
 
 revoke all on function public.owner_update_membership_status(uuid, public.membership_status) from public, anon, authenticated;
+revoke all on function public.owner_update_membership_status(uuid, public.membership_status) from public;
 grant execute on function public.owner_update_membership_status(uuid, public.membership_status) to authenticated;
 
 drop function if exists public.owner_update_membership_role(uuid, public.team_role);
@@ -1744,16 +1789,14 @@ create or replace function public.owner_update_membership_role(
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, private
 as $$
 declare
   target_membership public.church_memberships%rowtype;
   target_is_protected_owner boolean := false;
   active_leader_count integer := 0;
 begin
-  if not private.is_app_owner() then
-    raise exception 'Only ShepherdRoute app owners can update church roles.';
-  end if;
+  perform private.require_app_admin(array['owner','support_admin']::public.app_admin_role[]);
 
   select *
   into target_membership
@@ -1827,6 +1870,7 @@ end;
 $$;
 
 revoke all on function public.owner_update_membership_role(uuid, public.team_role) from public, anon, authenticated;
+revoke all on function public.owner_update_membership_role(uuid, public.team_role) from public;
 grant execute on function public.owner_update_membership_role(uuid, public.team_role) to authenticated;
 
 drop function if exists public.search_contacts(
@@ -2964,6 +3008,8 @@ grant execute on function public.submit_event_registration(
   boolean
 ) to anon, authenticated;
 
+drop function if exists public.owner_church_profiles_page(uuid, text, integer, integer);
+
 create or replace function public.owner_church_profiles_page(
   p_church_id uuid,
   p_search text default null,
@@ -2983,10 +3029,14 @@ returns table (
   is_protected_owner boolean,
   total_count bigint
 )
-language sql
+language plpgsql
 security definer
-set search_path = public
+set search_path = public, private
 as $$
+begin
+  perform private.require_app_admin();
+
+  return query
   with filtered as (
     select
       cm.id as membership_id,
@@ -3019,9 +3069,13 @@ as $$
   order by membership_created_at desc
   limit greatest(1, least(p_limit, 100))
   offset greatest(0, p_offset);
+end;
 $$;
 
+revoke all on function public.owner_church_profiles_page(uuid, text, integer, integer) from public;
 grant execute on function public.owner_church_profiles_page(uuid, text, integer, integer) to authenticated;
+
+drop function if exists public.owner_church_events_page(uuid, text, integer, integer);
 
 create or replace function public.owner_church_events_page(
   p_church_id uuid,
@@ -3042,10 +3096,14 @@ returns table (
   contact_count bigint,
   total_count bigint
 )
-language sql
+language plpgsql
 security definer
-set search_path = public
+set search_path = public, private
 as $$
+begin
+  perform private.require_app_admin();
+
+  return query
   with filtered as (
     select
       e.id,
@@ -3081,6 +3139,8 @@ as $$
   order by created_at desc
   limit greatest(1, least(p_limit, 100))
   offset greatest(0, p_offset);
+end;
 $$;
 
+revoke all on function public.owner_church_events_page(uuid, text, integer, integer) from public;
 grant execute on function public.owner_church_events_page(uuid, text, integer, integer) to authenticated;
