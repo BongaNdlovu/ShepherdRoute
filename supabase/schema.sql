@@ -143,6 +143,8 @@ alter table if exists public.churches
 
 comment on column public.churches.onboarding_dismissed_at is 'When a church member dismissed the onboarding guidance banner';
 
+drop function if exists public.dismiss_onboarding_guide(uuid);
+
 create or replace function public.dismiss_onboarding_guide(p_church_id uuid)
 returns void
 language plpgsql
@@ -169,6 +171,8 @@ begin
   where id = p_church_id;
 end;
 $$;
+
+grant execute on function public.dismiss_onboarding_guide(uuid) to authenticated;
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
