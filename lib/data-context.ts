@@ -3,16 +3,24 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
+export type WorkspaceType = "church" | "ministry";
+export type WorkspaceStatus = "active" | "inactive";
+
 export type ChurchMembershipOption = {
   churchId: string;
   churchName: string;
   role: string;
+  workspaceType: WorkspaceType;
+  workspaceStatus: WorkspaceStatus;
 };
 
 export type ChurchContext = {
   userId: string;
   churchId: string;
   churchName: string;
+  workspaceType: WorkspaceType;
+  workspaceStatus: WorkspaceStatus;
+  workspaceLabel: string;
   fullName: string;
   role: string;
   memberships: ChurchMembershipOption[];
@@ -42,7 +50,7 @@ export const getChurchContext = cache(async function getChurchContext(): Promise
       .single(),
     supabase
       .from("church_memberships")
-      .select("church_id, role, churches(name)")
+      .select("church_id, role, churches(name, workspace_type, workspace_status)")
       .eq("user_id", user.id)
       .eq("status", "active")
       .order("created_at", { ascending: true }),
@@ -59,13 +67,19 @@ export const getChurchContext = cache(async function getChurchContext(): Promise
 
   const selectedMembership = memberships.find((membership) => membership.church_id === selectedChurchId) ?? memberships[0];
   const selectedChurch = Array.isArray(selectedMembership.churches) ? selectedMembership.churches[0] : selectedMembership.churches;
+  const selectedWorkspaceType = (selectedChurch?.workspace_type === "ministry" ? "ministry" : "church") as WorkspaceType;
+  const selectedWorkspaceStatus = (selectedChurch?.workspace_status === "inactive" ? "inactive" : "active") as WorkspaceStatus;
+  const selectedWorkspaceLabel = selectedWorkspaceType === "ministry" ? "Ministry" : "Church";
+
   const membershipOptions = memberships.map((membership) => {
     const church = Array.isArray(membership.churches) ? membership.churches[0] : membership.churches;
 
     return {
       churchId: membership.church_id,
       churchName: church?.name ?? "Your church",
-      role: membership.role
+      role: membership.role,
+      workspaceType: (church?.workspace_type === "ministry" ? "ministry" : "church") as WorkspaceType,
+      workspaceStatus: (church?.workspace_status === "inactive" ? "inactive" : "active") as WorkspaceStatus
     };
   });
 
@@ -73,6 +87,9 @@ export const getChurchContext = cache(async function getChurchContext(): Promise
     userId: user.id,
     churchId: selectedMembership.church_id,
     churchName: selectedChurch?.name ?? "Your church",
+    workspaceType: selectedWorkspaceType,
+    workspaceStatus: selectedWorkspaceStatus,
+    workspaceLabel: selectedWorkspaceLabel,
     fullName: profile.full_name ?? user.email ?? "Team member",
     role: selectedMembership.role,
     memberships: membershipOptions,

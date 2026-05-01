@@ -143,6 +143,33 @@ alter table if exists public.churches
 
 comment on column public.churches.onboarding_dismissed_at is 'When a church member dismissed the onboarding guidance banner';
 
+alter table if exists public.churches
+  add column if not exists workspace_type text not null default 'church',
+  add column if not exists workspace_status text not null default 'active',
+  add column if not exists status_changed_at timestamptz,
+  add column if not exists status_changed_by uuid references auth.users(id) on delete set null,
+  add column if not exists status_change_reason text;
+
+alter table if exists public.churches
+  drop constraint if exists churches_workspace_type_check;
+
+alter table if exists public.churches
+  add constraint churches_workspace_type_check
+  check (workspace_type in ('church', 'ministry'));
+
+alter table if exists public.churches
+  drop constraint if exists churches_workspace_status_check;
+
+alter table if exists public.churches
+  add constraint churches_workspace_status_check
+  check (workspace_status in ('active', 'inactive'));
+
+comment on column public.churches.workspace_type is 'Whether this workspace represents a church or ministry';
+comment on column public.churches.workspace_status is 'Whether this workspace is active or inactive';
+comment on column public.churches.status_changed_at is 'When the workspace status last changed';
+comment on column public.churches.status_changed_by is 'Owner/admin user who last changed the workspace status';
+comment on column public.churches.status_change_reason is 'Optional owner/admin reason for status change';
+
 drop function if exists public.dismiss_onboarding_guide(uuid);
 
 create or replace function public.dismiss_onboarding_guide(p_church_id uuid)

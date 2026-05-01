@@ -8,6 +8,7 @@ import { OwnerSearchForm } from "@/components/app/owner-search-form";
 import { StatCard } from "@/components/app/stat-card";
 import { getOwnerChurchesPage } from "@/lib/data";
 import { requireOwnerAdmin } from "@/lib/owner-admin";
+import { updateOwnerWorkspaceStatusAction } from "@/app/(dashboard)/actions";
 
 export const metadata = {
   title: "Owner Churches"
@@ -51,14 +52,28 @@ export default async function OwnerChurchesPage({
 
           <div className="grid gap-3">
             {churchesPage.items.map((church) => (
-              <div key={church.church_id} className="grid gap-3 rounded-lg border bg-white p-4 lg:grid-cols-[1.4fr_0.6fr_0.6fr_0.6fr_auto] lg:items-center">
+              <div key={church.church_id} className="grid gap-3 rounded-lg border bg-white p-4 lg:grid-cols-[1.4fr_0.6fr_0.6fr_0.6fr_0.6fr_auto] lg:items-center">
                 <div>
-                  <p className="font-bold">{church.church_name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold">{church.church_name}</p>
+                    <Badge variant="info">{church.workspace_type === "ministry" ? "Ministry" : "Church"}</Badge>
+                    <Badge variant={church.workspace_status === "active" ? "success" : "danger"}>
+                      {church.workspace_status === "active" ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
                   <p className="text-sm text-muted-foreground">Created {new Date(church.created_at).toLocaleDateString()}</p>
                 </div>
                 <Badge variant="muted">{church.team_count} team</Badge>
                 <Badge variant="muted">{church.event_count} events</Badge>
                 <Badge variant="muted">{church.contact_count} contacts</Badge>
+                <form action={updateOwnerWorkspaceStatusAction}>
+                  <input type="hidden" name="churchId" value={church.church_id} />
+                  <input type="hidden" name="workspaceStatus" value={church.workspace_status === "active" ? "inactive" : "active"} />
+                  <input type="hidden" name="returnTo" value="/admin/churches" />
+                  <Button type="submit" variant={church.workspace_status === "active" ? "destructive" : "outline"} size="sm">
+                    {church.workspace_status === "active" ? "Deactivate" : "Activate"}
+                  </Button>
+                </form>
                 <Button asChild variant="outline">
                   <Link href={`/admin/churches/${church.church_id}`}>
                     <Eye className="h-4 w-4" />

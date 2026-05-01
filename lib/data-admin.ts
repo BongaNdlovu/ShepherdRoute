@@ -70,6 +70,10 @@ export type OwnerChurchListItem = {
   event_count: number;
   contact_count: number;
   new_contact_count: number;
+  workspace_type: "church" | "ministry";
+  workspace_status: "active" | "inactive";
+  status_changed_at: string | null;
+  status_change_reason: string | null;
 };
 
 export type OwnerChurchDetail = {
@@ -83,6 +87,10 @@ export type OwnerChurchDetail = {
   event_count: number;
   contact_count: number;
   new_contact_count: number;
+  workspace_type: "church" | "ministry";
+  workspace_status: "active" | "inactive";
+  status_changed_at: string | null;
+  status_change_reason: string | null;
 };
 
 export type OwnerChurchTeamRow = {
@@ -196,7 +204,7 @@ export async function getOwnerChurchesPage(params: OwnerPaginationParams): Promi
 
   let query = supabase
     .from("churches")
-    .select("id, name, created_at, team_members(count), church_memberships(count), events(count), contacts(count)", { count: "exact" })
+    .select("id, name, created_at, workspace_type, workspace_status, status_changed_at, status_change_reason, team_members(count), church_memberships(count), events(count), contacts(count)", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(offset, offset + pageSize - 1);
 
@@ -218,7 +226,11 @@ export async function getOwnerChurchesPage(params: OwnerPaginationParams): Promi
     profile_count: Array.isArray(church.church_memberships) ? church.church_memberships[0]?.count ?? 0 : 0,
     event_count: Array.isArray(church.events) ? church.events[0]?.count ?? 0 : 0,
     contact_count: Array.isArray(church.contacts) ? church.contacts[0]?.count ?? 0 : 0,
-    new_contact_count: 0
+    new_contact_count: 0,
+    workspace_type: (church.workspace_type === "ministry" ? "ministry" : "church") as "church" | "ministry",
+    workspace_status: (church.workspace_status === "inactive" ? "inactive" : "active") as "active" | "inactive",
+    status_changed_at: church.status_changed_at ?? null,
+    status_change_reason: church.status_change_reason ?? null
   }));
 
   return pageResult(items, count ?? 0, page, pageSize);
@@ -230,7 +242,7 @@ export async function getOwnerChurchDetail(churchId: string): Promise<OwnerChurc
   const [{ data: church, error }, { count: teamCount }, { count: profileCount }, { count: eventCount }, { count: contactCount }, { count: newContactCount }] = await Promise.all([
     supabase
       .from("churches")
-      .select("id, name, timezone, created_at, updated_at")
+      .select("id, name, timezone, created_at, updated_at, workspace_type, workspace_status, status_changed_at, status_change_reason")
       .eq("id", churchId)
       .single(),
     supabase.from("team_members").select("id", { count: "exact", head: true }).eq("church_id", churchId),
@@ -254,7 +266,11 @@ export async function getOwnerChurchDetail(churchId: string): Promise<OwnerChurc
     profile_count: profileCount ?? 0,
     event_count: eventCount ?? 0,
     contact_count: contactCount ?? 0,
-    new_contact_count: newContactCount ?? 0
+    new_contact_count: newContactCount ?? 0,
+    workspace_type: (church.workspace_type === "ministry" ? "ministry" : "church") as "church" | "ministry",
+    workspace_status: (church.workspace_status === "inactive" ? "inactive" : "active") as "active" | "inactive",
+    status_changed_at: church.status_changed_at ?? null,
+    status_change_reason: church.status_change_reason ?? null
   };
 }
 

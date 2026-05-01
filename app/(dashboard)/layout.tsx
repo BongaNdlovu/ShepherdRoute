@@ -4,6 +4,8 @@ import { logoutAction } from "@/app/(auth)/actions";
 import { switchChurchAction } from "@/app/(dashboard)/actions";
 import { BrandLogo } from "@/components/app/brand-logo";
 import { Button } from "@/components/ui/button";
+import { NavigationHistoryControls } from "@/components/app/navigation-history-controls";
+import { InactiveWorkspaceNotice } from "@/components/app/inactive-workspace-notice";
 import { roleLabels } from "@/lib/constants";
 import { getChurchContext } from "@/lib/data";
 
@@ -14,13 +16,16 @@ const navItems: Array<{ href: string; label: string; description: string; icon: 
   { href: "/follow-ups", label: "Follow-up tasks", description: "Work due and completed", icon: ClipboardList },
   { href: "/reports", label: "Reports", description: "Ministry insights and data", icon: BarChart3 },
   { href: "/profile", label: "My profile", description: "Personal settings", icon: UserRound },
-  { href: "/settings", label: "Church settings", description: "Configure your church", icon: Settings2 },
+  { href: "/settings", label: "Workspace settings", description: "Configure your church or ministry", icon: Settings2 },
   { href: "/settings/team", label: "Team members", description: "Manage roles and invites", icon: UserCog },
   { href: "/settings/health", label: "Health setup", description: "Configure health ministry", icon: Settings2 }
 ];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const context = await getChurchContext();
+
+  const isWorkspaceInactive = context.workspaceStatus === "inactive";
+  const canBypassInactiveWorkspace = context.isAppAdmin;
 
   return (
     <div className="min-h-screen bg-background">
@@ -31,7 +36,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <BrandLogo className="h-full w-full object-contain" priority />
             </div>
             <div>
-              <p className="text-xs text-white/60">ShepherdRoute</p>
+              <p className="text-xs text-white/60">ShepherdRoute · {context.workspaceLabel}</p>
               <h1 className="text-base font-bold leading-tight">{context.churchName}</h1>
             </div>
           </Link>
@@ -91,7 +96,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             </nav>
 
             <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
-              <p className="text-sm font-bold text-amber-950">Care routing ready</p>
+              <p className="text-sm font-bold text-amber-950">Workspace care routing ready</p>
               <p className="mt-2 text-sm leading-6 text-amber-900/80">
                 Prayer requests are stored separately from contact details and can be protected by role.
               </p>
@@ -107,7 +112,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </aside>
 
         <main className="min-w-0 flex-1">
-          {children}
+          <NavigationHistoryControls />
+          {isWorkspaceInactive && !canBypassInactiveWorkspace ? (
+            <InactiveWorkspaceNotice name={context.churchName} label={context.workspaceLabel} />
+          ) : (
+            children
+          )}
           <footer className="mt-6 flex flex-col gap-2 rounded-lg border bg-white p-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <p>Copyright (c) {new Date().getFullYear()} ShepherdRoute. All rights reserved.</p>
             <div className="flex gap-3">
