@@ -3,6 +3,7 @@ import { addTeamMemberAction, revokeTeamInvitationAction } from "@/app/(dashboar
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { InlineHelp } from "@/components/app/inline-help";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { roleLabels, roleOptions } from "@/lib/constants";
@@ -62,6 +63,39 @@ export default async function TeamPage({
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Role guide</CardTitle>
+            <CardDescription>Choose roles based on ministry responsibilities and access needs.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <InlineHelp>
+              <strong>Admin:</strong> Full access. Can manage settings, team members, and all data.
+            </InlineHelp>
+            <InlineHelp>
+              <strong>Pastor:</strong> Full access. Can manage settings, team members, and all data.
+            </InlineHelp>
+            <InlineHelp>
+              <strong>Elder:</strong> Can view and manage contacts, events, and follow-ups. Cannot manage team or settings.
+            </InlineHelp>
+            <InlineHelp>
+              <strong>Bible Worker:</strong> Can view and manage contacts, events, and follow-ups. Cannot manage team or settings.
+            </InlineHelp>
+            <InlineHelp>
+              <strong>Health Leader:</strong> Can view and manage contacts, events, and follow-ups. Cannot manage team or settings.
+            </InlineHelp>
+            <InlineHelp>
+              <strong>Prayer Team:</strong> Can view and manage contacts, events, and follow-ups. Cannot manage team or settings.
+            </InlineHelp>
+            <InlineHelp>
+              <strong>Youth Leader:</strong> Can view and manage contacts, events, and follow-ups. Cannot manage team or settings.
+            </InlineHelp>
+            <InlineHelp>
+              <strong>Viewer:</strong> Read-only access to contacts, events, and follow-ups. Cannot make changes or manage team.
+            </InlineHelp>
           </CardContent>
         </Card>
 

@@ -245,7 +245,7 @@ export async function getDashboardData(churchId: string) {
       .limit(8),
     supabase
       .from("events")
-      .select("id, name, event_type, starts_on, location, slug, is_active, contacts(count)")
+      .select("id, name, event_type, starts_on, location, slug, is_active, archived_at, contacts(count)")
       .eq("church_id", churchId)
       .order("created_at", { ascending: false })
       .limit(4),

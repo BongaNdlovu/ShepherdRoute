@@ -22,7 +22,10 @@ export default async function NewEventPage({
     <Card>
       <CardHeader>
         <CardTitle>Create event</CardTitle>
-        <CardDescription>Choose a ministry pathway so the QR page, form options, messages, routing, and report focus match the event.</CardDescription>
+        <CardDescription>
+          Choose a ministry pathway so the QR page, form options, messages, routing, and report focus match the event.
+          After creation, you&apos;ll get a QR code to share with visitors.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {params.error ? <p className="mb-4 rounded-md bg-rose-50 p-3 text-sm text-rose-700">{params.error}</p> : null}
@@ -80,7 +83,7 @@ export default async function NewEventPage({
             </div>
           </div>
           <div className="md:col-span-2">
-            <Button type="submit" size="lg">Create QR registration page</Button>
+            <Button type="submit" size="lg">Create event and get QR code</Button>
           </div>
         </form>
       </CardContent>

@@ -138,6 +138,35 @@ create table if not exists public.churches (
   updated_at timestamptz not null default now()
 );
 
+alter table if exists public.churches
+  add column if not exists onboarding_dismissed_at timestamptz;
+
+comment on column public.churches.onboarding_dismissed_at is 'When a church member dismissed the onboarding guidance banner';
+
+create or replace function public.dismiss_onboarding_guide(church_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- Only allow authenticated church members to dismiss their own church's banner
+  if not exists (
+    select 1 from public.church_memberships
+    where church_id = dismiss_onboarding_guide.church_id
+      and user_id = auth.uid()
+      and status = 'active'
+  ) then
+    raise exception 'Not a member of this church';
+  end if;
+
+  update public.churches
+  set onboarding_dismissed_at = now()
+  where id = church_id
+    and onboarding_dismissed_at is null;
+end;
+$$;
+
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text not null,

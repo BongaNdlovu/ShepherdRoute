@@ -7,16 +7,16 @@ import { Button } from "@/components/ui/button";
 import { roleLabels } from "@/lib/constants";
 import { getChurchContext } from "@/lib/data";
 
-const navItems: Array<{ href: string; label: string; icon: typeof Church }> = [
-  { href: "/dashboard", label: "Dashboard", icon: Church },
-  { href: "/events", label: "Events", icon: QrCode },
-  { href: "/contacts", label: "Contacts", icon: UsersRound },
-  { href: "/follow-ups", label: "Follow-ups", icon: ClipboardList },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
-  { href: "/profile", label: "Profile", icon: UserRound },
-  { href: "/settings", label: "Settings", icon: Settings2 },
-  { href: "/settings/team", label: "Team", icon: UserCog },
-  { href: "/settings/health", label: "Setup", icon: Settings2 }
+const navItems: Array<{ href: string; label: string; description: string; icon: typeof Church }> = [
+  { href: "/dashboard", label: "Dashboard", description: "Overview and quick actions", icon: Church },
+  { href: "/events", label: "Events & QR codes", description: "Create and manage events", icon: QrCode },
+  { href: "/contacts", label: "Visitor contacts", description: "View and manage people", icon: UsersRound },
+  { href: "/follow-ups", label: "Follow-up tasks", description: "Work due and completed", icon: ClipboardList },
+  { href: "/reports", label: "Reports", description: "Ministry insights and data", icon: BarChart3 },
+  { href: "/profile", label: "My profile", description: "Personal settings", icon: UserRound },
+  { href: "/settings", label: "Church settings", description: "Configure your church", icon: Settings2 },
+  { href: "/settings/team", label: "Team members", description: "Manage roles and invites", icon: UserCog },
+  { href: "/settings/health", label: "Health setup", description: "Configure health ministry", icon: Settings2 }
 ];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -72,8 +72,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
                   href={item.href}
                   className="flex items-center gap-3 rounded-md px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-amber-100 hover:text-amber-950"
                 >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  <span className="grid min-w-0 leading-tight">
+                    <span>{item.label}</span>
+                    <span className="mt-0.5 text-xs font-normal text-slate-500">{item.description}</span>
+                  </span>
                 </Link>
               ))}
               {context.isAppAdmin ? (

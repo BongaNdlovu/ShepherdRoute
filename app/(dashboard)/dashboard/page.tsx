@@ -1,13 +1,16 @@
 import Link from "next/link";
-import { Activity, AlertTriangle, CalendarClock, ClipboardList, Droplets, Heart, HeartPulse, Plus, UserRoundCheck, UsersRound } from "lucide-react";
+import { Activity, AlertTriangle, CalendarClock, ClipboardList, Droplets, Heart, HeartPulse, Plus, QrCode, UserRoundCheck, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ContextualBanner, type OnboardingStep } from "@/components/app/contextual-banner";
+import { EmptyState } from "@/components/app/empty-state";
+import { InlineHelp } from "@/components/app/inline-help";
 import { InterestPills } from "@/components/app/interest-pills";
 import { QrCard } from "@/components/app/qr-card";
 import { StatCard } from "@/components/app/stat-card";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
 import { TodaysFollowUpsCard } from "@/components/app/todays-follow-ups-card";
-import { getChurchContext, getDashboardData } from "@/lib/data";
+import { getChurchContext, getDashboardData, getOnboardingStatus } from "@/lib/data";
 import { absoluteRequestUrl } from "@/lib/server-url";
 
 export const metadata = {
@@ -16,31 +19,82 @@ export const metadata = {
 
 export default async function DashboardPage() {
   const context = await getChurchContext();
-  const { contacts, events, summary, todayFollowUps } = await getDashboardData(context.churchId);
-  const activeEvent = events[0];
+  const [{ contacts, events, summary, todayFollowUps, team }, onboarding] = await Promise.all([
+    getDashboardData(context.churchId),
+    getOnboardingStatus(context.churchId)
+  ]);
+
+  const activeEvent = events.find((event) => event.is_active && !event.archived_at) ?? null;
   const activeEventPublicUrl = activeEvent ? await absoluteRequestUrl(`/e/${activeEvent.slug}`) : null;
   const allContacts = contacts;
 
+  const hasEvent = events.length > 0;
+  const hasTeam = team.length > 1;
+  const hasContact = contacts.length > 0;
+  const hasCompletedFollowUp = summary.followed_up_count > 0;
+  const isFullyOnboarded = hasEvent && hasTeam && hasContact && hasCompletedFollowUp;
+
+  const onboardingSteps: OnboardingStep[] = [
+    {
+      id: 1,
+      label: "Create your first event",
+      href: "/events/new",
+      completed: hasEvent,
+      current: !hasEvent
+    },
+    {
+      id: 2,
+      label: "Add a team member",
+      href: "/settings/team",
+      completed: hasTeam,
+      current: hasEvent && !hasTeam
+    },
+    {
+      id: 3,
+      label: "Capture your first visitor",
+      href: activeEvent ? `/e/${activeEvent.slug}` : "/events",
+      completed: hasContact,
+      current: hasEvent && hasTeam && !hasContact
+    },
+    {
+      id: 4,
+      label: "Complete a follow-up",
+      href: "/follow-ups",
+      completed: hasCompletedFollowUp,
+      current: hasEvent && hasTeam && hasContact && !hasCompletedFollowUp
+    }
+  ];
+
+  const showOnboardingBanner = onboarding.needsGuidance && !isFullyOnboarded;
+
   return (
     <section className="space-y-4">
+      {showOnboardingBanner ? <ContextualBanner steps={onboardingSteps} /> : null}
+
       <header className="rounded-lg border bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-700">{context.churchName}</p>
-            <h2 className="mt-1 text-2xl font-black tracking-tight md:text-4xl">Capture. Care. Follow up. Disciple.</h2>
-            <p className="mt-2 text-muted-foreground">The follow-up pathway for churches that care.</p>
+            <h2 className="mt-1 text-2xl font-black tracking-tight md:text-4xl">
+              {showOnboardingBanner ? "Let's get your church started" : "Capture. Care. Follow up. Disciple."}
+            </h2>
+            <p className="mt-2 text-muted-foreground">
+              {showOnboardingBanner
+                ? "Create an event, share the QR code, and track every visitor through follow-up."
+                : "Track visitors, manage follow-ups, and grow your church care pathway."}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button asChild>
               <Link href="/events/new">
                 <Plus className="h-4 w-4" />
-                New event
+                {hasEvent ? "New event" : "Create first event"}
               </Link>
             </Button>
             <Button asChild variant="outline">
               <Link href="/contacts">
                 <UsersRound className="h-4 w-4" />
-                Contacts
+                View contacts
               </Link>
             </Button>
           </div>
@@ -68,12 +122,18 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader className="flex-row items-start justify-between gap-3">
             <div>
-              <CardTitle>People needing action</CardTitle>
-              <CardDescription>Who needs to be called, messaged, or assigned next.</CardDescription>
+              <CardTitle>People to follow up</CardTitle>
+              <CardDescription>
+                {allContacts.length
+                  ? "Visitors who need a call, WhatsApp message, or assignment."
+                  : "Your visitor list will appear here after your first registration."}
+              </CardDescription>
             </div>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/contacts">View all</Link>
-            </Button>
+            {allContacts.length ? (
+              <Button asChild variant="outline" size="sm">
+                <Link href="/contacts">View all contacts</Link>
+              </Button>
+            ) : null}
           </CardHeader>
           <CardContent>
             <div className="divide-y">
@@ -93,27 +153,45 @@ export default async function DashboardPage() {
                   </Link>
                 ))
               ) : (
-                <p className="py-8 text-center text-sm text-muted-foreground">Create an event and share its QR form to start capturing visitors.</p>
+                <EmptyState
+                  icon={QrCode}
+                  title="No visitors yet"
+                  description="Create an event to get a QR code. When visitors scan it and fill out the form, they will appear here automatically."
+                  action={{ href: "/events/new", label: "Create your first event" }}
+                  secondaryAction={{ href: "/contacts", label: "Add contact manually" }}
+                />
               )}
             </div>
           </CardContent>
         </Card>
 
-        {activeEvent ? (
-          <QrCard eventName={activeEvent.name} url={activeEventPublicUrl!} />
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>No event yet</CardTitle>
-              <CardDescription>Create your first visitor Sabbath, health expo, seminar, or Bible study event.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild className="w-full">
-                <Link href="/events/new">Create first event</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        <div className="grid gap-4">
+          {activeEvent && activeEventPublicUrl ? (
+            <>
+              <QrCard eventName={activeEvent.name} url={activeEventPublicUrl} />
+              <InlineHelp variant="tip">
+                <strong>How this works:</strong> Show this QR code on a screen, print it, or share the link. Visitors scan it, fill out a simple form, and their details appear in Contacts with a follow-up task.
+              </InlineHelp>
+            </>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Start with an event</CardTitle>
+                <CardDescription>
+                  Events create QR codes that visitors scan to register. Use this for Sabbath services, health expos, Bible studies, youth programs, or outreach events.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button asChild className="w-full">
+                  <Link href="/events/new">Create your first event</Link>
+                </Button>
+                <InlineHelp>
+                  Not ready for an event? You can also <Link href="/contacts" className="font-semibold underline">add contacts manually</Link> from the Contacts page.
+                </InlineHelp>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </section>
   );

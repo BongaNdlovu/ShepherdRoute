@@ -3,6 +3,7 @@ import { ClipboardList } from "lucide-react";
 import { FollowUpsFilterForm } from "@/components/app/follow-ups-filter-form";
 import { FollowUpsPagination } from "@/components/app/follow-ups-pagination";
 import { FollowUpsQueueList } from "@/components/app/follow-ups-queue-list";
+import { InlineHelp } from "@/components/app/inline-help";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getChurchContext, getFollowUpsPage, getTeamMembers, getUserAccountPreferences } from "@/lib/data";
@@ -29,7 +30,7 @@ export default async function FollowUpsPage({
       <header className="flex flex-col gap-3 rounded-lg border bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-700">{context.churchName}</p>
-          <h2 className="mt-1 text-2xl font-black tracking-tight">Follow-up queue</h2>
+          <h2 className="mt-1 text-2xl font-black tracking-tight">Follow-up tasks</h2>
           <p className="mt-2 text-muted-foreground">Work due, overdue, upcoming, and completed care tasks without loading the whole contact list.</p>
         </div>
         <Button asChild variant="outline">
@@ -73,6 +74,10 @@ export default async function FollowUpsPage({
           })()} />
         </CardContent>
       </Card>
+
+      <InlineHelp variant="tip">
+        <strong>How follow-up tasks work:</strong> When a visitor registers at an event, a follow-up task is created automatically based on their interests. Use this queue to call, message, or assign tasks to team members. Mark tasks as &quot;Contacted&quot; when you reach out, and &quot;Completed&quot; when the follow-up journey is finished.
+      </InlineHelp>
     </section>
   );
 }
