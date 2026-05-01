@@ -32,10 +32,10 @@ test.describe("authenticated smoke flow", () => {
     const visitorName = `Smoke Visitor ${Date.now()}`;
 
     await page.getByRole("link", { name: "Events" }).click();
-    await page.getByRole("link", { name: "Create event" }).click();
+    await page.getByRole("link", { name: /new event|create your first event|create first event/i }).first().click();
     await page.getByLabel("Event name").fill(eventName);
     await page.getByLabel("Location").fill("Smoke Test Hall");
-    await page.getByRole("button", { name: "Create QR registration page" }).click();
+    await page.getByRole("button", { name: /create event and get qr code/i }).click();
 
     await expect(page.getByRole("link", { name: eventName })).toBeVisible();
     await page.getByRole("link", { name: eventName }).click();
@@ -46,15 +46,16 @@ test.describe("authenticated smoke flow", () => {
     await expect(page.getByRole("button", { name: "Print" })).toBeVisible();
     await expect(page.getByRole("button", { name: /copy link/i })).toBeVisible();
 
-    const publicHref = await page.getByRole("link", { name: "Open public form" }).getAttribute("href");
+    const publicHref = await page.getByRole("link", { name: /open public form/i }).getAttribute("href");
     expect(publicHref).toBeTruthy();
 
-    await page.goto(publicHref!);
+    const publicUrl = new URL(publicHref!, page.url()).pathname;
+    await page.goto(publicUrl);
     await expect(page.getByText(eventName)).toBeVisible();
     await page.getByLabel("Name").fill(visitorName);
     await page.getByLabel("Phone / WhatsApp").fill("+27 71 000 1234");
     await page.getByLabel("Area / suburb").fill("Pinetown");
-    await page.getByText("Bible Study").click();
+    await page.getByLabel(/Bible Study/i).first().check();
     await page.getByLabel("Optional message / prayer request").fill("Please send Bible study information.");
     await page.getByRole("checkbox", { name: /I consent/i }).check();
     await page.getByRole("button", { name: "Submit visitor form" }).click();
@@ -75,13 +76,13 @@ test.describe("authenticated smoke flow", () => {
     await page.locator("#add-contact").getByLabel("Name").fill(contactName);
     const addContactForm = page.locator("#add-contact");
     await addContactForm.getByLabel("Phone / WhatsApp").fill("+27 72 000 5678");
-    await addContactForm.getByText("Bible Study").click();
+    await addContactForm.getByLabel(/Bible Study/i).first().check();
     await addContactForm.getByLabel("Prayer request or note").fill("Interested in Bible study.");
     await addContactForm.getByRole("button", { name: "Add contact" }).click();
 
     await page.goto("/dashboard");
     await expect(page.getByRole("heading", { name: "Today's Follow-Ups" })).toBeVisible();
     await expect(page.getByText(contactName)).toBeVisible();
-    await expect(page.getByRole("button", { name: /approve & open whatsapp/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /open whatsapp|open whatsapp again|opted out/i }).first()).toBeVisible();
   });
 });

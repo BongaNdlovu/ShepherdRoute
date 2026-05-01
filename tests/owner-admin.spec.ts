@@ -13,12 +13,12 @@ test.describe("owner admin account controls", () => {
     expect(schema).toContain("app_admin_role public.app_admin_role");
     expect(schema).toContain("is_protected_owner boolean");
     expect(schema).toContain("security definer");
-    expect(schema).toContain("Only ShepherdRoute app admins can view account rows.");
+    expect(schema).toContain("perform private.require_app_admin()");
   });
 
   test("schema exposes owner invitation visibility", () => {
     expect(schema).toContain("create or replace function public.owner_invitation_rows()");
-    expect(schema).toContain("Only ShepherdRoute app admins can view invitation rows.");
+    expect(schema).toContain("perform private.require_app_admin()");
     expect(schema).toContain("team_invitations.status");
   });
 
@@ -26,8 +26,8 @@ test.describe("owner admin account controls", () => {
     expect(schema).toContain("create or replace function public.owner_update_membership_status");
     expect(schema).toContain("p_status public.membership_status");
     expect(schema).toContain("set is_active = p_status = 'active'");
+    expect(schema).toContain("perform private.require_app_admin(array['owner','support_admin']");
     expect(schema).toContain("Protected owner access cannot be deactivated from the app.");
-    expect(schema).toContain("Only ShepherdRoute app owners can update account access.");
   });
 
   test("owner role changes are wired through schema, action, and admin UI", () => {
