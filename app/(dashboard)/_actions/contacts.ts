@@ -25,6 +25,8 @@ const quickContactSchema = z.object({
   language: z.string().max(80).optional(),
   eventId: z.string().uuid().optional(),
   interests: z.array(z.enum(interestOptions)).min(1),
+  consentStatus: z.enum(["given", "unknown", "not_given"]),
+  consentNote: z.string().max(500).optional(),
   prayerVisibility: z.enum(prayerVisibilityOptions).default("general_prayer"),
   prayerRequest: z.string().max(2000).optional()
 });
@@ -253,6 +255,8 @@ export async function addQuickContactAction(formData: FormData) {
     language: formData.get("language") || undefined,
     eventId: formData.get("eventId") || undefined,
     interests,
+    consentStatus: formData.get("consentStatus") || "given",
+    consentNote: formData.get("consentNote") || undefined,
     prayerVisibility: formData.get("prayerVisibility") || "general_prayer",
     prayerRequest: formData.get("prayerRequest") || undefined
   });
@@ -293,10 +297,15 @@ export async function addQuickContactAction(formData: FormData) {
       status: assignedTo ? "assigned" : "new",
       urgency: classification.urgency,
       assigned_to: assignedTo,
-      consent_given: true,
-      consent_at: new Date().toISOString(),
+      consent_given: parsed.data.consentStatus === "given",
+      consent_at: parsed.data.consentStatus === "given" ? new Date().toISOString() : null,
       consent_source: "manual",
-      consent_scope: ["follow_up", "whatsapp", ...(parsed.data.interests.includes("prayer") ? ["prayer"] : [])],
+      consent_scope: ["follow_up"],
+      consent_text_snapshot: parsed.data.consentNote || null,
+      privacy_policy_version: "v1.0",
+      consent_status: parsed.data.consentStatus,
+      consent_recorded_by: context.userId,
+      do_not_contact: parsed.data.consentStatus === "not_given",
       source: "manual",
       classification_payload: {
         ...classification,

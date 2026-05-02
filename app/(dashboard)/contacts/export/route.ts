@@ -1,9 +1,11 @@
 import { getChurchContext, getContactsPage } from "@/lib/data";
 import { csvResponse, toCsv } from "@/lib/csv";
 import { interestLabels, statusLabels, type FollowUpStatus, type Interest } from "@/lib/constants";
+import { createClient } from "@/lib/supabase/server";
+import { NextResponse } from "next/server";
 
 const EXPORT_BATCH_SIZE = 100;
-const CONTACT_EXPORT_HEADERS = ["Name", "Phone", "Email", "Area", "Language", "Event", "Interests", "Status", "Urgency", "Assigned To", "Do Not Contact", "Duplicate Match", "Best Time", "Created At"];
+const BASE_CONTACT_HEADERS = ["Name", "Phone", "Email", "Area", "Language", "Event", "Interests", "Status", "Urgency", "Assigned To", "Do Not Contact", "Duplicate Match", "Best Time", "Created At"];
 
 type ContactExportFilters = {
   q?: string;
@@ -13,8 +15,25 @@ type ContactExportFilters = {
   assignedTo?: string;
 };
 
+async function canExportContacts(context: { role: string; isAppAdmin: boolean; appAdminRole: string | null }): Promise<boolean> {
+  // Export allowed for admin, pastor, and app admins
+  if (context.role === "admin" || context.role === "pastor") {
+    return true;
+  }
+  if (context.isAppAdmin) {
+    return true;
+  }
+  return false;
+}
+
 export async function GET(request: Request) {
   const context = await getChurchContext();
+
+  // Role gate check
+  if (!(await canExportContacts(context))) {
+    return new NextResponse("Forbidden", { status: 403 });
+  }
+
   const url = new URL(request.url);
   const filters: ContactExportFilters = {
     q: url.searchParams.get("q") ?? undefined,
@@ -24,8 +43,26 @@ export async function GET(request: Request) {
     assignedTo: url.searchParams.get("assignedTo") ?? undefined
   };
 
-  const rows = await collectContactRows(context.churchId, filters);
-  const csv = toCsv(CONTACT_EXPORT_HEADERS, rows);
+  const { rows, questionLabels } = await collectContactRows(context.churchId, filters);
+
+  // Build dynamic headers
+  const headers = [...BASE_CONTACT_HEADERS, ...questionLabels];
+
+  // Audit log
+  const supabase = await createClient();
+  await supabase.from("audit_logs").insert({
+    church_id: context.churchId,
+    actor_user_id: context.userId,
+    target_type: "contacts_export",
+    target_id: null,
+    action: "export",
+    metadata: {
+      filters,
+      row_count: rows.length
+    }
+  });
+
+  const csv = toCsv(headers, rows);
   const fileName = createContactExportFileName();
 
   if (process.env.NODE_ENV !== "production") {
@@ -44,6 +81,7 @@ async function collectContactRows(
   filters: ContactExportFilters
 ) {
   const rows: Array<Array<unknown>> = [];
+  const contactIds: string[] = [];
   let page = 1;
 
   while (true) {
@@ -54,6 +92,7 @@ async function collectContactRows(
     });
 
     for (const contact of result.contacts) {
+      contactIds.push(contact.id);
       const interests = (contact.interests ?? [])
         .map((interest: Interest) => interestLabels[interest] ?? interest)
         .join("; ");
@@ -83,7 +122,35 @@ async function collectContactRows(
     page += 1;
   }
 
-  return rows;
+  // Fetch form answers for all contacts
+  const supabase = await createClient();
+  const { data: formAnswers } = await supabase
+    .from("contact_form_answers")
+    .select("contact_id, question_name, question_label, answer_display")
+    .eq("church_id", churchId)
+    .in("contact_id", contactIds);
+
+  // Build a map of contact_id to answers and collect all unique question labels
+  const answersMap = new Map<string, Map<string, unknown>>();
+  const questionLabels = new Set<string>();
+  if (formAnswers) {
+    for (const answer of formAnswers) {
+      if (!answersMap.has(answer.contact_id)) {
+        answersMap.set(answer.contact_id, new Map());
+      }
+      answersMap.get(answer.contact_id)!.set(answer.question_name, answer.answer_display);
+      questionLabels.add(answer.question_label);
+    }
+  }
+
+  // Merge answers into rows
+  const rowsWithAnswers = rows.map((row, index) => {
+    const contactId = contactIds[index];
+    const contactAnswers = answersMap.get(contactId) || new Map();
+    return [...row, ...Array.from(contactAnswers.values())];
+  });
+
+  return { rows: rowsWithAnswers, questionLabels: Array.from(questionLabels) };
 }
 
 function createContactExportFileName() {

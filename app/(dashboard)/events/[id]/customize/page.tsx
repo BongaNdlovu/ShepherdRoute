@@ -249,6 +249,35 @@ export default async function EventCustomizePage({
           </CardContent>
         </Card>
 
+        {/* Template Questions Preview */}
+        {template.questions && template.questions.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Template questions (read-only)</CardTitle>
+              <CardDescription>These questions are defined by the event template and will appear on the public form.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+              {template.questions.map((question) => (
+                <div key={question.name} className="grid gap-2 rounded-lg border p-4 bg-muted/50">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold">{question.label}</p>
+                    {question.required && <span className="text-xs text-red-500 font-medium">(required)</span>}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Type: {question.type}</p>
+                  <div className="grid gap-1">
+                    <p className="text-xs font-medium">Options:</p>
+                    {question.options.map((option) => (
+                      <p key={option.value} className="text-xs text-muted-foreground ml-2">
+                        - {option.label} ({option.value})
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         <Button type="submit" size="lg">Save customization</Button>
       </form>
     </section>

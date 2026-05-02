@@ -19,6 +19,19 @@ export type TemplateReportSection = {
 
 export type TemplateMessageKey = "default" | Interest;
 
+export type TemplateQuestionOption = {
+  value: string;
+  label: string;
+};
+
+export type TemplateQuestionField = {
+  name: string;
+  label: string;
+  type: "radio" | "select" | "checkbox_group";
+  required: boolean;
+  options: TemplateQuestionOption[];
+};
+
 export type EventTemplateConfig = {
   type: EventTemplateType;
   name: string;
@@ -31,6 +44,7 @@ export type EventTemplateConfig = {
   defaultRoles: TeamRole[];
   messageTemplates: Partial<Record<TemplateMessageKey, string>>;
   reportSections: TemplateReportSection[];
+  questions?: TemplateQuestionField[];
 };
 
 const commonPrayerBibleHealth: TemplateInterestOption[] = [
@@ -143,6 +157,32 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
       { key: "baptism_requests", label: "Baptismal requests", description: "Visitors requesting baptism preparation.", interest: "baptism" },
       { key: "invited_again", label: "Invited again", description: "Track visitors ready for another invitation." },
       { key: "attended_again", label: "Attended again", description: "Track repeat attendance when logged." }
+    ],
+    questions: [
+      {
+        name: "first_time_visitor",
+        label: "Is this your first time visiting our church?",
+        type: "radio",
+        required: false,
+        options: [
+          { value: "yes", label: "Yes, first time" },
+          { value: "no", label: "No, I've been before" }
+        ]
+      },
+      {
+        name: "how_did_you_hear",
+        label: "How did you hear about our church?",
+        type: "select",
+        required: false,
+        options: [
+          { value: "friend_family", label: "Friend or family" },
+          { value: "online", label: "Online search" },
+          { value: "social_media", label: "Social media" },
+          { value: "sign", label: "Church sign" },
+          { value: "invitation", label: "Personal invitation" },
+          { value: "other", label: "Other" }
+        ]
+      }
     ]
   },
   health_expo: {
@@ -178,6 +218,43 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
       { key: "bible_study_interests", label: "Bible study interests", description: "Contacts interested in Bible study.", interest: "bible_study" },
       { key: "baptism_requests", label: "Baptismal requests", description: "Contacts requesting baptism preparation.", interest: "baptism" },
       { key: "follow_up_completed", label: "Follow-up completed", description: "Contacts moved beyond the new status.", metric: "followed_up_count" }
+    ],
+    questions: [
+      {
+        name: "depression_seminar_interest",
+        label: "Are you interested in a follow-up Depression and Recovery Seminar?",
+        type: "radio",
+        required: true,
+        options: [
+          { value: "yes", label: "Yes" },
+          { value: "no", label: "No" }
+        ]
+      },
+      {
+        name: "health_topics",
+        label: "Which health topics are you most interested in?",
+        type: "checkbox_group",
+        required: false,
+        options: [
+          { value: "mental_health", label: "Mental health" },
+          { value: "nutrition", label: "Nutrition" },
+          { value: "exercise", label: "Exercise" },
+          { value: "stress_management", label: "Stress management" },
+          { value: "sleep", label: "Sleep" }
+        ]
+      },
+      {
+        name: "preferred_follow_up",
+        label: "How would you prefer to be contacted for follow-up?",
+        type: "select",
+        required: false,
+        options: [
+          { value: "whatsapp", label: "WhatsApp" },
+          { value: "phone_call", label: "Phone call" },
+          { value: "email", label: "Email" },
+          { value: "in_person", label: "In person visit" }
+        ]
+      }
     ]
   },
   evangelistic_campaign: {
@@ -209,6 +286,21 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
       { key: "bible_study_requests", label: "Bible study requests", description: "Contacts requesting Bible study.", interest: "bible_study" },
       { key: "baptism_interests", label: "Baptismal requests", description: "Contacts asking about baptism.", interest: "baptism" },
       { key: "pastoral_visits", label: "Pastoral visit requests", description: "Contacts asking for a pastoral visit.", interest: "pastoral_visit" }
+    ],
+    questions: [
+      {
+        name: "topic_interest",
+        label: "Which topic from tonight's presentation interested you most?",
+        type: "select",
+        required: false,
+        options: [
+          { value: "bible_prophecy", label: "Bible prophecy" },
+          { value: "jesus_teachings", label: "Jesus' teachings" },
+          { value: "end_times", label: "End times" },
+          { value: "salvation", label: "Salvation" },
+          { value: "christian_living", label: "Christian living" }
+        ]
+      }
     ]
   },
   prophecy_seminar: {
@@ -331,6 +423,21 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
       { key: "high_priority", label: "High urgency", description: "Same-day human follow-up cases.", metric: "high_priority_count" },
       { key: "baptism_requests", label: "Baptismal requests", description: "Contacts requesting baptism preparation.", interest: "baptism" },
       { key: "followed_up", label: "Followed up", description: "Contacts with follow-up progress.", metric: "followed_up_count" }
+    ],
+    questions: [
+      {
+        name: "prayer_type",
+        label: "What type of prayer support are you looking for?",
+        type: "select",
+        required: false,
+        options: [
+          { value: "personal", label: "Personal prayer need" },
+          { value: "family", label: "Family prayer need" },
+          { value: "health", label: "Health concern" },
+          { value: "spiritual", label: "Spiritual guidance" },
+          { value: "thanksgiving", label: "Thanksgiving" }
+        ]
+      }
     ]
   },
   regular_member: {

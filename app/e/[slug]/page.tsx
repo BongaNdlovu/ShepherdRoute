@@ -90,6 +90,9 @@ export default async function PublicEventPage({
                   <input type="hidden" name="slug" value={event.slug} />
                   <input type="hidden" name="visitorType" value={template.type} />
                   <input type="hidden" name="templateType" value={template.type} />
+                  <input type="hidden" name="consentTextSnapshot" value={consentText} />
+                  <input type="hidden" name="privacyPolicyVersion" value="v1.0" />
+                  <input type="hidden" name="questions" value={JSON.stringify(formConfig.questions)} />
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="grid gap-2">
                       <Label htmlFor="fullName">Name</Label>
@@ -166,6 +169,63 @@ export default async function PublicEventPage({
                       ))}
                     </div>
                   </div>
+
+                  {formConfig.questions.length > 0 && (
+                    <div className="space-y-4">
+                      {formConfig.questions.map((question) => (
+                        <div key={question.name} className="grid gap-2">
+                          <Label htmlFor={question.name}>
+                            {question.label}
+                            {question.required && <span className="text-red-500"> *</span>}
+                          </Label>
+                          {question.type === "select" && (
+                            <select
+                              id={question.name}
+                              name={question.name}
+                              required={question.required}
+                              className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring"
+                            >
+                              <option value="">Select an option</option>
+                              {question.options.map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </select>
+                          )}
+                          {question.type === "radio" && (
+                            <div className="grid gap-2">
+                              {question.options.map((option) => (
+                                <label key={option.value} className="flex items-center gap-2">
+                                  <input
+                                    type="radio"
+                                    name={question.name}
+                                    value={option.value}
+                                    required={question.required}
+                                    className="h-4 w-4"
+                                  />
+                                  <span className="text-sm">{option.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                          {question.type === "checkbox_group" && (
+                            <div className="grid gap-2">
+                              {question.options.map((option) => (
+                                <label key={option.value} className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    name={question.name}
+                                    value={option.value}
+                                    className="h-4 w-4"
+                                  />
+                                  <span className="text-sm">{option.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {formConfig.show_message ? (
                     <div className="grid gap-2">

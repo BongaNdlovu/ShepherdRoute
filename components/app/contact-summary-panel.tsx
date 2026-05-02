@@ -73,11 +73,22 @@ export function ContactSummaryPanel({ contact, error }: ContactSummaryPanelProps
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Consent</p>
           <p className="mt-1 font-semibold">{contact.consent_given ? `Given ${formatDateTime(contact.consent_at)}` : "Missing"}</p>
           <p className="mt-1 text-xs text-muted-foreground">Source: {contact.consent_source ?? "Unknown"}</p>
+          {contact.consent_status && (
+            <p className="mt-1 text-xs text-muted-foreground">Status: {contact.consent_status}</p>
+          )}
+          {contact.privacy_policy_version && (
+            <p className="mt-1 text-xs text-muted-foreground">Policy: {contact.privacy_policy_version}</p>
+          )}
           {contact.consent_scope?.length ? (
             <p className="mt-1 text-xs text-muted-foreground">
               {contact.consent_scope.map((scope) => consentScopeLabels[scope] ?? scope).join(", ")}
             </p>
           ) : null}
+          {contact.consent_text_snapshot && (
+            <p className="mt-1 text-xs text-muted-foreground max-w-md truncate" title={contact.consent_text_snapshot}>
+              &quot;{contact.consent_text_snapshot}&quot;
+            </p>
+          )}
         </div>
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Current status</p>

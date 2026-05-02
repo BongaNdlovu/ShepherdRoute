@@ -130,6 +130,16 @@ alter type public.prayer_visibility add value if not exists 'health_related';
 alter type public.prayer_visibility add value if not exists 'pastoral_prayer';
 alter type public.prayer_visibility add value if not exists 'pastors_only';
 
+do $$ begin
+  create type public.data_request_type as enum ('correction', 'deletion', 'export', 'restriction');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type public.data_request_status as enum ('open', 'in_review', 'completed', 'declined');
+exception when duplicate_object then null;
+end $$;
+
 create table if not exists public.churches (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -403,6 +413,20 @@ alter table if exists public.contacts
   add column if not exists duplicate_match_confidence numeric(4,3),
   add column if not exists duplicate_match_reason text;
 
+-- Consent tracking enhancements
+alter table if exists public.contacts
+  add column if not exists consent_text_snapshot text,
+  add column if not exists privacy_policy_version text not null default 'v1.0',
+  add column if not exists consent_recorded_by uuid references auth.users(id) on delete set null,
+  add column if not exists consent_status text not null default 'given';
+
+alter table if exists public.contacts
+  drop constraint if exists contacts_consent_status_check;
+
+alter table if exists public.contacts
+  add constraint contacts_consent_status_check
+  check (consent_status in ('given', 'not_given', 'unknown'));
+
 create table if not exists public.contact_interests (
   id uuid primary key default gen_random_uuid(),
   church_id uuid not null references public.churches(id) on delete cascade,
@@ -412,6 +436,49 @@ create table if not exists public.contact_interests (
   updated_at timestamptz not null default now(),
   unique (contact_id, interest)
 );
+
+-- Contact form answers table for multiple-choice questions
+create table if not exists public.contact_form_answers (
+  id uuid primary key default gen_random_uuid(),
+  church_id uuid not null references public.churches(id) on delete cascade,
+  contact_id uuid not null references public.contacts(id) on delete cascade,
+  event_id uuid references public.events(id) on delete set null,
+  question_name text not null,
+  question_label text not null,
+  question_type text not null,
+  answer_value jsonb not null default 'null'::jsonb,
+  answer_display jsonb not null default 'null'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists contact_form_answers_contact_idx
+on public.contact_form_answers(contact_id);
+
+create index if not exists contact_form_answers_church_contact_idx
+on public.contact_form_answers(church_id, contact_id);
+
+create index if not exists contact_form_answers_question_idx
+on public.contact_form_answers(church_id, question_name);
+
+-- Data requests table for privacy compliance tracking
+create table if not exists public.data_requests (
+  id uuid primary key default gen_random_uuid(),
+  church_id uuid not null references public.churches(id) on delete cascade,
+  related_contact_id uuid references public.contacts(id) on delete set null,
+  request_type public.data_request_type not null,
+  requester_name text not null,
+  requester_contact text,
+  status public.data_request_status not null default 'open',
+  notes text,
+  created_by uuid references auth.users(id) on delete set null,
+  resolved_by uuid references auth.users(id) on delete set null,
+  resolved_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists data_requests_church_status_idx
+on public.data_requests(church_id, status, created_at desc);
 
 create table if not exists public.contact_journey_events (
   id uuid primary key default gen_random_uuid(),
@@ -1124,6 +1191,8 @@ alter table public.contact_journey_events enable row level security;
 alter table public.follow_ups enable row level security;
 alter table public.prayer_requests enable row level security;
 alter table public.generated_messages enable row level security;
+alter table public.contact_form_answers enable row level security;
+alter table public.data_requests enable row level security;
 
 revoke insert, update, delete on table public.church_memberships from anon, authenticated;
 revoke update, delete on table public.team_members from anon, authenticated;
@@ -1425,6 +1494,43 @@ create policy "Members can update generated messages"
 on public.generated_messages for update
 using (private.is_church_member(church_id) or private.is_app_admin())
 with check (private.is_church_member(church_id) or private.is_app_admin());
+
+-- Contact form answers RLS policies
+drop policy if exists "Members can view contact form answers" on public.contact_form_answers;
+create policy "Members can view contact form answers"
+on public.contact_form_answers for select
+using (private.is_church_member(church_id) or private.is_app_admin());
+
+drop policy if exists "Members can create contact form answers" on public.contact_form_answers;
+create policy "Members can create contact form answers"
+on public.contact_form_answers for insert
+with check (private.is_church_member(church_id));
+
+-- Data requests RLS policies
+drop policy if exists "Members can view data requests" on public.data_requests;
+create policy "Members can view data requests"
+on public.data_requests for select
+using (private.is_church_member(church_id) or private.is_app_admin());
+
+drop policy if exists "Admins can create data requests" on public.data_requests;
+create policy "Admins can create data requests"
+on public.data_requests for insert
+with check (
+  private.is_church_member(church_id)
+  and private.has_church_role(church_id, array['admin','pastor']::public.team_role[])
+);
+
+drop policy if exists "Admins can update data requests" on public.data_requests;
+create policy "Admins can update data requests"
+on public.data_requests for update
+using (
+  private.is_church_member(church_id)
+  and private.has_church_role(church_id, array['admin','pastor']::public.team_role[])
+)
+with check (
+  private.is_church_member(church_id)
+  and private.has_church_role(church_id, array['admin','pastor']::public.team_role[])
+);
 
 drop function if exists public.is_church_member(uuid);
 drop function if exists public.is_app_admin();
@@ -2681,6 +2787,30 @@ drop function if exists private.submit_event_registration_impl(
   boolean
 );
 
+drop function if exists private.submit_event_registration_impl(
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  public.interest_tag[],
+  text,
+  public.urgency_level,
+  jsonb,
+  public.prayer_visibility,
+  text[],
+  text,
+  boolean,
+  text,
+  text,
+  text,
+  uuid,
+  text,
+  jsonb
+);
+
 create or replace function private.submit_event_registration_impl(
   p_slug text,
   p_full_name text,
@@ -2696,7 +2826,12 @@ create or replace function private.submit_event_registration_impl(
   p_prayer_visibility public.prayer_visibility,
   p_consent_scope text[],
   p_consent_source text,
-  p_consent_given boolean
+  p_consent_given boolean,
+  p_consent_text_snapshot text,
+  p_privacy_policy_version text,
+  p_consent_status text,
+  p_consent_recorded_by uuid,
+  p_form_answers jsonb
 )
 returns uuid
 language plpgsql
@@ -2721,6 +2856,7 @@ declare
   first_name text;
   digits text;
   journey_title text;
+  form_answer jsonb;
 begin
   if p_consent_given is distinct from true then
     raise exception 'Consent is required before follow-up can be requested.';
@@ -2789,6 +2925,10 @@ begin
     consent_at,
     consent_source,
     consent_scope,
+    consent_text_snapshot,
+    privacy_policy_version,
+    consent_status,
+    consent_recorded_by,
     source,
     classification_payload
   )
@@ -2809,6 +2949,10 @@ begin
     now(),
     coalesce(nullif(p_consent_source, ''), target_event.event_type::text),
     coalesce(p_consent_scope, array['follow_up']::text[]),
+    nullif(p_consent_text_snapshot, ''),
+    coalesce(p_privacy_policy_version, 'v1.0'),
+    coalesce(p_consent_status, 'given'),
+    p_consent_recorded_by,
     'public_form',
     computed_classification_payload
   )
@@ -2819,6 +2963,39 @@ begin
     values (target_event.church_id, new_contact_id, selected_interest)
     on conflict (contact_id, interest) do nothing;
   end loop;
+
+  -- Insert form answers if provided
+  if jsonb_array_length(p_form_answers) > 0 then
+    for form_answer in select * from jsonb_to_recordset(p_form_answers) as x(
+      question_name text,
+      question_label text,
+      question_type text,
+      answer_value jsonb,
+      answer_display jsonb
+    )
+    loop
+      insert into public.contact_form_answers (
+        church_id,
+        contact_id,
+        event_id,
+        question_name,
+        question_label,
+        question_type,
+        answer_value,
+        answer_display
+      )
+      values (
+        target_event.church_id,
+        new_contact_id,
+        target_event.id,
+        form_answer.question_name,
+        form_answer.question_label,
+        form_answer.question_type,
+        form_answer.answer_value,
+        form_answer.answer_display
+      );
+    end loop;
+  end if;
 
   if nullif(trim(coalesce(p_message, '')), '') is not null then
     insert into public.prayer_requests (church_id, contact_id, request_text, visibility)
@@ -2927,7 +3104,13 @@ revoke all on function private.submit_event_registration_impl(
   public.prayer_visibility,
   text[],
   text,
-  boolean
+  boolean,
+  text,
+  text,
+  text,
+  uuid,
+  text,
+  jsonb
 ) from public, anon, authenticated;
 
 grant execute on function private.submit_event_registration_impl(
@@ -2945,7 +3128,13 @@ grant execute on function private.submit_event_registration_impl(
   public.prayer_visibility,
   text[],
   text,
-  boolean
+  boolean,
+  text,
+  text,
+  text,
+  uuid,
+  text,
+  jsonb
 ) to anon, authenticated;
 
 create or replace function public.submit_event_registration(
@@ -2963,7 +3152,12 @@ create or replace function public.submit_event_registration(
   p_prayer_visibility public.prayer_visibility,
   p_consent_scope text[],
   p_consent_source text,
-  p_consent_given boolean
+  p_consent_given boolean,
+  p_consent_text_snapshot text,
+  p_privacy_policy_version text,
+  p_consent_status text,
+  p_consent_recorded_by uuid,
+  p_form_answers jsonb
 )
 returns uuid
 language sql
@@ -2985,7 +3179,12 @@ as $$
     p_prayer_visibility,
     p_consent_scope,
     p_consent_source,
-    p_consent_given
+    p_consent_given,
+    p_consent_text_snapshot,
+    p_privacy_policy_version,
+    p_consent_status,
+    p_consent_recorded_by,
+    p_form_answers
   );
 $$;
 
@@ -3004,8 +3203,71 @@ grant execute on function public.submit_event_registration(
   public.prayer_visibility,
   text[],
   text,
-  boolean
+  boolean,
+  text,
+  text,
+  text,
+  uuid,
+  jsonb
 ) to anon, authenticated;
+
+-- Prayer privacy RPC with role-based visibility filtering
+create or replace function public.get_contact_prayer_requests(
+  p_church_id uuid,
+  p_contact_id uuid
+)
+returns table (
+  request_text text,
+  visibility text,
+  created_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return query
+  select
+    pr.request_text,
+    pr.visibility::text,
+    pr.created_at
+  from public.prayer_requests pr
+  where pr.church_id = p_church_id
+    and pr.contact_id = p_contact_id
+    and (
+      -- App admins can see all
+      private.is_app_admin()
+      -- Admin and pastor can see all
+      or private.has_church_role(p_church_id, array['admin','pastor']::public.team_role[])
+      -- Prayer team can see general_prayer visibility
+      or (
+        pr.visibility::text in ('pastoral_prayer','general_prayer')
+        and private.has_church_role(p_church_id, array['prayer_team']::public.team_role[])
+      )
+      -- Health leader can see health_related
+      or (
+        pr.visibility::text = 'health_related'
+        and private.has_church_role(p_church_id, array['health_leader']::public.team_role[])
+      )
+      -- Assigned team member can see requests for their assigned contacts
+      or exists (
+        select 1
+        from public.contacts c
+        where c.id = p_contact_id
+          and c.church_id = p_church_id
+          and c.assigned_to in (
+            select tm.id
+            from public.team_members tm
+            where tm.user_id = auth.uid()
+              and tm.church_id = p_church_id
+              and tm.is_active = true
+          )
+      )
+    );
+end;
+$$;
+
+grant execute on function public.get_contact_prayer_requests(uuid, uuid) to authenticated;
 
 drop function if exists public.owner_church_profiles_page(uuid, text, integer, integer);
 

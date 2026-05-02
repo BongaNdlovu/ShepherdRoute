@@ -1,5 +1,5 @@
 import { interestOptions } from "@/lib/constants";
-import type { EventTemplateConfig } from "@/lib/eventTemplates";
+import type { EventTemplateConfig, TemplateQuestionField } from "@/lib/eventTemplates";
 
 export type EventPublicInfo = {
   heading: string;
@@ -29,6 +29,7 @@ export type EventFormConfig = {
     label: string;
     description?: string;
   }>;
+  questions: TemplateQuestionField[];
 };
 
 export type PublicEvent = {
@@ -78,6 +79,10 @@ export function getEffectiveFormConfig(event: PublicEvent, template: EventTempla
     ? customInterests
     : template.interestOptions;
 
+  // Use custom questions if provided, otherwise use template questions
+  const customQuestions = (formConfig.questions as TemplateQuestionField[] | undefined) || [];
+  const effectiveQuestions = customQuestions.length > 0 ? customQuestions : (template.questions || []);
+
   return {
     show_email: formConfig.show_email !== false,
     show_area: formConfig.show_area !== false,
@@ -86,6 +91,7 @@ export function getEffectiveFormConfig(event: PublicEvent, template: EventTempla
     show_topic: formConfig.show_topic !== false && !!template.topicOptions?.length,
     show_message: formConfig.show_message !== false,
     show_prayer_visibility: formConfig.show_prayer_visibility !== false,
-    interest_options: effectiveInterestOptions
+    interest_options: effectiveInterestOptions,
+    questions: effectiveQuestions
   };
 }

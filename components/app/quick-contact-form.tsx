@@ -56,6 +56,32 @@ export function QuickContactForm({ events }: QuickContactFormProps) {
               ))}
             </div>
           </div>
+          <div className="grid gap-2 rounded-lg border p-4">
+            <Label htmlFor="consentStatus">Consent status *</Label>
+            <select
+              id="consentStatus"
+              name="consentStatus"
+              defaultValue="given"
+              required
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="given">Given - person consented to follow-up</option>
+              <option value="unknown">Unknown - consent status unclear</option>
+              <option value="not_given">Not given - person declined follow-up</option>
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Select &quot;given&quot; if the person consented to follow-up. Select &quot;unknown&quot; if consent status is unclear. Select &quot;not given&quot; if the person declined follow-up.
+            </p>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="consentNote">Consent note (optional)</Label>
+            <Textarea
+              id="consentNote"
+              name="consentNote"
+              placeholder="Optional note about consent context or conversation..."
+              rows={2}
+            />
+          </div>
           <div className="grid gap-2">
             <Label htmlFor="prayerRequest">Prayer request or note</Label>
             <Textarea id="prayerRequest" name="prayerRequest" />

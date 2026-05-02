@@ -32,7 +32,10 @@ const registrationSchema = z.object({
   templateType: z.enum(visitorTypeOptions).default("general"),
   topic: z.string().max(120).optional(),
   prayerVisibility: z.enum(prayerVisibilityOptions).default("general_prayer"),
-  consent: z.literal("on")
+  consent: z.literal("on"),
+  consentTextSnapshot: z.string().max(1000).optional(),
+  privacyPolicyVersion: z.string().max(50).optional(),
+  questions: z.string().optional()
 });
 
 export async function submitRegistrationAction(formData: FormData) {
@@ -50,11 +53,64 @@ export async function submitRegistrationAction(formData: FormData) {
     templateType: formData.get("templateType") || "general",
     topic: formData.get("topic") || undefined,
     prayerVisibility: formData.get("prayerVisibility") || "general_prayer",
-    consent: formData.get("consent")
+    consent: formData.get("consent"),
+    consentTextSnapshot: formData.get("consentTextSnapshot") || undefined,
+    privacyPolicyVersion: formData.get("privacyPolicyVersion") || undefined,
+    questions: formData.get("questions") || undefined
   });
 
   if (!parsed.success) {
     redirect(`/e/${formData.get("slug")}?error=Please%20add%20your%20name,%20phone,%20interest,%20and%20consent.`);
+  }
+
+  // Parse form answers from questions
+  const formAnswers: Array<{
+    question_name: string;
+    question_label: string;
+    question_type: string;
+    answer_value: unknown;
+    answer_display: unknown;
+  }> = [];
+
+  if (parsed.data.questions) {
+    try {
+      const questions = JSON.parse(parsed.data.questions) as Array<{
+        name: string;
+        label: string;
+        type: string;
+        required: boolean;
+        options: Array<{ value: string; label: string }>;
+      }>;
+
+      for (const question of questions) {
+        const values = formData.getAll(question.name).map(String);
+
+        if (values.length === 0) {
+          if (question.required) {
+            redirect(`/e/${parsed.data.slug}?error=Please%20answer%20the%20required%20question:%20${encodeURIComponent(question.label)}`);
+          }
+          continue;
+        }
+
+        const answerValue = question.type === "checkbox_group" ? values : values[0];
+        const optionLabels = values.map((v) => {
+          const option = question.options.find((o) => o.value === v);
+          return option?.label || v;
+        });
+        const answerDisplay = question.type === "checkbox_group" ? optionLabels : optionLabels[0];
+
+        formAnswers.push({
+          question_name: question.name,
+          question_label: question.label,
+          question_type: question.type,
+          answer_value: answerValue,
+          answer_display: answerDisplay
+        });
+      }
+    } catch (e) {
+      // If question parsing fails, continue without answers
+      console.error("Failed to parse questions:", e);
+    }
   }
 
   const classifierMessage = [parsed.data.topic ? `Selected topic: ${parsed.data.topic}.` : "", parsed.data.message ?? ""]
@@ -90,7 +146,12 @@ export async function submitRegistrationAction(formData: FormData) {
     p_prayer_visibility: parsed.data.prayerVisibility,
     p_consent_scope: ["follow_up", "whatsapp", "event_updates", ...(parsed.data.interests.includes("prayer") ? ["prayer"] : [])],
     p_consent_source: parsed.data.templateType,
-    p_consent_given: true
+    p_consent_given: true,
+    p_consent_text_snapshot: parsed.data.consentTextSnapshot ?? null,
+    p_privacy_policy_version: parsed.data.privacyPolicyVersion ?? "v1.0",
+    p_consent_status: "given",
+    p_consent_recorded_by: null,
+    p_form_answers: formAnswers.length > 0 ? JSON.stringify(formAnswers) : null
   });
 
   if (error) {
