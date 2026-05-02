@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CheckCircle2, HeartHandshake } from "lucide-react";
+import type { Metadata } from "next";
 import { submitRegistrationAction } from "@/app/e/[slug]/actions";
 import { BrandLogo } from "@/components/app/brand-logo";
 import { ExternalBrandImage } from "@/components/app/external-brand-image";
@@ -18,6 +19,78 @@ import {
 } from "@/lib/eventCustomization";
 import { prayerVisibilityLabels, prayerVisibilityOptions } from "@/lib/followUp";
 import type { CSSProperties } from "react";
+
+function getSafeHttpsUrl(value?: string | null) {
+  if (!value) return null;
+
+  try {
+    const url = new URL(value);
+
+    if (url.protocol !== "https:") {
+      return null;
+    }
+
+    const blockedHosts = new Set(["localhost", "127.0.0.1", "0.0.0.0"]);
+
+    if (blockedHosts.has(url.hostname)) {
+      return null;
+    }
+
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const event = await getPublicEvent(slug);
+  const template = getEventTemplate(event.event_type);
+  const publicInfo = getEffectivePublicInfo(event, template);
+  const branding = getEffectiveBrandingConfig(event);
+
+  const title = publicInfo.show_church_name
+    ? `${event.name || publicInfo.heading} | ${event.church_name}`
+    : `${event.name || publicInfo.heading}`;
+  const description = publicInfo.description || template.formDescription;
+
+  // Determine image URL with priority: cover_image_url > logo_url (if show_logo) > none
+  const coverImageUrl = getSafeHttpsUrl(branding.cover_image_url);
+  const logoImageUrl = publicInfo.show_logo ? getSafeHttpsUrl(branding.logo_url) : null;
+  const imageUrl = coverImageUrl || logoImageUrl;
+
+  const hasImage = !!imageUrl;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      images: hasImage
+        ? [
+            {
+              url: imageUrl,
+              width: 1200,
+              height: 630,
+              alt: `${event.name} preview image`
+            }
+          ]
+        : []
+    },
+    twitter: {
+      card: hasImage ? "summary_large_image" : "summary",
+      title,
+      description,
+      images: hasImage ? [imageUrl] : []
+    }
+  };
+}
 
 export default async function PublicEventPage({
   params,
