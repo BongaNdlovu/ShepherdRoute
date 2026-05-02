@@ -3,10 +3,12 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { classifyContact, type VisitorType } from "@/lib/classifyContact";
-import { interestOptions } from "@/lib/constants";
 import { eventTemplateTypes } from "@/lib/eventTemplates";
 import { prayerVisibilityOptions } from "@/lib/followUp";
 import { createClient } from "@/lib/supabase/server";
+import { getPublicEvent } from "@/lib/data";
+import { getEventTemplate } from "@/lib/eventTemplates";
+import { getEffectiveFormConfig } from "@/lib/eventCustomization";
 
 const visitorTypeOptions = [
   ...eventTemplateTypes,
@@ -26,12 +28,12 @@ const registrationSchema = z.object({
   area: z.string().max(120).optional(),
   language: z.string().max(80).optional(),
   bestTimeToContact: z.string().max(120).optional(),
-  interests: z.array(z.enum(interestOptions)).min(1),
+  interests: z.array(z.string()).optional(),
   message: z.string().max(2000).optional(),
   visitorType: z.enum(visitorTypeOptions).default("general"),
   templateType: z.enum(visitorTypeOptions).default("general"),
   topic: z.string().max(120).optional(),
-  prayerVisibility: z.enum(prayerVisibilityOptions).default("general_prayer"),
+  prayerVisibility: z.enum(prayerVisibilityOptions).optional(),
   consent: z.literal("on"),
   consentTextSnapshot: z.string().max(1000).optional(),
   privacyPolicyVersion: z.string().max(50).optional(),
@@ -52,7 +54,7 @@ export async function submitRegistrationAction(formData: FormData) {
     visitorType: formData.get("visitorType") || "general",
     templateType: formData.get("templateType") || "general",
     topic: formData.get("topic") || undefined,
-    prayerVisibility: formData.get("prayerVisibility") || "general_prayer",
+    prayerVisibility: formData.get("prayerVisibility") || undefined,
     consent: formData.get("consent"),
     consentTextSnapshot: formData.get("consentTextSnapshot") || undefined,
     privacyPolicyVersion: formData.get("privacyPolicyVersion") || undefined,
@@ -60,10 +62,25 @@ export async function submitRegistrationAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    redirect(`/e/${formData.get("slug")}?error=Please%20add%20your%20name,%20phone,%20interest,%20and%20consent.`);
+    redirect(`/e/${formData.get("slug")}?error=Please%20add%20your%20name,%20phone,%20and%20consent.`);
   }
 
-  // Parse form answers from questions
+  // Load event and formConfig server-side for validation
+  const event = await getPublicEvent(parsed.data.slug);
+  const template = getEventTemplate(event.event_type);
+  const formConfig = getEffectiveFormConfig(event, template);
+
+  // Parse interests based on formConfig
+  const submittedInterests = formData.getAll("interests").map(String);
+  const allowedInterests = new Set(formConfig.interest_options.map((option) => option.value));
+  const selectedInterests = submittedInterests.filter((interest) => allowedInterests.has(interest));
+
+  // Validate interests if required
+  if (formConfig.show_interests && formConfig.require_interests && selectedInterests.length === 0) {
+    redirect(`/e/${parsed.data.slug}?error=Please%20select%20at%20least%20one%20interest.`);
+  }
+
+  // Parse form answers from questions (only visible questions from formConfig)
   const formAnswers: Array<{
     question_name: string;
     question_label: string;
@@ -82,7 +99,14 @@ export async function submitRegistrationAction(formData: FormData) {
         options: Array<{ value: string; label: string }>;
       }>;
 
+      // Only process questions that are visible in formConfig
+      const visibleQuestions = formConfig.questions;
+
       for (const question of questions) {
+        // Skip if question is not visible
+        const isVisible = visibleQuestions.some((vq) => vq.name === question.name);
+        if (!isVisible) continue;
+
         const values = formData.getAll(question.name).map(String);
 
         if (values.length === 0) {
@@ -113,11 +137,19 @@ export async function submitRegistrationAction(formData: FormData) {
     }
   }
 
-  const classifierMessage = [parsed.data.topic ? `Selected topic: ${parsed.data.topic}.` : "", parsed.data.message ?? ""]
+  // Use defaults for hidden fields
+  const finalEmail = formConfig.show_email ? parsed.data.email : null;
+  const finalArea = formConfig.show_area ? parsed.data.area : null;
+  const finalLanguage = formConfig.show_language ? (parsed.data.language || "English") : "English";
+  const finalBestTime = formConfig.show_best_time ? parsed.data.bestTimeToContact : null;
+  const finalMessage = formConfig.show_message ? parsed.data.message : null;
+  const finalPrayerVisibility = formConfig.show_prayer_visibility ? (parsed.data.prayerVisibility || "general_prayer") : "general_prayer";
+
+  const classifierMessage = [parsed.data.topic ? `Selected topic: ${parsed.data.topic}.` : "", finalMessage ?? ""]
     .filter(Boolean)
     .join(" ");
   const classification = classifyContact({
-    selectedInterests: parsed.data.interests,
+    selectedInterests: selectedInterests,
     message: classifierMessage,
     visitorType: parsed.data.visitorType as VisitorType,
     templateType: parsed.data.templateType as VisitorType
@@ -135,16 +167,16 @@ export async function submitRegistrationAction(formData: FormData) {
     p_slug: parsed.data.slug,
     p_full_name: parsed.data.fullName,
     p_phone: parsed.data.phone,
-    p_email: parsed.data.email ?? null,
-    p_area: parsed.data.area ?? null,
-    p_language: parsed.data.language ?? "English",
-    p_best_time_to_contact: parsed.data.bestTimeToContact ?? null,
-    p_interests: parsed.data.interests,
-    p_message: parsed.data.message ?? null,
+    p_email: finalEmail,
+    p_area: finalArea,
+    p_language: finalLanguage,
+    p_best_time_to_contact: finalBestTime,
+    p_interests: selectedInterests,
+    p_message: finalMessage,
     p_urgency: classification.urgency,
     p_classification_payload: classificationPayload,
-    p_prayer_visibility: parsed.data.prayerVisibility,
-    p_consent_scope: ["follow_up", "whatsapp", "event_updates", ...(parsed.data.interests.includes("prayer") ? ["prayer"] : [])],
+    p_prayer_visibility: finalPrayerVisibility,
+    p_consent_scope: ["follow_up", "whatsapp", "event_updates", ...(selectedInterests.includes("prayer") ? ["prayer"] : [])],
     p_consent_source: parsed.data.templateType,
     p_consent_given: true,
     p_consent_text_snapshot: parsed.data.consentTextSnapshot ?? null,

@@ -22,13 +22,16 @@ export type TemplateMessageKey = "default" | Interest;
 export type TemplateQuestionOption = {
   value: string;
   label: string;
+  enabled?: boolean;
 };
 
 export type TemplateQuestionField = {
   name: string;
   label: string;
+  description?: string;
   type: "radio" | "select" | "checkbox_group";
-  required: boolean;
+  required?: boolean;
+  enabled?: boolean;
   options: TemplateQuestionOption[];
 };
 

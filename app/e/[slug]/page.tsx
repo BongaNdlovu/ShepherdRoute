@@ -61,19 +61,21 @@ export default async function PublicEventPage({
             />
           ) : null}
           <CardHeader className="text-center">
-            {branding.logo_url ? (
+            {publicInfo.show_logo && branding.logo_url ? (
               <ExternalBrandImage
                 src={branding.logo_url}
                 alt={`${event.church_name} logo`}
                 className="mx-auto h-24 w-auto object-contain"
               />
-            ) : (
+            ) : publicInfo.show_logo ? (
               <BrandLogo className="mx-auto h-24 w-auto object-contain" priority />
-            )}
-            <p className="mt-4 text-sm font-bold uppercase tracking-[0.18em] text-amber-700">{event.church_name}</p>
+            ) : null}
+            {publicInfo.show_church_name ? (
+              <p className="mt-4 text-sm font-bold uppercase tracking-[0.18em] text-amber-700">{event.church_name}</p>
+            ) : null}
             <CardTitle className="text-3xl">{publicInfo.heading}</CardTitle>
             <CardDescription>
-              {publicInfo.description} {event.name ? `This form is for ${event.name}.` : ""}
+              {publicInfo.description}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -154,32 +156,37 @@ export default async function PublicEventPage({
                     </div>
                   ) : null}
 
-                  <div className="grid gap-2">
-                    <Label className="flex items-center gap-2">
-                      <HeartHandshake className="h-4 w-4 text-amber-700" />
-                      How can we serve you?
-                    </Label>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {formConfig.interest_options.map((option, index) => (
-                        <label key={`${option.value}-${index}`} className="flex items-start gap-2 rounded-md border bg-white px-3 py-3 text-sm font-semibold">
-                          <input type="checkbox" name="interests" value={option.value} className="mt-0.5 h-4 w-4" />
-                          <span>
-                            {option.label}
-                            {option.description ? <span className="block text-xs font-normal leading-5 text-muted-foreground">{option.description}</span> : null}
-                          </span>
-                        </label>
-                      ))}
+                  {formConfig.show_interests && formConfig.interest_options.length > 0 && (
+                    <div className="grid gap-2">
+                      <Label className="flex items-center gap-2">
+                        <HeartHandshake className="h-4 w-4 text-amber-700" />
+                        How can we serve you?
+                      </Label>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {formConfig.interest_options.map((option, index) => (
+                          <label key={`${option.value}-${index}`} className="flex items-start gap-2 rounded-md border bg-white px-3 py-3 text-sm font-semibold">
+                            <input type="checkbox" name="interests" value={option.value} className="mt-0.5 h-4 w-4" />
+                            <span>
+                              {option.label}
+                              {option.description ? <span className="block text-xs font-normal leading-5 text-muted-foreground">{option.description}</span> : null}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {formConfig.questions.length > 0 && (
                     <div className="space-y-4">
                       {formConfig.questions.map((question) => (
-                        <div key={question.name} className="grid gap-2">
+                        <div key={question.name} className="grid gap-3 rounded-xl border bg-white/80 p-4 shadow-sm">
                           <Label htmlFor={question.name}>
                             {question.label}
                             {question.required && <span className="text-red-500"> *</span>}
                           </Label>
+                          {question.description && (
+                            <p className="text-sm text-muted-foreground">{question.description}</p>
+                          )}
                           {question.type === "select" && (
                             <select
                               id={question.name}
@@ -196,7 +203,7 @@ export default async function PublicEventPage({
                           {question.type === "radio" && (
                             <div className="grid gap-2">
                               {question.options.map((option) => (
-                                <label key={option.value} className="flex items-center gap-2">
+                                <label key={option.value} className="flex items-center gap-3 rounded-lg border bg-white px-4 py-3 text-sm font-semibold transition hover:bg-amber-50">
                                   <input
                                     type="radio"
                                     name={question.name}
@@ -204,22 +211,22 @@ export default async function PublicEventPage({
                                     required={question.required}
                                     className="h-4 w-4"
                                   />
-                                  <span className="text-sm">{option.label}</span>
+                                  <span>{option.label}</span>
                                 </label>
                               ))}
                             </div>
                           )}
                           {question.type === "checkbox_group" && (
-                            <div className="grid gap-2">
+                            <div className="grid gap-2 sm:grid-cols-2">
                               {question.options.map((option) => (
-                                <label key={option.value} className="flex items-center gap-2">
+                                <label key={option.value} className="flex items-center gap-3 rounded-lg border bg-white px-4 py-3 text-sm font-semibold transition hover:bg-amber-50">
                                   <input
                                     type="checkbox"
                                     name={question.name}
                                     value={option.value}
                                     className="h-4 w-4"
                                   />
-                                  <span className="text-sm">{option.label}</span>
+                                  <span>{option.label}</span>
                                 </label>
                               ))}
                             </div>

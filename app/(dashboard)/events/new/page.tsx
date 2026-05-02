@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { eventTypeLabels, eventTypeOptions } from "@/lib/constants";
 import { eventTemplateOptions } from "@/lib/eventTemplates";
+import Link from "next/link";
 
 export const metadata = {
   title: "Create Event"
@@ -14,9 +15,10 @@ export const metadata = {
 export default async function NewEventPage({
   searchParams
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; template?: string }>;
 }) {
   const params = await searchParams;
+  const preselectedTemplate = params.template && eventTypeOptions.includes(params.template as never) ? params.template : null;
 
   return (
     <Card>
@@ -36,7 +38,7 @@ export default async function NewEventPage({
           </div>
           <div className="grid gap-2">
             <Label htmlFor="eventType">Event template</Label>
-            <select id="eventType" name="eventType" defaultValue="sabbath_visitor" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
+            <select id="eventType" name="eventType" defaultValue={preselectedTemplate || "sabbath_visitor"} className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
               {eventTypeOptions.map((eventType) => (
                 <option key={eventType} value={eventType}>{eventTypeLabels[eventType]}</option>
               ))}
@@ -61,24 +63,29 @@ export default async function NewEventPage({
             </div>
             <div className="grid gap-3 lg:grid-cols-2">
               {eventTemplateOptions.map((template) => (
-                <div key={template.type} className="rounded-lg border bg-muted/40 p-4">
-                  <div className="flex flex-col gap-1">
-                    <p className="font-bold">{template.name}</p>
-                    <p className="text-sm text-muted-foreground">{template.description}</p>
+                <Link key={template.type} href={`/events/new?template=${template.type}`}>
+                  <div className="rounded-lg border bg-muted/40 p-4 cursor-pointer hover:border-amber-300 hover:bg-amber-50/40 transition">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold">{template.name}</p>
+                        <span className="text-xs text-muted-foreground">Use template →</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{template.description}</p>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {template.interestOptions.slice(0, 5).map((option, index) => (
+                        <span key={`${template.type}-${option.value}-${index}`} className="rounded-md bg-white px-2 py-1 text-xs font-semibold text-slate-700">
+                          {option.label}
+                        </span>
+                      ))}
+                      {template.topicOptions?.length ? (
+                        <span className="rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">
+                          Topic field
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {template.interestOptions.slice(0, 5).map((option, index) => (
-                      <span key={`${template.type}-${option.value}-${index}`} className="rounded-md bg-white px-2 py-1 text-xs font-semibold text-slate-700">
-                        {option.label}
-                      </span>
-                    ))}
-                    {template.topicOptions?.length ? (
-                      <span className="rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">
-                        Topic field
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>

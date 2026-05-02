@@ -91,6 +91,23 @@ export default async function EventCustomizePage({
                 maxLength={500}
               />
             </div>
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                name="show_church_name"
+                defaultChecked={event.event.public_info?.show_church_name !== false}
+              />
+              <span>Show church/ministry name on public form</span>
+            </label>
+            <p className="text-xs text-muted-foreground ml-7">This only hides the name from the public form header. The event is still internally connected to your church/ministry.</p>
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                name="show_logo"
+                defaultChecked={event.event.public_info?.show_logo !== false}
+              />
+              <span>Show logo on public form</span>
+            </label>
           </CardContent>
         </Card>
 
@@ -147,7 +164,7 @@ export default async function EventCustomizePage({
         {/* Form Config */}
         <Card>
           <CardHeader>
-            <CardTitle>Form fields</CardTitle>
+            <CardTitle>Form visibility</CardTitle>
             <CardDescription>Choose which optional fields to show on the public form.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
@@ -196,6 +213,14 @@ export default async function EventCustomizePage({
             <label className="flex items-center gap-3">
               <input
                 type="checkbox"
+                name="show_interests"
+                defaultChecked={event.event.form_config?.show_interests !== false}
+              />
+              <span>Show interest section</span>
+            </label>
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
                 name="show_message"
                 defaultChecked={event.event.form_config?.show_message !== false}
               />
@@ -209,6 +234,10 @@ export default async function EventCustomizePage({
               />
               <span>Show prayer visibility field</span>
             </label>
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm font-semibold text-amber-900">Required fields</p>
+              <p className="text-sm text-amber-700">Name, phone/WhatsApp, and consent are required for reliable follow-up and cannot be hidden yet.</p>
+            </div>
           </CardContent>
         </Card>
 
@@ -225,7 +254,17 @@ export default async function EventCustomizePage({
               );
               return (
                 <div key={interest} className="grid gap-2 rounded-lg border p-4">
-                  <p className="font-semibold">{interestLabels[interest]}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold">{interestLabels[interest]}</p>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        name={`enabled_${interest}`}
+                        defaultChecked={customOption?.enabled !== false}
+                      />
+                      <span className="text-sm text-muted-foreground">Show this option on the public form</span>
+                    </label>
+                  </div>
                   <div className="grid gap-2">
                     <Label htmlFor={`label_${interest}`}>Custom label</Label>
                     <Input
@@ -249,31 +288,94 @@ export default async function EventCustomizePage({
           </CardContent>
         </Card>
 
-        {/* Template Questions Preview */}
+        {/* Template Questions */}
         {template.questions && template.questions.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Template questions (read-only)</CardTitle>
-              <CardDescription>These questions are defined by the event template and will appear on the public form.</CardDescription>
+              <CardTitle>Template questions</CardTitle>
+              <CardDescription>Customize which questions appear on the public form and their options.</CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-4">
-              {template.questions.map((question) => (
-                <div key={question.name} className="grid gap-2 rounded-lg border p-4 bg-muted/50">
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold">{question.label}</p>
-                    {question.required && <span className="text-xs text-red-500 font-medium">(required)</span>}
+            <CardContent className="grid gap-6">
+              {template.questions.map((question) => {
+                const customQuestion = event.event.form_config?.questions?.find(
+                  (q: { name: string }) => q.name === question.name
+                );
+                return (
+                  <div key={question.name} className="grid gap-4 rounded-lg border p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold">{question.label}</p>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          name={`question_enabled_${question.name}`}
+                          defaultChecked={customQuestion?.enabled !== false}
+                        />
+                        <span className="text-sm text-muted-foreground">Show this question on the public form</span>
+                      </label>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor={`question_label_${question.name}`}>Question label</Label>
+                      <Input
+                        id={`question_label_${question.name}`}
+                        name={`question_label_${question.name}`}
+                        defaultValue={customQuestion?.label || question.label}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor={`question_description_${question.name}`}>Description (optional)</Label>
+                      <Textarea
+                        id={`question_description_${question.name}`}
+                        name={`question_description_${question.name}`}
+                        defaultValue={customQuestion?.description || question.description || ""}
+                        placeholder="Optional description"
+                        rows={2}
+                      />
+                    </div>
+                    {(question.type === "radio" || question.type === "select") && (
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          name={`question_required_${question.name}`}
+                          defaultChecked={customQuestion?.required ?? question.required}
+                        />
+                        <span className="text-sm">Required</span>
+                      </label>
+                    )}
+                    <div className="grid gap-3">
+                      <p className="text-sm font-medium">Options</p>
+                      {question.options.map((option) => {
+                        const customOption = customQuestion?.options?.find(
+                          (o: { value: string }) => o.value === option.value
+                        );
+                        return (
+                          <div key={option.value} className="grid gap-2 rounded-md border p-3">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium">{option.label}</p>
+                              <label className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  name={`question_option_enabled_${question.name}_${option.value}`}
+                                  defaultChecked={customOption?.enabled !== false}
+                                />
+                                <span className="text-xs text-muted-foreground">Show this option</span>
+                              </label>
+                            </div>
+                            <div className="grid gap-2">
+                              <Label htmlFor={`question_option_label_${question.name}_${option.value}`}>Option label</Label>
+                              <Input
+                                id={`question_option_label_${question.name}_${option.value}`}
+                                name={`question_option_label_${question.name}_${option.value}`}
+                                defaultValue={customOption?.label || option.label}
+                                className="h-8"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">Type: {question.type}</p>
-                  <div className="grid gap-1">
-                    <p className="text-xs font-medium">Options:</p>
-                    {question.options.map((option) => (
-                      <p key={option.value} className="text-xs text-muted-foreground ml-2">
-                        - {option.label} ({option.value})
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
         )}
