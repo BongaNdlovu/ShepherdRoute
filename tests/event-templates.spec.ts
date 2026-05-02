@@ -112,7 +112,7 @@ test.describe("event templates", () => {
       const values = template.interestOptions.map((option) => option.value);
       if (values.includes("baptism")) {
         expect(template.messageTemplates.baptism).toBeDefined();
-        expect(template.messageTemplates.baptism).toContain("baptismal request");
+        expect(template.messageTemplates.baptism).toContain("baptism request");
         expect(template.messageTemplates.baptism).toContain("Bible worker");
       }
     }
@@ -132,7 +132,7 @@ test.describe("event templates", () => {
     }
   });
 
-  test("every event template with a baptism option exposes a baptismal report section", () => {
+  test("every event template with a baptism option exposes a baptism report section", () => {
     const templateTypes = Object.keys(eventTemplates) as Array<keyof typeof eventTemplates>;
 
     for (const templateType of templateTypes) {
@@ -159,7 +159,7 @@ test.describe("event templates", () => {
       for (const message of messages) {
         expect(message).toMatch(/Good day \{firstName\}/);
         expect(message).not.toMatch(/\bcan arrange a respectful human follow-up\b/i);
-        expect(message).not.toMatch(/\bWe received your baptismal request and can connect\b/i);
+        expect(message).not.toMatch(/\bWe received your baptism request and can connect\b/i);
         expect(message).not.toMatch(/\bYou mentioned Bible study interest\b/i);
         expect(message).not.toMatch(/\bwould like us to send\b/i);
       }
@@ -176,7 +176,7 @@ test.describe("event templates", () => {
       templateType: "sabbath_visitor"
     });
 
-    expect(message).toContain("Thank you for sharing your baptismal request");
+    expect(message).toContain("Thank you for sharing your baptism request");
     expect(message).toContain("honoured to connect you with a Bible worker");
     expect(message).toContain("walk with you through preparation");
     expect(message).not.toContain("Reply STOP");
@@ -192,7 +192,7 @@ test.describe("event templates", () => {
       templateType: "sabbath_visitor"
     });
 
-    expect(message).toContain("baptismal request");
+    expect(message).toContain("baptism request");
     expect(message).toContain("Bible worker");
     expect(message).not.toContain("checks in with you this week");
   });

@@ -152,7 +152,7 @@ test.describe("workflow helpers", () => {
     expect(message).not.toContain("Reply STOP");
   });
 
-  test("WhatsApp baptism message includes baptismal preparation wording", () => {
+  test("WhatsApp baptism message includes baptism preparation wording", () => {
     const message = generateMessage({
       name: "Thandi M.",
       phone: "+27820000000",
@@ -160,7 +160,7 @@ test.describe("workflow helpers", () => {
       churchName: "Pinetown SDA"
     });
 
-    expect(message).toContain("Thank you for sharing your baptismal request");
+    expect(message).toContain("Thank you for sharing your baptism request");
     expect(message).toContain("Bible worker");
     expect(message).toContain("preparation");
     expect(message).toContain("Bible study");
