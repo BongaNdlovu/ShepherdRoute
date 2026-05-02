@@ -23,7 +23,7 @@ const visitorTypeOptions = [
 const registrationSchema = z.object({
   slug: z.string().min(2),
   fullName: z.string().min(2).max(140),
-  phone: z.string().min(6).max(40),
+  phone: z.string().max(40).optional(),
   email: z.string().email().max(160).optional(),
   area: z.string().max(120).optional(),
   language: z.string().max(80).optional(),
@@ -44,7 +44,7 @@ export async function submitRegistrationAction(formData: FormData) {
   const parsed = registrationSchema.safeParse({
     slug: formData.get("slug"),
     fullName: formData.get("fullName"),
-    phone: formData.get("phone"),
+    phone: formData.get("phone") || undefined,
     email: formData.get("email") || undefined,
     area: formData.get("area") || undefined,
     language: formData.get("language") || undefined,
@@ -62,7 +62,7 @@ export async function submitRegistrationAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    redirect(`/e/${formData.get("slug")}?error=Please%20add%20your%20name,%20phone,%20and%20consent.`);
+    redirect(`/e/${formData.get("slug")}?error=Please%20add%20your%20name%20and%20consent.`);
   }
 
   // Load event and formConfig server-side for validation
@@ -70,15 +70,29 @@ export async function submitRegistrationAction(formData: FormData) {
   const template = getEventTemplate(event.event_type);
   const formConfig = getEffectiveFormConfig(event, template);
 
+  // Parse phone and email based on visibility
+  const phone = formConfig.show_phone ? parsed.data.phone?.trim() : undefined;
+  const email = formConfig.show_email ? parsed.data.email?.trim() : undefined;
+
+  // Validate phone requirement
+  if (formConfig.require_phone && !phone) {
+    redirect(`/e/${parsed.data.slug}?error=Please%20add%20your%20phone%20or%20WhatsApp%20number.`);
+  }
+
+  // Validate email requirement
+  if (formConfig.require_email && !email) {
+    redirect(`/e/${parsed.data.slug}?error=Please%20add%20your%20email%20address.`);
+  }
+
+  // Validate at least one contact method
+  if (formConfig.require_at_least_one_contact_method && !phone && !email) {
+    redirect(`/e/${parsed.data.slug}?error=Please%20add%20either%20a%20phone%20number%20or%20an%20email%20address.`);
+  }
+
   // Parse interests based on formConfig
   const submittedInterests = formData.getAll("interests").map(String);
   const allowedInterests = new Set(formConfig.interest_options.map((option) => option.value));
   const selectedInterests = submittedInterests.filter((interest) => allowedInterests.has(interest));
-
-  // Validate interests if required
-  if (formConfig.show_interests && formConfig.require_interests && selectedInterests.length === 0) {
-    redirect(`/e/${parsed.data.slug}?error=Please%20select%20at%20least%20one%20interest.`);
-  }
 
   // Parse form answers from questions (only visible questions from formConfig)
   const formAnswers: Array<{
@@ -138,7 +152,6 @@ export async function submitRegistrationAction(formData: FormData) {
   }
 
   // Use defaults for hidden fields
-  const finalEmail = formConfig.show_email ? parsed.data.email : null;
   const finalArea = formConfig.show_area ? parsed.data.area : null;
   const finalLanguage = formConfig.show_language ? (parsed.data.language || "English") : "English";
   const finalBestTime = formConfig.show_best_time ? parsed.data.bestTimeToContact : null;
@@ -166,8 +179,8 @@ export async function submitRegistrationAction(formData: FormData) {
   const { error } = await supabase.rpc("submit_event_registration", {
     p_slug: parsed.data.slug,
     p_full_name: parsed.data.fullName,
-    p_phone: parsed.data.phone,
-    p_email: finalEmail,
+    p_phone: phone ?? null,
+    p_email: email ?? null,
     p_area: finalArea,
     p_language: finalLanguage,
     p_best_time_to_contact: finalBestTime,

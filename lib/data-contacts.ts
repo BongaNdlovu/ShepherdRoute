@@ -11,7 +11,7 @@ export type ContactListItem = {
   id: string;
   person_id: string | null;
   full_name: string;
-  phone: string;
+  phone: string | null;
   email: string | null;
   area: string | null;
   language: string | null;
@@ -58,7 +58,7 @@ export type ContactDetailResult = {
     id: string;
     person_id: string | null;
     full_name: string;
-    phone: string;
+    phone: string | null;
     email: string | null;
     whatsapp_number: string | null;
     area: string | null;

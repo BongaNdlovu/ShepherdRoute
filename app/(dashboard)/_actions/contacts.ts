@@ -19,7 +19,7 @@ const contactUpdateSchema = z.object({
 
 const quickContactSchema = z.object({
   fullName: z.string().min(2).max(140),
-  phone: z.string().min(6).max(40),
+  phone: z.string().max(40).optional(),
   email: z.string().email().max(160).optional(),
   area: z.string().max(120).optional(),
   language: z.string().max(80).optional(),
@@ -249,7 +249,7 @@ export async function addQuickContactAction(formData: FormData) {
   const interests = formData.getAll("interests").map(String);
   const parsed = quickContactSchema.safeParse({
     fullName: formData.get("fullName"),
-    phone: formData.get("phone"),
+    phone: formData.get("phone") || undefined,
     email: formData.get("email") || undefined,
     area: formData.get("area") || undefined,
     language: formData.get("language") || undefined,
@@ -262,7 +262,12 @@ export async function addQuickContactAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    redirect("/contacts?error=Please%20add%20a%20name,%20phone,%20and%20interest.");
+    redirect("/contacts?error=Please%20add%20a%20name%20and%20interest.");
+  }
+
+  // Validate at least one contact method
+  if (!parsed.data.phone && !parsed.data.email) {
+    redirect("/contacts?error=Please%20add%20either%20a%20phone%20number%20or%20an%20email%20address.");
   }
 
   const supabase = await createClient();
@@ -355,27 +360,29 @@ export async function addQuickContactAction(formData: FormData) {
       .eq("id", contact.event_id)
       .single()
     : { data: null };
-  const suggestedMessage = generateMessage({
+  const suggestedMessage = parsed.data.phone ? generateMessage({
     name: parsed.data.fullName,
     phone: parsed.data.phone,
     interests: parsed.data.interests,
     churchName: context.churchName,
     eventName: eventForMessage?.name,
     templateType: eventForMessage?.event_type
-  });
-  const { error: suggestedMessageError } = await saveSuggestedWhatsappMessage({
-    supabase,
-    contact: {
-      id: contact.id,
-      church_id: contact.church_id,
-      phone: parsed.data.phone
-    },
-    message: suggestedMessage,
-    generatedBy: context.userId
-  });
+  }) : null;
+  if (parsed.data.phone && suggestedMessage) {
+    const { error: suggestedMessageError } = await saveSuggestedWhatsappMessage({
+      supabase,
+      contact: {
+        id: contact.id,
+        church_id: contact.church_id,
+        phone: parsed.data.phone
+      },
+      message: suggestedMessage,
+      generatedBy: context.userId
+    });
 
-  if (suggestedMessageError) {
-    redirect(`/contacts/${contact.id}?error=${actionError(suggestedMessageError, "Contact created, but the suggested WhatsApp message could not be saved.")}`);
+    if (suggestedMessageError) {
+      redirect(`/contacts/${contact.id}?error=${actionError(suggestedMessageError, "Contact created, but the suggested WhatsApp message could not be saved.")}`);
+    }
   }
 
   const { error: followUpError } = await supabase.from("follow_ups").insert({

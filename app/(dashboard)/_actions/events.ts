@@ -47,6 +47,7 @@ const eventCustomizationSchema = z.object({
   cover_image_url: z.string().max(500).optional(),
   primary_color: z.string().regex(hexColorRegex),
   accent_color: z.string().regex(hexColorRegex),
+  show_phone: z.coerce.boolean(),
   show_email: z.coerce.boolean(),
   show_area: z.coerce.boolean(),
   show_language: z.coerce.boolean(),
@@ -56,7 +57,10 @@ const eventCustomizationSchema = z.object({
   show_message: z.coerce.boolean(),
   show_prayer_visibility: z.coerce.boolean(),
   show_church_name: z.coerce.boolean(),
-  show_logo: z.coerce.boolean()
+  show_logo: z.coerce.boolean(),
+  require_phone: z.coerce.boolean(),
+  require_email: z.coerce.boolean(),
+  require_at_least_one_contact_method: z.coerce.boolean()
 });
 
 export async function createEventAction(formData: FormData) {
@@ -215,6 +219,7 @@ export async function updateEventCustomizationAction(formData: FormData) {
   }
 
   // Parse visibility checkboxes explicitly
+  const showPhone = formData.get("show_phone") === "on";
   const showEmail = formData.get("show_email") === "on";
   const showArea = formData.get("show_area") === "on";
   const showLanguage = formData.get("show_language") === "on";
@@ -225,6 +230,24 @@ export async function updateEventCustomizationAction(formData: FormData) {
   const showPrayerVisibility = formData.get("show_prayer_visibility") === "on";
   const showChurchName = formData.get("show_church_name") === "on";
   const showLogo = formData.get("show_logo") === "on";
+  const requirePhone = formData.get("require_phone") === "on";
+  const requireEmail = formData.get("require_email") === "on";
+  const requireAtLeastOneContactMethod = formData.get("require_at_least_one_contact_method") === "on";
+
+  // Validation: at least one contact field must be visible
+  if (!showPhone && !showEmail) {
+    redirect(`/events/${formData.get("eventId")}/customize?error=At%20least%20one%20contact%20field%20must%20be%20visible.`);
+  }
+
+  // Validation: require_phone only if show_phone
+  if (requirePhone && !showPhone) {
+    redirect(`/events/${formData.get("eventId")}/customize?error=Cannot%20require%20phone%20if%20phone%20field%20is%20hidden.`);
+  }
+
+  // Validation: require_email only if show_email
+  if (requireEmail && !showEmail) {
+    redirect(`/events/${formData.get("eventId")}/customize?error=Cannot%20require%20email%20if%20email%20field%20is%20hidden.`);
+  }
 
   // Build interest options from form data
   const interestOptionsList = interestOptions.map((interest) => {
@@ -294,6 +317,7 @@ export async function updateEventCustomizationAction(formData: FormData) {
     cover_image_url: coverImageUrl,
     primary_color: formData.get("primary_color"),
     accent_color: formData.get("accent_color"),
+    show_phone: showPhone,
     show_email: showEmail,
     show_area: showArea,
     show_language: showLanguage,
@@ -303,7 +327,10 @@ export async function updateEventCustomizationAction(formData: FormData) {
     show_message: showMessage,
     show_prayer_visibility: showPrayerVisibility,
     show_church_name: showChurchName,
-    show_logo: showLogo
+    show_logo: showLogo,
+    require_phone: requirePhone,
+    require_email: requireEmail,
+    require_at_least_one_contact_method: requireAtLeastOneContactMethod
   });
 
   if (!parsed.success) {
@@ -329,6 +356,7 @@ export async function updateEventCustomizationAction(formData: FormData) {
         accent_color: parsed.data.accent_color
       },
       form_config: {
+        show_phone: parsed.data.show_phone,
         show_email: parsed.data.show_email,
         show_area: parsed.data.show_area,
         show_language: parsed.data.show_language,
@@ -337,6 +365,9 @@ export async function updateEventCustomizationAction(formData: FormData) {
         show_interests: parsed.data.show_interests,
         show_message: parsed.data.show_message,
         show_prayer_visibility: parsed.data.show_prayer_visibility,
+        require_phone: parsed.data.require_phone,
+        require_email: parsed.data.require_email,
+        require_at_least_one_contact_method: parsed.data.require_at_least_one_contact_method,
         interest_options: interestOptionsList,
         questions: questionOverrides
       }

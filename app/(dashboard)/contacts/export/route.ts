@@ -99,7 +99,7 @@ async function collectContactRows(
 
       rows.push([
         contact.full_name,
-        contact.phone,
+        contact.phone ?? "",
         contact.email ?? "",
         contact.area ?? "",
         contact.language ?? "",

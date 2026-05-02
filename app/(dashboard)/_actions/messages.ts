@@ -9,7 +9,7 @@ import { createWhatsappLink } from "@/lib/whatsapp";
 
 const generatedMessageSchema = z.object({
   contactId: z.string().uuid(),
-  phone: z.string().min(6).max(40),
+  phone: z.string().max(40).optional(),
   message: z.string().min(2).max(2000)
 });
 
@@ -24,12 +24,16 @@ export async function saveGeneratedMessageAction(formData: FormData) {
   const context = await getChurchContext();
   const parsed = generatedMessageSchema.safeParse({
     contactId: formData.get("contactId"),
-    phone: formData.get("phone"),
+    phone: formData.get("phone") || undefined,
     message: formData.get("message")
   });
 
   if (!parsed.success) {
     redirect("/contacts?error=Could%20not%20open%20WhatsApp%20message.");
+  }
+
+  if (!parsed.data.phone) {
+    redirect("/contacts?error=Add%20a%20valid%20WhatsApp%20phone%20number%20before%20opening%20WhatsApp.");
   }
 
   const link = createWhatsappLink(parsed.data.phone, parsed.data.message);

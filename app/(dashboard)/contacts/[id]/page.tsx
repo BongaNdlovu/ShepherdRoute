@@ -46,7 +46,7 @@ export default async function ContactDetailPage({
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
               <CardTitle className="text-2xl">{contact.full_name}</CardTitle>
-              <CardDescription>{contact.events?.name ?? "Manual contact"} - {contact.phone}</CardDescription>
+              <CardDescription>{contact.events?.name ?? "Manual contact"}{contact.phone ? ` - ${contact.phone}` : ""}</CardDescription>
             </div>
             <div className="flex gap-2">
               <UrgencyBadge urgency={contact.urgency} />

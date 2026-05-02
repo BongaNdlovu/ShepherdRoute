@@ -3,7 +3,7 @@ import { getEventTemplate, type TemplateMessageKey } from "@/lib/eventTemplates"
 
 type MessageContact = {
   name: string;
-  phone: string;
+  phone: string | null;
   interests: Interest[];
   churchName?: string | null;
   eventName?: string | null;

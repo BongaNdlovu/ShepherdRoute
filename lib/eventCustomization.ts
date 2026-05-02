@@ -19,6 +19,7 @@ export type EventBrandingConfig = {
 };
 
 export type EventFormConfig = {
+  show_phone: boolean;
   show_email: boolean;
   show_area: boolean;
   show_language: boolean;
@@ -27,7 +28,9 @@ export type EventFormConfig = {
   show_message: boolean;
   show_prayer_visibility: boolean;
   show_interests: boolean;
-  require_interests: boolean;
+  require_phone: boolean;
+  require_email: boolean;
+  require_at_least_one_contact_method: boolean;
   interest_options: Array<{
     value: string;
     label: string;
@@ -103,6 +106,7 @@ export function getEffectiveFormConfig(event: PublicEvent, template: EventTempla
     .filter((question) => question.options.length > 0);
 
   return {
+    show_phone: formConfig.show_phone !== false,
     show_email: formConfig.show_email !== false,
     show_area: formConfig.show_area !== false,
     show_language: formConfig.show_language !== false,
@@ -111,7 +115,9 @@ export function getEffectiveFormConfig(event: PublicEvent, template: EventTempla
     show_message: formConfig.show_message !== false,
     show_prayer_visibility: formConfig.show_prayer_visibility !== false,
     show_interests: formConfig.show_interests !== false,
-    require_interests: formConfig.require_interests !== false,
+    require_phone: formConfig.require_phone !== false,
+    require_email: formConfig.require_email !== false,
+    require_at_least_one_contact_method: formConfig.require_at_least_one_contact_method !== false,
     interest_options: visibleInterestOptions,
     questions: visibleQuestions
   };

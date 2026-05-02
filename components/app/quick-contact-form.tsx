@@ -26,7 +26,8 @@ export function QuickContactForm({ events }: QuickContactFormProps) {
           </div>
           <div className="grid gap-2">
             <Label htmlFor="phone">Phone / WhatsApp</Label>
-            <Input id="phone" name="phone" placeholder="+27..." required />
+            <Input id="phone" name="phone" placeholder="+27..." />
+            <p className="text-xs text-muted-foreground">Phone or email is required</p>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="email">Email</Label>

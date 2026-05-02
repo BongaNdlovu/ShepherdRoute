@@ -51,7 +51,7 @@ export function ContactSummaryPanel({ contact, error }: ContactSummaryPanelProps
         </div>
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">WhatsApp</p>
-          <p className="mt-1 font-semibold">{contact.whatsapp_number ?? contact.phone}</p>
+          <p className="mt-1 font-semibold">{contact.whatsapp_number ?? contact.phone ?? "No phone number"}</p>
         </div>
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Area</p>

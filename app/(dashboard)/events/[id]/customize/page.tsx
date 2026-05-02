@@ -171,10 +171,42 @@ export default async function EventCustomizePage({
             <label className="flex items-center gap-3">
               <input
                 type="checkbox"
+                name="show_phone"
+                defaultChecked={event.event.form_config?.show_phone !== false}
+              />
+              <span>Show phone / WhatsApp field</span>
+            </label>
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                name="require_phone"
+                defaultChecked={event.event.form_config?.require_phone !== false}
+              />
+              <span>Require phone / WhatsApp</span>
+            </label>
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
                 name="show_email"
                 defaultChecked={event.event.form_config?.show_email !== false}
               />
               <span>Show email field</span>
+            </label>
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                name="require_email"
+                defaultChecked={event.event.form_config?.require_email !== false}
+              />
+              <span>Require email</span>
+            </label>
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                name="require_at_least_one_contact_method"
+                defaultChecked={event.event.form_config?.require_at_least_one_contact_method !== false}
+              />
+              <span>Require at least one contact method</span>
             </label>
             <label className="flex items-center gap-3">
               <input

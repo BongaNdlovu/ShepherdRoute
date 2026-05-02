@@ -88,182 +88,208 @@ export default async function PublicEventPage({
                 </p>
               </div>
             ) : (
-              <>
-                {query.error ? <p className="mb-4 rounded-md bg-rose-50 p-3 text-sm text-rose-700">{query.error}</p> : null}
-                <form action={submitRegistrationAction} className="grid gap-5">
-                  <input type="hidden" name="slug" value={event.slug} />
-                  <input type="hidden" name="visitorType" value={template.type} />
-                  <input type="hidden" name="templateType" value={template.type} />
-                  <input type="hidden" name="consentTextSnapshot" value={consentText} />
-                  <input type="hidden" name="privacyPolicyVersion" value="v1.0" />
-                  <input type="hidden" name="questions" value={JSON.stringify(formConfig.questions)} />
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="grid gap-2">
-                      <Label htmlFor="fullName">Name</Label>
-                      <Input id="fullName" name="fullName" placeholder="Your name" required />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="phone">Phone / WhatsApp</Label>
-                      <Input id="phone" name="phone" placeholder="+27..." required />
-                    </div>
-                    {formConfig.show_email ? (
-                      <div className="grid gap-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input id="email" name="email" type="email" placeholder="Optional" />
-                      </div>
-                    ) : null}
-                    {formConfig.show_area ? (
-                      <div className="grid gap-2">
-                        <Label htmlFor="area">Area / suburb</Label>
-                        <Input id="area" name="area" placeholder="Pinetown, Kloof, Hillcrest..." />
-                      </div>
-                    ) : null}
-                    {formConfig.show_language ? (
-                      <div className="grid gap-2">
-                        <Label htmlFor="language">Preferred language</Label>
-                        <select id="language" name="language" defaultValue="English" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
-                          <option>English</option>
-                          <option>isiZulu</option>
-                          <option>Afrikaans</option>
-                          <option>isiXhosa</option>
-                          <option>Sesotho</option>
-                        </select>
-                      </div>
-                    ) : null}
-                    {formConfig.show_best_time ? (
-                      <div className="grid gap-2 md:col-span-2">
-                        <Label htmlFor="bestTimeToContact">Best time to contact</Label>
-                        <select id="bestTimeToContact" name="bestTimeToContact" defaultValue="" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
-                          <option value="">No preference</option>
-                          <option>Morning</option>
-                          <option>Afternoon</option>
-                          <option>Evening</option>
-                          <option>Weekend</option>
-                        </select>
-                      </div>
-                    ) : null}
+              <form action={submitRegistrationAction} className="grid gap-5">
+                <input type="hidden" name="slug" value={event.slug} />
+                <input type="hidden" name="visitorType" value={event.event_type} />
+                <input type="hidden" name="templateType" value={event.event_type} />
+                <input
+                  type="hidden"
+                  name="questions"
+                  value={JSON.stringify(formConfig.questions)}
+                />
+
+                <div className="grid gap-2">
+                  <Label htmlFor="fullName">Full name</Label>
+                  <Input
+                    id="fullName"
+                    name="fullName"
+                    placeholder="Your full name"
+                    required
+                  />
+                </div>
+
+                {formConfig.show_phone ? (
+                  <div className="grid gap-2">
+                    <Label htmlFor="phone">
+                      Phone / WhatsApp
+                      {formConfig.require_phone && <span className="text-rose-600"> *</span>}
+                    </Label>
+                    <Input
+                      id="phone"
+                      name="phone"
+                      placeholder="+27..."
+                      required={formConfig.require_phone}
+                    />
                   </div>
+                ) : null}
 
-                  {shouldShowTopic ? (
-                    <div className="grid gap-2">
-                      <Label htmlFor="topic">Seminar topic</Label>
-                      <select id="topic" name="topic" defaultValue="" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
-                        <option value="">Select a topic</option>
-                        {template.topicOptions?.map((topic) => (
-                          <option key={topic} value={topic}>{topic}</option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : null}
+                {formConfig.show_email ? (
+                  <div className="grid gap-2">
+                    <Label htmlFor="email">
+                      Email
+                      {formConfig.require_email && <span className="text-rose-600"> *</span>}
+                    </Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      placeholder="you@example.com"
+                      required={formConfig.require_email}
+                    />
+                  </div>
+                ) : null}
 
-                  {formConfig.show_interests && formConfig.interest_options.length > 0 && (
-                    <div className="grid gap-2">
-                      <Label className="flex items-center gap-2">
-                        <HeartHandshake className="h-4 w-4 text-amber-700" />
-                        How can we serve you?
-                      </Label>
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {formConfig.interest_options.map((option, index) => (
-                          <label key={`${option.value}-${index}`} className="flex items-start gap-2 rounded-md border bg-white px-3 py-3 text-sm font-semibold">
-                            <input type="checkbox" name="interests" value={option.value} className="mt-0.5 h-4 w-4" />
-                            <span>
-                              {option.label}
-                              {option.description ? <span className="block text-xs font-normal leading-5 text-muted-foreground">{option.description}</span> : null}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                {formConfig.show_phone && formConfig.show_email && !formConfig.require_phone && !formConfig.require_email ? (
+                  <p className="text-xs text-muted-foreground">
+                    If you prefer email only, you may leave Phone / WhatsApp blank and provide your email address.
+                  </p>
+                ) : null}
 
-                  {formConfig.questions.length > 0 && (
-                    <div className="space-y-4">
-                      {formConfig.questions.map((question) => (
-                        <div key={question.name} className="grid gap-3 rounded-xl border bg-white/80 p-4 shadow-sm">
-                          <Label htmlFor={question.name}>
-                            {question.label}
-                            {question.required && <span className="text-red-500"> *</span>}
-                          </Label>
-                          {question.description && (
-                            <p className="text-sm text-muted-foreground">{question.description}</p>
-                          )}
-                          {question.type === "select" && (
-                            <select
-                              id={question.name}
-                              name={question.name}
-                              required={question.required}
-                              className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring"
-                            >
-                              <option value="">Select an option</option>
-                              {question.options.map((option) => (
-                                <option key={option.value} value={option.value}>{option.label}</option>
-                              ))}
-                            </select>
-                          )}
-                          {question.type === "radio" && (
-                            <div className="grid gap-2">
-                              {question.options.map((option) => (
-                                <label key={option.value} className="flex items-center gap-3 rounded-lg border bg-white px-4 py-3 text-sm font-semibold transition hover:bg-amber-50">
-                                  <input
-                                    type="radio"
-                                    name={question.name}
-                                    value={option.value}
-                                    required={question.required}
-                                    className="h-4 w-4"
-                                  />
-                                  <span>{option.label}</span>
-                                </label>
-                              ))}
-                            </div>
-                          )}
-                          {question.type === "checkbox_group" && (
-                            <div className="grid gap-2 sm:grid-cols-2">
-                              {question.options.map((option) => (
-                                <label key={option.value} className="flex items-center gap-3 rounded-lg border bg-white px-4 py-3 text-sm font-semibold transition hover:bg-amber-50">
-                                  <input
-                                    type="checkbox"
-                                    name={question.name}
-                                    value={option.value}
-                                    className="h-4 w-4"
-                                  />
-                                  <span>{option.label}</span>
-                                </label>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                {formConfig.show_language ? (
+                  <div className="grid gap-2">
+                    <Label htmlFor="language">Preferred language</Label>
+                    <select id="language" name="language" defaultValue="English" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
+                      <option>English</option>
+                      <option>isiZulu</option>
+                      <option>Afrikaans</option>
+                      <option>isiXhosa</option>
+                      <option>Sesotho</option>
+                    </select>
+                  </div>
+                ) : null}
+
+                {formConfig.show_best_time ? (
+                  <div className="grid gap-2 md:col-span-2">
+                    <Label htmlFor="bestTimeToContact">Best time to contact</Label>
+                    <select id="bestTimeToContact" name="bestTimeToContact" defaultValue="" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
+                      <option value="">No preference</option>
+                      <option>Morning</option>
+                      <option>Afternoon</option>
+                      <option>Evening</option>
+                      <option>Weekend</option>
+                    </select>
+                  </div>
+                ) : null}
+
+                {shouldShowTopic ? (
+                  <div className="grid gap-2">
+                    <Label htmlFor="topic">Seminar topic</Label>
+                    <select id="topic" name="topic" defaultValue="" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
+                      <option value="">Select a topic</option>
+                      {template.topicOptions?.map((topic) => (
+                        <option key={topic} value={topic}>{topic}</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+
+                {formConfig.show_interests && formConfig.interest_options.length > 0 && (
+                  <div className="grid gap-2">
+                    <Label className="flex items-center gap-2">
+                      <HeartHandshake className="h-4 w-4 text-amber-700" />
+                      How can we serve you?
+                    </Label>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {formConfig.interest_options.map((option, index) => (
+                        <label key={`${option.value}-${index}`} className="flex items-start gap-2 rounded-md border bg-white px-3 py-3 text-sm font-semibold">
+                          <input type="checkbox" name="interests" value={option.value} className="mt-0.5 h-4 w-4" />
+                          <span>
+                            {option.label}
+                            {option.description ? <span className="block text-xs font-normal leading-5 text-muted-foreground">{option.description}</span> : null}
+                          </span>
+                        </label>
                       ))}
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {formConfig.show_message ? (
-                    <div className="grid gap-2">
-                      <Label htmlFor="message">Optional message / prayer request</Label>
-                      <Textarea id="message" name="message" placeholder="Tell us how we can help..." />
-                      <p className="text-xs text-muted-foreground">Prayer requests are stored separately from your general contact details.</p>
-                    </div>
-                  ) : null}
+                {formConfig.questions.length > 0 && (
+                  <div className="space-y-4">
+                    {formConfig.questions.map((question) => (
+                      <div key={question.name} className="grid gap-3 rounded-xl border bg-white/80 p-4 shadow-sm">
+                        <Label htmlFor={question.name}>
+                          {question.label}
+                          {question.required && <span className="text-red-500"> *</span>}
+                        </Label>
+                        {question.description && (
+                          <p className="text-sm text-muted-foreground">{question.description}</p>
+                        )}
+                        {question.type === "select" && (
+                          <select
+                            id={question.name}
+                            name={question.name}
+                            required={question.required}
+                            className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring"
+                          >
+                            <option value="">Select an option</option>
+                            {question.options.map((option) => (
+                              <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                          </select>
+                        )}
+                        {question.type === "radio" && (
+                          <div className="grid gap-2">
+                            {question.options.map((option) => (
+                              <label key={option.value} className="flex items-center gap-3 rounded-lg border bg-white px-4 py-3 text-sm font-semibold transition hover:bg-amber-50">
+                                <input
+                                  type="radio"
+                                  name={question.name}
+                                  value={option.value}
+                                  required={question.required}
+                                  className="h-4 w-4"
+                                />
+                                <span>{option.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                        {question.type === "checkbox_group" && (
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {question.options.map((option) => (
+                              <label key={option.value} className="flex items-center gap-3 rounded-lg border bg-white px-4 py-3 text-sm font-semibold transition hover:bg-amber-50">
+                                <input
+                                  type="checkbox"
+                                  name={question.name}
+                                  value={option.value}
+                                  className="h-4 w-4"
+                                />
+                                <span>{option.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-                  {formConfig.show_prayer_visibility ? (
-                    <div className="grid gap-2">
-                      <Label htmlFor="prayerVisibility">Who may view a prayer request?</Label>
-                      <select id="prayerVisibility" name="prayerVisibility" defaultValue="general_prayer" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
-                        {prayerVisibilityOptions.map((visibility) => (
-                          <option key={visibility} value={visibility}>{prayerVisibilityLabels[visibility]}</option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : null}
+                {formConfig.show_message ? (
+                  <div className="grid gap-2">
+                    <Label htmlFor="message">Optional message / prayer request</Label>
+                    <Textarea id="message" name="message" placeholder="Tell us how we can help..." />
+                    <p className="text-xs text-muted-foreground">Prayer requests are stored separately from your general contact details.</p>
+                  </div>
+                ) : null}
 
-                  <label className="flex items-start gap-3 rounded-lg bg-muted p-4">
-                    <input type="checkbox" name="consent" className="mt-1 h-4 w-4" required />
-                    <span className="text-sm leading-6 text-slate-600">
-                      {consentText}
-                    </span>
-                  </label>
-                  <Button type="submit" size="lg">Submit visitor form</Button>
+                {formConfig.show_prayer_visibility ? (
+                  <div className="grid gap-2">
+                    <Label htmlFor="prayerVisibility">Who may view a prayer request?</Label>
+                    <select id="prayerVisibility" name="prayerVisibility" defaultValue="general_prayer" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
+                      {prayerVisibilityOptions.map((visibility) => (
+                        <option key={visibility} value={visibility}>{prayerVisibilityLabels[visibility]}</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+
+                <label className="flex items-start gap-3 rounded-lg bg-muted p-4">
+                  <input type="checkbox" name="consent" className="mt-1 h-4 w-4" required />
+                  <span className="text-sm leading-6 text-slate-600">
+                    {consentText}
+                  </span>
+                </label>
+                <Button type="submit" size="lg">Submit visitor form</Button>
                 </form>
-              </>
             )}
           </CardContent>
         </Card>

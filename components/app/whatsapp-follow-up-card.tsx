@@ -5,12 +5,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 type WhatsappFollowUpCardProps = {
   contactId: string;
-  phone: string;
+  phone: string | null;
   message: string;
   doNotContact?: boolean;
 };
 
 export function WhatsappFollowUpCard({ contactId, phone, message, doNotContact }: WhatsappFollowUpCardProps) {
+  if (!phone) {
+    return (
+      <Card className="border-slate-200 bg-slate-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-slate-800">
+            <MessageCircle className="h-5 w-5" />
+            WhatsApp follow-up
+          </CardTitle>
+          <CardDescription className="text-slate-600">
+            No phone number available. Use email or record another follow-up method.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm leading-6 text-slate-700">{message}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className={doNotContact ? "border-slate-200 bg-slate-50" : "border-emerald-100 bg-emerald-50"}>
       <CardHeader>

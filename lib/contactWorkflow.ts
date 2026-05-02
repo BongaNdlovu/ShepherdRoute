@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AssignedRole } from "@/lib/classifyContact";
 import type { Interest } from "@/lib/constants";
 import type { Database } from "@/lib/supabase/database.types";
-import { waLink } from "@/lib/whatsapp";
+import { createWhatsappLink } from "@/lib/whatsapp";
 
 export type WorkflowTeamMember = {
   id: string;
@@ -13,7 +13,7 @@ export type WorkflowTeamMember = {
 export type SuggestedMessageContact = {
   id: string;
   church_id: string;
-  phone: string;
+  phone: string | null;
 };
 
 const ownerRoleFallbacks: Record<AssignedRole, string[]> = {
@@ -43,7 +43,18 @@ export async function saveSuggestedWhatsappMessage({
   message: string;
   generatedBy?: string | null;
 }) {
-  const link = waLink(contact.phone, message);
+  // If no phone number, don't save a WhatsApp link
+  if (!contact.phone) {
+    return { error: null };
+  }
+
+  const link = createWhatsappLink(contact.phone, message);
+
+  // If link cannot be created, don't save
+  if (!link) {
+    return { error: null };
+  }
+
   const { data: existing, error: existingError } = await supabase
     .from("generated_messages")
     .select("id")
