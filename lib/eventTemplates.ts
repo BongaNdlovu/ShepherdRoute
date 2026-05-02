@@ -60,11 +60,11 @@ const friendlyMessageTemplates = {
   sabbathDefault:
     "Good day {firstName}, thank you for worshipping with {churchName}{eventLine}. We are grateful you joined us. Would it be okay if one of our team members checks in with you this week?",
   sabbathPrayer:
-    "Good day {firstName}, thank you for worshipping with {churchName}{eventLine}. Thank you for trusting us with your prayer request. Would it be okay if our prayer team prays for you and checks in gently?",
+    "Good day {firstName}, thank you for worshipping with {churchName}{eventLine}. Thank you for trusting us with your prayer request. Would it be okay if our prayer team prays for you and checks in with care?",
   sabbathBibleStudy:
     "Good day {firstName}, thank you for worshipping with {churchName}{eventLine}. We are glad you are interested in Bible study. Would it be okay if one of our Bible workers shares the available study options with you?",
   sabbathBaptism:
-    "Good day {firstName}, thank you for worshipping with {churchName}{eventLine}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
+    "Good day {firstName}, thank you for worshipping with {churchName}{eventLine}. Thank you for sharing your baptism request. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
 
   healthExpoDefault:
     "Good day {firstName}, thank you for attending {eventName} with {churchName}. We hope the day was helpful. Would you like us to send health resources and future wellness program updates?",
@@ -75,59 +75,59 @@ const friendlyMessageTemplates = {
   healthBibleStudy:
     "Good day {firstName}, thank you for attending {eventName}. We also noticed your interest in Bible study. Would it be okay if one of our Bible workers shares the available options with you?",
   healthBaptism:
-    "Good day {firstName}, thank you for attending {eventName}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
+    "Good day {firstName}, thank you for attending {eventName}. Thank you for sharing your baptism request. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
 
   campaignDefault:
     "Good day {firstName}, thank you for attending {eventName}. We are grateful you came. Would you like us to send study notes and updates for the next meeting from {churchName}?",
   campaignBibleStudy:
     "Good day {firstName}, thank you for attending {eventName}. Would it be okay if one of our Bible workers sends the study notes and shares Bible study options with you?",
   campaignBaptism:
-    "Good day {firstName}, thank you for attending {eventName}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker for preparation, with pastoral support when the time is right.",
+    "Good day {firstName}, thank you for attending {eventName}. Thank you for sharing your baptism request. We would be honoured to connect you with a Bible worker for preparation, with pastoral support when the time is right.",
 
   prophecyDefault:
     "Good day {firstName}, thank you for attending {eventName}. We are glad you joined the seminar. Would you like us to send the notes and reminders for the next session?",
   prophecyBibleStudy:
     "Good day {firstName}, thank you for attending {eventName}. Would it be okay if one of our Bible workers sends the study notes and shares Bible study options with you?",
   prophecyBaptism:
-    "Good day {firstName}, thank you for attending {eventName}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker for preparation, with pastoral support when the time is right.",
+    "Good day {firstName}, thank you for attending {eventName}. Thank you for sharing your baptism request. We would be honoured to connect you with a Bible worker for preparation, with pastoral support when the time is right.",
 
   youthDefault:
     "Good day {firstName}, thank you for joining {eventName}. We are glad you connected with us. Would you like the youth ministry team to share future updates with you?",
   youth:
     "Good day {firstName}, thank you for joining {eventName}. We would be happy to share youth ministry updates and details for the next program.",
   youthBaptism:
-    "Good day {firstName}, thank you for joining {eventName}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
+    "Good day {firstName}, thank you for joining {eventName}. Thank you for sharing your baptism request. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
 
   prayerDefault:
-    "Good day {firstName}, thank you for trusting {churchName}{eventLine}. We have your prayer request, and we will handle it with care. Would it be okay if a trusted prayer leader checks in with you?",
+    "Good day {firstName}, thank you for trusting {churchName}{eventLine}. We have received your prayer request, and we will handle it with care. Would it be okay if a trusted prayer leader checks in with you?",
   prayer:
     "Good day {firstName}, thank you for sharing your prayer request with {churchName}. Our prayer team would be honoured to pray for you and check in with care and respect.",
   prayerBaptism:
-    "Good day {firstName}, thank you for sharing your baptismal request with {churchName}. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
+    "Good day {firstName}, thank you for sharing your baptism request with {churchName}. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
 
   memberDefault:
     "Good day {firstName}, thank you for reaching out to {churchName}. We are grateful you trusted us with this request. One of the right ministry leaders will follow up with care.",
   memberBaptism:
-    "Good day {firstName}, thank you for contacting {churchName}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
+    "Good day {firstName}, thank you for contacting {churchName}. Thank you for sharing your baptism request. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
 
   baptizedMemberDefault:
     "Good day {firstName}, thank you for connecting with {churchName}. We are glad to walk with you in this next step of church life. We can connect you with the right leader for support.",
   baptizedMemberBibleStudy:
     "Good day {firstName}, thank you for connecting with {churchName}. Would it be okay if one of our Bible workers shares discipleship study options with you?",
   baptizedMemberBaptism:
-    "Good day {firstName}, thank you for connecting with {churchName}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
+    "Good day {firstName}, thank you for connecting with {churchName}. Thank you for sharing your baptism request. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
 
   healthSeminarDefault:
     "Good day {firstName}, thank you for attending {eventName}. We hope the seminar was helpful. Would you like us to send notes and future health program updates from {churchName}?",
   healthSeminarHealth:
     "Good day {firstName}, thank you for attending {eventName}. We would be happy to send lifestyle resources and details for the next health program.",
   healthSeminarBaptism:
-    "Good day {firstName}, thank you for attending {eventName}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
+    "Good day {firstName}, thank you for attending {eventName}. Thank you for sharing your baptism request. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
 
   customDefault:
     "Good day {firstName}, thank you for connecting with {churchName}{eventLine}. We are glad you reached out. Would it be okay if one of our team members follows up with you this week?",
   customBaptism:
-    "Good day {firstName}, thank you for connecting with {churchName}{eventLine}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker who can walk with you through preparation."
+    "Good day {firstName}, thank you for connecting with {churchName}{eventLine}. Thank you for sharing your baptism request. We would be honoured to connect you with a Bible worker who can walk with you through preparation."
 };
 
 export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {

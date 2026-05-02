@@ -29,11 +29,11 @@ export function generateMessage(contact: MessageContact) {
   }
 
   if (contact.interests.includes("baptism")) {
-    return `Good day ${firstName}, thank you for reaching out to ${churchName}${eventLine}. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker who can walk with you through preparation. Would it also be helpful if we shared Bible study options with you?`;
+    return `Good day ${firstName}, thank you for reaching out to ${churchName}${eventLine}. Thank you for sharing your baptism request. We would be honoured to connect you with a Bible worker who can walk with you through preparation. Would it also be helpful if we shared Bible study options with you?`;
   }
 
   if (contact.interests.includes("prayer")) {
-    return `Good day ${firstName}, thank you for trusting ${churchName}${eventLine}. We have your prayer request, and we will handle it with care. Would you like someone from our prayer team to check in with you?`;
+    return `Good day ${firstName}, thank you for trusting ${churchName}${eventLine}. We have received your prayer request, and we will handle it with care. Would you like someone from our prayer team to check in with you?`;
   }
 
   if (contact.interests.includes("bible_study")) {

@@ -7,7 +7,7 @@ const tagLabels: Record<string, string> = {
   bible_study: "Bible study",
   health: "Health",
   pastoral_care: "Pastoral care",
-  baptism: "Baptismal request",
+  baptism: "Baptism request",
   youth: "Youth",
   family_support: "Family support",
   urgent_follow_up: "Urgent follow-up",

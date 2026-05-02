@@ -177,13 +177,15 @@ export async function getContactsPage(
 
 export async function getContact(churchId: string, id: string): Promise<ContactDetailResult> {
   const supabase = await createClient();
-  const [{ data: contact }, { data: prayer }, { data: team }, { data: followUps }, { data: messages }] = await Promise.all([
+
+  // Primary query with security filter
+  const [{ data: contact, error: contactError }, { data: prayer }, { data: team }, { data: followUps }, { data: messages }] = await Promise.all([
     supabase
       .from("contacts")
       .select("id, person_id, full_name, phone, email, whatsapp_number, area, language, best_time_to_contact, status, urgency, assigned_to, consent_given, consent_at, consent_source, consent_scope, consent_status, consent_text_snapshot, privacy_policy_version, consent_recorded_by, do_not_contact, do_not_contact_at, archived_at, duplicate_of_contact_id, duplicate_match_confidence, duplicate_match_reason, classification_payload, events(name, event_type), team_members(display_name), contact_interests(interest)")
       .eq("church_id", churchId)
       .eq("id", id)
-      .single(),
+      .maybeSingle(),
     supabase
       .from("prayer_requests")
       .select("request_text, visibility, created_at")
@@ -212,6 +214,50 @@ export async function getContact(churchId: string, id: string): Promise<ContactD
       .order("created_at", { ascending: false })
       .limit(CONTACT_DETAIL_MESSAGE_LIMIT)
   ]);
+
+  // Development logging for diagnostics
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[getContact diagnostics]", {
+      requestedContactId: id,
+      selectedChurchId: churchId,
+      contactError: contactError ? {
+        code: contactError.code,
+        message: contactError.message,
+        details: contactError.details,
+        hint: contactError.hint
+      } : null,
+      contactFound: !!contact,
+      contactId: contact?.id
+    });
+
+    // Secondary diagnostic check: query by ID only (without church filter)
+    if (!contact) {
+      const { data: contactById, error: idError } = await supabase
+        .from("contacts")
+        .select("id, church_id, deleted_at, archived_at")
+        .eq("id", id)
+        .maybeSingle();
+
+      console.log("[getContact secondary diagnostics]", {
+        requestedContactId: id,
+        selectedChurchId: churchId,
+        contactById: contactById ? {
+          id: contactById.id,
+          church_id: contactById.church_id,
+          deleted_at: contactById.deleted_at,
+          archived_at: contactById.archived_at
+        } : null,
+        idError: idError ? {
+          code: idError.code,
+          message: idError.message
+        } : null,
+        existsInAnyChurch: !!contactById,
+        existsInSelectedChurch: contactById?.church_id === churchId,
+        isDeleted: !!contactById?.deleted_at,
+        isArchived: !!contactById?.archived_at
+      });
+    }
+  }
 
   if (!contact) {
     notFound();

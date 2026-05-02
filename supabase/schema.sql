@@ -3020,9 +3020,9 @@ begin
     when 'pastoral_visit'::public.interest_tag = any(p_interests) then
       'Good day ' || first_name || ', thank you for connecting with ' || coalesce(target_church_name, 'our church') || ' after ' || target_event.name || '. You mentioned that you would appreciate a pastoral visit. Would it be okay if one of our pastoral team members contacts you to find a suitable time?'
     when 'baptism'::public.interest_tag = any(p_interests) then
-      'Good day ' || first_name || ', thank you for reaching out to ' || coalesce(target_church_name, 'our church') || ' after ' || target_event.name || '. Thank you for sharing your baptismal request. We would be honoured to connect you with a Bible worker who can walk with you through preparation. Would it also be helpful if we shared Bible study options with you?'
+      'Good day ' || first_name || ', thank you for reaching out to ' || coalesce(target_church_name, 'our church') || ' after ' || target_event.name || '. Thank you for sharing your baptism request. We would be honoured to connect you with a Bible worker who can walk with you through preparation. Would it also be helpful if we shared Bible study options with you?'
     when 'prayer'::public.interest_tag = any(p_interests) then
-      'Good day ' || first_name || ', thank you for trusting ' || coalesce(target_church_name, 'our church') || ' after ' || target_event.name || '. We have your prayer request, and we will handle it with care. Would you like someone from our prayer team to check in with you?'
+      'Good day ' || first_name || ', thank you for trusting ' || coalesce(target_church_name, 'our church') || ' after ' || target_event.name || '. We have received your prayer request, and we will handle it with care. Would you like someone from our prayer team to check in with you?'
     when 'bible_study'::public.interest_tag = any(p_interests) then
       'Good day ' || first_name || ', thank you for connecting with ' || coalesce(target_church_name, 'our church') || ' after ' || target_event.name || '. We are glad you are interested in Bible study. Would it be okay if one of our Bible workers contacts you and shares the available study options?'
     when 'health'::public.interest_tag = any(p_interests) then
