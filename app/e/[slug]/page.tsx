@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CheckCircle2, HeartHandshake } from "lucide-react";
 import { submitRegistrationAction } from "@/app/e/[slug]/actions";
 import { BrandLogo } from "@/components/app/brand-logo";
+import { ExternalBrandImage } from "@/components/app/external-brand-image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -52,15 +53,16 @@ export default async function PublicEventPage({
       <section className="mx-auto max-w-3xl">
         <Card className="overflow-hidden border-white/80 bg-white/95 shadow-xl">
           {branding.cover_image_url ? (
-            <img
+            <ExternalBrandImage
               src={branding.cover_image_url}
               alt={`${event.name} cover`}
               className="h-48 w-full object-cover"
+              loading="eager"
             />
           ) : null}
           <CardHeader className="text-center">
             {branding.logo_url ? (
-              <img
+              <ExternalBrandImage
                 src={branding.logo_url}
                 alt={`${event.church_name} logo`}
                 className="mx-auto h-24 w-auto object-contain"
