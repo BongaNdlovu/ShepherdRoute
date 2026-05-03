@@ -1,14 +1,15 @@
 import Link from "next/link";
-import { Archive, CalendarDays, Lock, MapPin, QrCode, Trash2, Undo2, Unlock, UsersRound } from "lucide-react";
+import { Archive, CalendarDays, Heart, Lock, MapPin, QrCode, Trash2, Undo2, Unlock, UsersRound, BookOpen, Droplets } from "lucide-react";
 import { deleteEventAction, updateEventArchiveAction, updateEventStatusAction } from "@/app/(dashboard)/actions";
+import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { InterestPills } from "@/components/app/interest-pills";
 import { QrCard } from "@/components/app/qr-card";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { eventTypeLabels, type EventType } from "@/lib/constants";
-import { getChurchContext, getEvent } from "@/lib/data";
+import { eventTypeLabels, type EventType, type Interest, type FollowUpStatus } from "@/lib/constants";
+import { getChurchContext, getEventWorkspaceSummary } from "@/lib/data";
 import { absoluteRequestUrl } from "@/lib/server-url";
 
 export const metadata = {
@@ -25,12 +26,14 @@ export default async function EventDetailPage({
   const { id } = await params;
   const query = await searchParams;
   const context = await getChurchContext();
-  const { event, contacts, contactsLimit, contactsTotal } = await getEvent(context.churchId, id);
+  const { event, summary, recentContacts, dueFollowUps, teamSnapshot } = await getEventWorkspaceSummary(context.churchId, id);
   const publicUrl = await absoluteRequestUrl(`/e/${event.slug}`);
   const isArchived = Boolean(event.archived_at);
 
   return (
     <section className="space-y-4">
+      <EventWorkspaceTabs eventId={event.id} />
+
       <Card>
         <CardHeader>
           {query.error ? <p className="mb-4 rounded-md bg-rose-50 p-3 text-sm text-rose-700">{query.error}</p> : null}
@@ -90,19 +93,150 @@ export default async function EventDetailPage({
             <div className="rounded-lg bg-muted p-4">
               <UsersRound className="h-5 w-5 text-muted-foreground" />
               <p className="mt-2 text-sm text-muted-foreground">Contacts captured</p>
-              <p className="font-bold">{contactsTotal}</p>
+              <p className="font-bold">{summary.totalContacts}</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Contacts</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{summary.totalContacts}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Follow-ups</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{summary.pendingFollowUps}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Completed Follow-ups</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{summary.completedFollowUps}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Overdue</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-rose-600">{summary.overdueFollowUps}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">High Urgency</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{summary.highUrgencyContacts}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Prayer Requests</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold flex items-center gap-2">
+              <Heart className="h-5 w-5 text-rose-500" />
+              {summary.prayerRequests}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Bible Study</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-blue-500" />
+              {summary.bibleStudyInterests}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Health Interests</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold flex items-center gap-2">
+              <Droplets className="h-5 w-5 text-green-500" />
+              {summary.healthInterests}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Due Follow-ups</CardTitle>
+            <CardDescription>Follow-ups that need attention now.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {dueFollowUps.length > 0 ? (
+              <div className="space-y-2">
+                {dueFollowUps.map((followUp) => (
+                  <div key={followUp.id} className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <p className="font-medium">{followUp.contact_name}</p>
+                      <p className="text-sm text-muted-foreground">{followUp.contact_phone}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{followUp.assigned_name ?? "Unassigned"}</p>
+                      <p className="text-xs text-muted-foreground">{new Date(followUp.due_at).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-sm text-muted-foreground py-4">No due follow-ups</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Team Snapshot</CardTitle>
+            <CardDescription>Team members with assigned contacts.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {teamSnapshot.length > 0 ? (
+              <div className="space-y-2">
+                {teamSnapshot.map((member) => (
+                  <div key={member.teamMemberId} className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <p className="font-medium">{member.displayName}</p>
+                      <p className="text-sm text-muted-foreground">{member.role ?? "Team member"}</p>
+                    </div>
+                    <p className="text-sm font-semibold">{member.assignedContactCount} contacts</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-sm text-muted-foreground py-4">No team members assigned</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
         <Card>
           <CardHeader>
-            <CardTitle>Event contacts</CardTitle>
+            <CardTitle>Recent Contacts</CardTitle>
             <CardDescription>
-              People captured from this registration page.
-              {contactsTotal > contacts.length ? ` Showing latest ${contactsLimit}.` : ""}
+              Latest people captured from this event.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -114,7 +248,7 @@ export default async function EventDetailPage({
                 <span>Status</span>
               </div>
               <div className="divide-y">
-                {contacts.map((contact) => (
+                {recentContacts.map((contact: { id: string; full_name: string; phone: string; area: string | null; contact_interests: Array<{ interest: Interest }>; status: FollowUpStatus; urgency: "low" | "medium" | "high" }) => (
                   <Link key={contact.id} href={`/contacts/${contact.id}`} className="grid gap-3 px-4 py-4 hover:bg-amber-50 md:grid-cols-[1.1fr_1fr_0.7fr_0.7fr] md:items-center">
                     <div>
                       <p className="font-bold">{contact.full_name}</p>
@@ -125,7 +259,7 @@ export default async function EventDetailPage({
                     <StatusBadge status={contact.status} />
                   </Link>
                 ))}
-                {!contacts.length ? (
+                {!recentContacts.length ? (
                   <div className="p-8 text-center">
                     <QrCode className="mx-auto h-8 w-8 text-muted-foreground" />
                     <p className="mt-3 font-bold">No visitors yet</p>

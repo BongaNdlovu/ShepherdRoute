@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Activity, ClipboardList, Download, Heart, UsersRound } from "lucide-react";
 import { StatCard } from "@/components/app/stat-card";
+import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { interestLabels, statusLabels, type FollowUpStatus, type Interest } from "@/lib/constants";
@@ -23,6 +24,8 @@ export default async function EventReportPage({
 
   return (
     <section className="space-y-4">
+      <EventWorkspaceTabs eventId={event.id} />
+
       <header className="flex flex-col gap-3 rounded-lg border bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-2xl font-black tracking-tight">{event.name} report</h2>
