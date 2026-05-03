@@ -2746,19 +2746,7 @@ drop function if exists public.submit_event_registration(
   boolean
 );
 
-drop function if exists private.submit_event_registration_impl(
-  text,
-  text,
-  text,
-  text,
-  text,
-  text,
-  public.interest_tag[],
-  text,
-  boolean
-);
-
-drop function if exists private.submit_event_registration_impl(
+drop function if exists public.submit_event_registration(
   text,
   text,
   text,
@@ -2772,23 +2760,6 @@ drop function if exists private.submit_event_registration_impl(
   jsonb,
   public.prayer_visibility,
   text[],
-  text,
-  boolean
-);
-
-drop function if exists private.submit_event_registration_impl(
-  text,
-  text,
-  text,
-  text,
-  text,
-  text,
-  text,
-  public.interest_tag[],
-  text,
-  public.urgency_level,
-  jsonb,
-  public.prayer_visibility,
   text[],
   text,
   boolean,
@@ -2798,6 +2769,111 @@ drop function if exists private.submit_event_registration_impl(
   uuid,
   jsonb,
   text
+);
+
+drop function if exists public.submit_event_registration(
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  public.interest_tag[],
+  text,
+  public.urgency_level,
+  jsonb,
+  public.prayer_visibility,
+  text[],
+  text[],
+  text,
+  boolean,
+  text,
+  text,
+  text,
+  uuid,
+  text,
+  jsonb
+);
+
+drop function if exists private.submit_event_registration_impl(
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  public.interest_tag[],
+  text,
+  boolean
+);
+
+drop function if exists private.submit_event_registration_impl(
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  public.interest_tag[],
+  text,
+  public.urgency_level,
+  jsonb,
+  public.prayer_visibility,
+  text[],
+  text,
+  boolean
+);
+
+drop function if exists private.submit_event_registration_impl(
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  public.interest_tag[],
+  text,
+  public.urgency_level,
+  jsonb,
+  public.prayer_visibility,
+  text[],
+  text[],
+  text,
+  boolean,
+  text,
+  text,
+  text,
+  uuid,
+  jsonb,
+  text
+);
+
+drop function if exists private.submit_event_registration_impl(
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  public.interest_tag[],
+  text,
+  public.urgency_level,
+  jsonb,
+  public.prayer_visibility,
+  text[],
+  text[],
+  text,
+  boolean,
+  text,
+  text,
+  text,
+  uuid,
+  text,
+  jsonb
 );
 
 create or replace function private.submit_event_registration_impl(
@@ -2974,8 +3050,8 @@ begin
   end loop;
 
   -- Insert form answers if provided
-  if jsonb_array_length(p_form_answers) > 0 then
-    for form_answer in select * from jsonb_to_recordset(p_form_answers) as x(
+  if jsonb_array_length(coalesce(p_form_answers, '[]'::jsonb)) > 0 then
+    for form_answer in select * from jsonb_to_recordset(coalesce(p_form_answers, '[]'::jsonb)) as x(
       question_name text,
       question_label text,
       question_type text,
@@ -3112,9 +3188,15 @@ revoke all on function private.submit_event_registration_impl(
   jsonb,
   public.prayer_visibility,
   text[],
+  text[],
   text,
-  boolean
-) from public, anon, authenticated;
+  boolean,
+  text,
+  text,
+  text,
+  uuid,
+  jsonb,
+  text) from public, anon, authenticated;
 
 grant execute on function private.submit_event_registration_impl(
   text,
@@ -3130,6 +3212,7 @@ grant execute on function private.submit_event_registration_impl(
   jsonb,
   public.prayer_visibility,
   text[],
+  text[],
   text,
   boolean,
   text,
@@ -3137,8 +3220,7 @@ grant execute on function private.submit_event_registration_impl(
   text,
   uuid,
   jsonb,
-  text
-) to anon, authenticated;
+  text) to anon, authenticated;
 
 create or replace function public.submit_event_registration(
   p_slug text,

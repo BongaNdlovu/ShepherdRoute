@@ -220,7 +220,7 @@ export async function submitRegistrationAction(formData: FormData) {
     p_privacy_policy_version: parsed.data.privacyPolicyVersion ?? "contact-consent-v1",
     p_consent_status: "given",
     p_consent_recorded_by: null,
-    p_form_answers: formAnswers.length > 0 ? JSON.stringify(formAnswers) : null,
+    p_form_answers: formAnswers,
     p_recommended_assigned_role: classification.recommended_assigned_role
   });
 
