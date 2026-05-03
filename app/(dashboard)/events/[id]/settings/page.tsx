@@ -8,8 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { getChurchContext, getEvent } from "@/lib/data";
 import { absoluteRequestUrl } from "@/lib/server-url";
-import { requireEventPermission } from "@/lib/data-event-assignments";
-import { createClient } from "@/lib/supabase/server";
+import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 
 export const metadata = {
   title: "Event Settings"
@@ -23,37 +22,11 @@ export default async function EventSettingsPage({
   const { id } = await params;
   const context = await getChurchContext();
 
-  // Check event permission
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  const { data: appAdmin } = await supabase
-    .from('app_admins')
-    .select('role')
-    .eq('user_id', user?.id)
-    .maybeSingle();
-
-  const { data: membership } = await supabase
-    .from('church_memberships')
-    .select('id, role')
-    .eq('user_id', user?.id)
-    .eq('church_id', context.churchId)
-    .eq('status', 'active')
-    .maybeSingle();
-
-  const { data: teamMember } = await supabase
-    .from('team_members')
-    .select('role')
-    .eq('membership_id', membership?.id)
-    .maybeSingle();
-
   try {
-    await requireEventPermission({
-      userId: user?.id || '',
+    await requireCurrentUserEventPermission({
+      churchId: context.churchId,
       eventId: id,
-      appRole: appAdmin?.role as 'owner' | 'support_admin' | 'billing_admin' | null,
-      teamRole: teamMember?.role as 'admin' | 'pastor' | 'elder' | 'bible_worker' | 'health_leader' | 'prayer_team' | 'youth_leader' | 'viewer' | null || 'viewer',
-      permission: 'can_edit_event_settings',
+      permission: "can_edit_event_settings",
     });
   } catch {
     return (

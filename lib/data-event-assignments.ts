@@ -8,7 +8,7 @@ import {
   hasResolvedEventPermission,
   type AppAdminRole,
 } from '@/lib/permissions';
-import type { TeamRole } from '@/lib/constants';
+import { roleOptions, type TeamRole } from '@/lib/constants';
 
 export type EventAssignmentRow = {
   id: string;
@@ -31,6 +31,20 @@ export type EventAssignmentRow = {
   can_view_prayer_requests: boolean;
   can_delete_event: boolean;
 };
+
+const APP_ADMIN_ROLES = ['owner', 'support_admin', 'billing_admin'] as const satisfies readonly AppAdminRole[];
+
+function toAppAdminRole(role: unknown): AppAdminRole | null {
+  return typeof role === 'string' && (APP_ADMIN_ROLES as readonly string[]).includes(role)
+    ? (role as AppAdminRole)
+    : null;
+}
+
+function toTeamRole(role: unknown): TeamRole {
+  return typeof role === 'string' && (roleOptions as readonly string[]).includes(role)
+    ? (role as TeamRole)
+    : 'viewer';
+}
 
 export function assignmentIsActive(row: Pick<EventAssignmentRow, 'status' | 'revoked_at' | 'invitation_expires_at'>): boolean {
   if (row.status !== 'accepted') return false;
@@ -144,4 +158,49 @@ export async function requireEventPermission(params: {
   }
 
   return permissions;
+}
+
+export async function requireCurrentUserEventPermission(params: {
+  churchId: string;
+  eventId: string;
+  permission: EventPermissionKey;
+}) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    throw new Error('You must be signed in.');
+  }
+
+  const { data: appAdmin } = await supabase
+    .from('app_admins')
+    .select('role')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  const { data: membership } = await supabase
+    .from('church_memberships')
+    .select('id, role')
+    .eq('user_id', user.id)
+    .eq('church_id', params.churchId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  const { data: teamMember } = await supabase
+    .from('team_members')
+    .select('role')
+    .eq('membership_id', membership?.id)
+    .maybeSingle();
+
+  return requireEventPermission({
+    userId: user.id,
+    eventId: params.eventId,
+    appRole: toAppAdminRole(appAdmin?.role),
+    teamRole: toTeamRole(teamMember?.role),
+    permission: params.permission,
+  });
 }

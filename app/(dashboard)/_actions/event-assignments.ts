@@ -359,11 +359,15 @@ export async function acceptEventInvitation(input: {
     throw new Error('Your account is not yet a member of this church. Ask an admin to add you to the church team first.');
   }
 
-  const { data: teamMember } = await supabase
+  const { data: teamMember, error: teamMemberError } = await supabase
     .from('team_members')
     .select('id')
     .eq('membership_id', existingMember.id)
     .maybeSingle();
+
+  if (teamMemberError) {
+    throw new Error(`Could not load team member record: ${teamMemberError.message}`);
+  }
 
   if (!teamMember) {
     throw new Error('No team member record found. Ask an admin to create a team member record for you.');

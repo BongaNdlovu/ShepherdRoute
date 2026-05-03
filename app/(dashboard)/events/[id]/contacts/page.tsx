@@ -1,14 +1,13 @@
 import Link from "next/link";
 import { getChurchContext, getTeamMembers } from "@/lib/data";
 import { getEventContactsPage, type EventContactsParams } from "@/lib/data-events";
-import { requireEventPermission } from "@/lib/data-event-assignments";
+import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 import { statusOptions, urgencyOptions } from "@/lib/constants";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { InterestPills } from "@/components/app/interest-pills";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { createClient } from "@/lib/supabase/server";
 
 export const metadata = {
   title: "Event Contacts"
@@ -25,37 +24,11 @@ export default async function EventContactsPage({
   const query = await searchParams;
   const context = await getChurchContext();
 
-  // Check event permission
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  const { data: appAdmin } = await supabase
-    .from('app_admins')
-    .select('role')
-    .eq('user_id', user?.id)
-    .maybeSingle();
-
-  const { data: membership } = await supabase
-    .from('church_memberships')
-    .select('id, role')
-    .eq('user_id', user?.id)
-    .eq('church_id', context.churchId)
-    .eq('status', 'active')
-    .maybeSingle();
-
-  const { data: teamMember } = await supabase
-    .from('team_members')
-    .select('role')
-    .eq('membership_id', membership?.id)
-    .maybeSingle();
-
   try {
-    await requireEventPermission({
-      userId: user?.id || '',
+    await requireCurrentUserEventPermission({
+      churchId: context.churchId,
       eventId: id,
-      appRole: appAdmin?.role as 'owner' | 'support_admin' | 'billing_admin' | null,
-      teamRole: teamMember?.role as 'admin' | 'pastor' | 'elder' | 'bible_worker' | 'health_leader' | 'prayer_team' | 'youth_leader' | 'viewer' | null || 'viewer',
-      permission: 'can_view_contacts',
+      permission: "can_view_contacts",
     });
   } catch {
     return (

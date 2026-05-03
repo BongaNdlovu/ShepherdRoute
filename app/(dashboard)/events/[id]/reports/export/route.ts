@@ -1,7 +1,7 @@
 import { streamCsvResponse } from "@/lib/csv";
 import { interestLabels, statusLabels, type FollowUpStatus, type Interest } from "@/lib/constants";
 import { getChurchContext, getEventReportContactsPage, getEventReportExportMeta } from "@/lib/data";
-import { requireEventPermission } from "@/lib/data-event-assignments";
+import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 import { slugify } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 
@@ -11,38 +11,13 @@ const EVENT_EXPORT_HEADERS = ["Name", "Phone", "Area", "Interests", "Status", "U
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const context = await getChurchContext();
-
-  // Check event permission for export
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  const { data: appAdmin } = await supabase
-    .from('app_admins')
-    .select('role')
-    .eq('user_id', user?.id)
-    .maybeSingle();
-
-  const { data: membership } = await supabase
-    .from('church_memberships')
-    .select('id, role')
-    .eq('user_id', user?.id)
-    .eq('church_id', context.churchId)
-    .eq('status', 'active')
-    .maybeSingle();
-
-  const { data: teamMember } = await supabase
-    .from('team_members')
-    .select('role')
-    .eq('membership_id', membership?.id)
-    .maybeSingle();
 
   try {
-    await requireEventPermission({
-      userId: user?.id || '',
+    await requireCurrentUserEventPermission({
+      churchId: context.churchId,
       eventId: id,
-      appRole: appAdmin?.role as 'owner' | 'support_admin' | 'billing_admin' | null,
-      teamRole: teamMember?.role as 'admin' | 'pastor' | 'elder' | 'bible_worker' | 'health_leader' | 'prayer_team' | 'youth_leader' | 'viewer' | null || 'viewer',
-      permission: 'can_export_reports',
+      permission: "can_export_reports",
     });
   } catch {
     return new Response("Unauthorized", { status: 403 });
@@ -59,10 +34,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     .from("audit_logs")
     .insert({
       church_id: context.churchId,
-      user_id: context.userId,
+      actor_user_id: context.userId,
       action: "event_report_export",
-      resource_type: "event",
-      resource_id: id,
+      target_type: "event",
+      target_id: id,
       metadata: { event_name: event.name }
     });
 

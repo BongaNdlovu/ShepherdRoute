@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { acceptEventInvitation } from '@/app/(dashboard)/_actions/event-assignments';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function AcceptEventInvitationPage() {
+function AcceptEventInvitationContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -71,7 +71,7 @@ export default function AcceptEventInvitationPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Invitation Accepted</CardTitle>
-          <CardDescription>You&apos;ve been added to the event team</CardDescription>
+          <CardDescription>You have been added to the event team</CardDescription>
         </CardHeader>
         <CardContent className="p-6">
           <p className="mb-4">{message}</p>
@@ -83,5 +83,13 @@ export default function AcceptEventInvitationPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function AcceptEventInvitationPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p>Loading...</p></div>}>
+      <AcceptEventInvitationContent />
+    </Suspense>
   );
 }

@@ -1,12 +1,11 @@
 import { getChurchContext } from "@/lib/data";
 import { getEventAssignments } from "@/lib/data-event-assignments";
-import { requireEventPermission } from "@/lib/data-event-assignments";
+import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EventInvitationModal } from "@/components/app/event-invitation-modal";
 import { Suspense } from "react";
-import { createClient } from "@/lib/supabase/server";
 
 export const metadata = {
   title: "Event Team"
@@ -33,40 +32,11 @@ export default async function EventTeamPage({
   const context = await getChurchContext();
   const assignments = await getEventAssignments(id);
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  // Get user's app admin role and team role
-  const { data: appAdmin } = await supabase
-    .from('app_admins')
-    .select('role')
-    .eq('user_id', user?.id)
-    .maybeSingle();
-
-  const { data: membership } = await supabase
-    .from('church_memberships')
-    .select('id, role')
-    .eq('user_id', user?.id)
-    .eq('church_id', context.churchId)
-    .eq('status', 'active')
-    .maybeSingle();
-
-  const { data: teamMember } = await supabase
-    .from('team_members')
-    .select('role')
-    .eq('membership_id', membership?.id)
-    .maybeSingle();
-
-  const appAdminRole = appAdmin?.role as 'owner' | 'support_admin' | 'billing_admin' | null;
-  const teamRole = teamMember?.role as 'admin' | 'pastor' | 'elder' | 'bible_worker' | 'health_leader' | 'prayer_team' | 'youth_leader' | 'viewer' | null;
-
   try {
-    await requireEventPermission({
-      userId: user?.id || '',
+    await requireCurrentUserEventPermission({
+      churchId: context.churchId,
       eventId: id,
-      appRole: appAdminRole,
-      teamRole: teamRole || 'viewer',
-      permission: 'can_manage_event_team',
+      permission: "can_manage_event_team",
     });
   } catch {
     return (
