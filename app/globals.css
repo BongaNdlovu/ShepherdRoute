@@ -112,7 +112,6 @@
 
   .cinematic-shell {
     position: relative;
-    overflow: hidden;
     border: 1px solid hsl(var(--border));
     background:
       radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 32rem),
@@ -135,7 +134,6 @@
 
   .cinematic-dark-panel {
     position: relative;
-    overflow: hidden;
     border: 1px solid rgba(148, 163, 184, 0.22);
     background:
       radial-gradient(circle at top left, rgba(59, 130, 246, 0.24), transparent 28rem),

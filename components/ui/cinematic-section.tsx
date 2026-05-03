@@ -16,7 +16,6 @@ export function CinematicSection({
   return (
     <section
       className={cn(
-        'rounded-3xl p-4 sm:p-6 lg:p-8',
         variant === 'dark' ? 'cinematic-dark-panel' : 'cinematic-shell',
         className,
       )}

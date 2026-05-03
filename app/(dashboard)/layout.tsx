@@ -37,7 +37,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         Skip to main content
       </a>
       <div className="mx-auto flex max-w-7xl flex-col gap-4 p-3 md:flex-row md:p-6">
-        <aside className="flex flex-col rounded-2xl border border-border/70 bg-card p-4 shadow-card md:sticky md:top-6 md:h-[calc(100vh-3rem)] md:w-72 md:overflow-hidden">
+        <aside className="flex flex-col rounded-2xl border border-border/70 bg-card p-4 shadow-card md:sticky md:top-6 md:w-72">
           <Link href="/dashboard" className="flex items-center gap-3 rounded-lg bg-primary p-4 text-primary-foreground">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-white p-1.5">
               <BrandLogo className="h-full w-full object-contain" priority />
@@ -118,7 +118,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </form>
         </aside>
 
-        <main id="main-content" className="min-w-0 flex-1">
+        <main id="main-content" className="min-w-0 flex-1 overflow-visible">
           <NavigationHistoryControls />
           {isWorkspaceInactive && !canBypassInactiveWorkspace ? (
             <InactiveWorkspaceNotice name={context.churchName} label={context.workspaceLabel} />
