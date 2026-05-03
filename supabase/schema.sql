@@ -3254,8 +3254,8 @@ create or replace function public.submit_event_registration(
   p_privacy_policy_version text,
   p_consent_status text,
   p_consent_recorded_by uuid,
+  p_form_answers jsonb,
   p_recommended_assigned_role text
-  p_form_answers jsonb
 )
 returns uuid
 language sql
