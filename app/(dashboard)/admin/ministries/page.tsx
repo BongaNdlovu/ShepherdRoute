@@ -61,7 +61,7 @@ export default async function OwnerMinistriesPage({
 
           <div className="grid gap-3">
             {ministriesPage.items.map((ministry) => (
-              <div key={ministry.church_id} className="cinematic-lift grid gap-3 rounded-lg border bg-white p-4 lg:grid-cols-[1.4fr_0.6fr_0.6fr_0.6fr_0.6fr_auto] lg:items-center">
+              <div key={ministry.church_id} className="cinematic-lift grid gap-3 rounded-lg border bg-white/10 p-4 lg:grid-cols-[1.4fr_0.6fr_0.6fr_0.6fr_0.6fr_auto] lg:items-center">
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="font-bold">{ministry.church_name}</p>
@@ -92,7 +92,7 @@ export default async function OwnerMinistriesPage({
               </div>
             ))}
             {!ministriesPage.items.length ? (
-              <p className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">No ministries found.</p>
+              <p className="rounded-lg bg-white/10 p-4 text-sm text-muted-foreground">No ministries found.</p>
             ) : null}
           </div>
         </CardContent>

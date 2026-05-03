@@ -88,7 +88,7 @@ export default async function OwnerChurchContactsPage({
             </table>
           </div>
           {!contactsPage.items.length ? (
-            <p className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">No contacts found.</p>
+            <p className="rounded-lg bg-white/10 p-4 text-sm text-muted-foreground">No contacts found.</p>
           ) : null}
         </CardContent>
       </Card>

@@ -86,7 +86,7 @@ export default async function OwnerAdminPage({
 
             return (
               <div key={church.church_id} className="overflow-hidden rounded-lg border">
-                <div className="grid gap-3 bg-muted px-4 py-4 lg:grid-cols-[1.4fr_0.6fr_0.6fr_0.6fr_0.6fr] lg:items-center">
+                <div className="grid gap-3 bg-white/10 px-4 py-4 lg:grid-cols-[1.4fr_0.6fr_0.6fr_0.6fr_0.6fr] lg:items-center">
                   <div>
                     <p className="font-bold">{church.church_name}</p>
                     <p className="text-sm text-muted-foreground">Created {new Date(church.created_at).toLocaleDateString()}</p>
@@ -97,14 +97,14 @@ export default async function OwnerAdminPage({
                   <p className="font-semibold">{church.new_contact_count}</p>
                 </div>
 
-                <div className="hidden grid-cols-[1.2fr_1.2fr_0.9fr_0.7fr_1fr] bg-white px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground xl:grid">
+                <div className="hidden grid-cols-[1.2fr_1.2fr_0.9fr_0.7fr_1fr] bg-white/20 px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground xl:grid">
                   <span>User</span>
                   <span>Email / ID</span>
                   <span>Role</span>
                   <span>Status</span>
                   <span>Access</span>
                 </div>
-                <div className="divide-y bg-white">
+                <div className="divide-y bg-white/20">
                   {churchAccounts.map((account) => (
                     <div key={account.membership_id} className="grid gap-3 px-4 py-4 xl:grid-cols-[1.2fr_1.2fr_0.9fr_0.7fr_1fr] xl:items-center">
                       <div>
@@ -171,7 +171,7 @@ export default async function OwnerAdminPage({
         </CardHeader>
         <CardContent className="grid gap-3">
           {invitations.map((invitation) => (
-            <div key={invitation.invitation_id} className="grid gap-3 rounded-lg border bg-white p-4 lg:grid-cols-[1.2fr_1fr_0.6fr_0.6fr_0.8fr] lg:items-center">
+            <div key={invitation.invitation_id} className="grid gap-3 rounded-lg border bg-white/20 p-4 lg:grid-cols-[1.2fr_1fr_0.6fr_0.6fr_0.8fr] lg:items-center">
               <div>
                 <p className="font-bold">{invitation.display_name}</p>
                 <p className="text-sm text-muted-foreground">{invitation.church_name}</p>
@@ -186,7 +186,7 @@ export default async function OwnerAdminPage({
               </p>
             </div>
           ))}
-          {!invitations.length ? <p className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">No team account invitations yet.</p> : null}
+          {!invitations.length ? <p className="rounded-lg bg-white/10 p-4 text-sm text-muted-foreground">No team account invitations yet.</p> : null}
         </CardContent>
       </Card>
 
@@ -196,13 +196,13 @@ export default async function OwnerAdminPage({
           <CardDescription>How team assignment and login access work today.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 text-sm leading-6 text-slate-700 md:grid-cols-3">
-          <p className="rounded-lg bg-muted p-4">
+          <p className="rounded-lg bg-white/10 p-4">
             Adding someone on the Team page makes them assignable for follow-up. It does not create a Supabase Auth login.
           </p>
-          <p className="rounded-lg bg-muted p-4">
+          <p className="rounded-lg bg-white/10 p-4">
             To let a team member log in, they need an auth account plus an active `church_memberships` row for the church.
           </p>
-          <p className="rounded-lg bg-muted p-4">
+          <p className="rounded-lg bg-white/10 p-4">
             If a person serves another church, send an invite from that church. Once accepted, the sidebar church switcher lets them move between active memberships.
           </p>
         </CardContent>

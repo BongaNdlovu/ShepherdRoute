@@ -95,7 +95,7 @@ export default async function OwnerChurchEventsPage({
             </table>
           </div>
           {!eventsPage.items.length ? (
-            <p className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">No events found.</p>
+            <p className="rounded-lg bg-white/10 p-4 text-sm text-muted-foreground">No events found.</p>
           ) : null}
         </CardContent>
       </Card>

@@ -86,7 +86,7 @@ export default async function OwnerChurchProfilesPage({
             </table>
           </div>
           {!profilesPage.items.length ? (
-            <p className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">No profiles found.</p>
+            <p className="rounded-lg bg-white/10 p-4 text-sm text-muted-foreground">No profiles found.</p>
           ) : null}
         </CardContent>
       </Card>

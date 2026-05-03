@@ -35,7 +35,7 @@ export default async function OwnerMinistryContactsPage({
 
   return (
     <section className="space-y-4">
-      <header className="rounded-lg border bg-white p-5 shadow-sm">
+      <header className="rounded-lg border bg-white/10 p-5 shadow-sm">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-700">Owner ministry view</p>
         <h2 className="mt-1 text-2xl font-black tracking-tight">{ministry.name} - Contacts</h2>
       </header>
@@ -91,7 +91,7 @@ export default async function OwnerMinistryContactsPage({
             </table>
           </div>
           {!contactsPage.items.length ? (
-            <p className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">No contacts found.</p>
+            <p className="rounded-lg bg-white/10 p-4 text-sm text-muted-foreground">No contacts found.</p>
           ) : null}
         </CardContent>
       </Card>

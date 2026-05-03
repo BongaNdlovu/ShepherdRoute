@@ -79,7 +79,7 @@ export default async function OwnerChurchTeamPage({
             </table>
           </div>
           {!teamPage.items.length ? (
-            <p className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">No team members found.</p>
+            <p className="rounded-lg bg-white/10 p-4 text-sm text-muted-foreground">No team members found.</p>
           ) : null}
         </CardContent>
       </Card>

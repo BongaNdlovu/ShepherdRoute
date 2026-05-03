@@ -32,7 +32,7 @@ export default async function OwnerMinistryDetailPage({
 
   return (
     <section className="space-y-4">
-      <header className="rounded-lg border bg-white p-5 shadow-sm">
+      <header className="rounded-lg border bg-white/10 p-5 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-700">Owner ministry view</p>
