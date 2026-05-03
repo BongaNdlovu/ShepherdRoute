@@ -1,4 +1,5 @@
 import type { EventTemplateType } from "@/lib/eventTemplates";
+import type { AssignmentRole } from "@/lib/constants";
 
 export type ContactTag =
   | "prayer"
@@ -12,8 +13,6 @@ export type ContactTag =
   | "general_visit";
 
 export type Urgency = "low" | "medium" | "high";
-
-export type AssignedRole = "pastor" | "elder" | "bible_worker" | "health_leader" | "prayer_team";
 
 export type VisitorType =
   | EventTemplateType
@@ -29,7 +28,7 @@ export type ClassificationResult = {
   recommended_tags: ContactTag[];
   urgency: Urgency;
   recommended_next_action: string;
-  recommended_assigned_role: AssignedRole;
+  recommended_assigned_role: AssignmentRole;
 };
 
 export type ClassifyInput = {
@@ -263,7 +262,7 @@ export function chooseUrgency(tags: ContactTag[]): Urgency {
   return tags.length > 1 ? "medium" : "low";
 }
 
-export function chooseAssignedRole(tags: ContactTag[], urgency: Urgency): AssignedRole {
+export function chooseAssignedRole(tags: ContactTag[], urgency: Urgency): AssignmentRole {
   if (urgency === "high" || tags.includes("urgent_follow_up") || tags.includes("pastoral_care")) {
     return "pastor";
   }
@@ -271,10 +270,12 @@ export function chooseAssignedRole(tags: ContactTag[], urgency: Urgency): Assign
   if (tags.includes("bible_study")) return "bible_worker";
   if (tags.includes("health")) return "health_leader";
   if (tags.includes("prayer")) return "prayer_team";
+  if (tags.includes("youth")) return "youth_leader";
+  if (tags.includes("family_support")) return "family_ministries";
   return "elder";
 }
 
-export function chooseNextAction(tags: ContactTag[], role: AssignedRole, urgency: Urgency): string {
+export function chooseNextAction(tags: ContactTag[], role: AssignmentRole, urgency: Urgency): string {
   if (urgency === "high") {
     return "Ask a trusted pastor to make same-day human follow-up, check in directly, and arrange support from the appropriate leader.";
   }

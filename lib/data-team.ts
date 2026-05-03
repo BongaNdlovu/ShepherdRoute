@@ -4,7 +4,7 @@ export async function getTeamMembers(churchId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("team_members")
-    .select("id, membership_id, display_name, role, phone, email, is_active, created_at")
+    .select("id, membership_id, display_name, role, app_role, phone, email, is_active, created_at")
     .eq("church_id", churchId)
     .order("display_name");
 

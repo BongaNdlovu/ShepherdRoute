@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ContactMethodConsent } from "@/components/forms/contact-method-consent";
 import { getPublicEvent } from "@/lib/data";
 import { getEventTemplate } from "@/lib/eventTemplates";
 import {
@@ -355,12 +356,9 @@ export default async function PublicEventPage({
                   </div>
                 ) : null}
 
-                <label className="flex items-start gap-3 rounded-lg bg-muted p-4">
-                  <input type="checkbox" name="consent" className="mt-1 h-4 w-4" required />
-                  <span className="text-sm leading-6 text-slate-600">
-                    {consentText}
-                  </span>
-                </label>
+                <input type="hidden" name="consentTextSnapshot" value={consentText} />
+                <input type="hidden" name="privacyPolicyVersion" value="contact-consent-v1" />
+                <ContactMethodConsent />
                 <Button type="submit" size="lg">Submit visitor form</Button>
                 </form>
             )}

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { chooseWorkflowOwner, saveSuggestedWhatsappMessage } from "@/lib/contactWorkflow";
 import { classifyContact } from "@/lib/classifyContact";
-import { followUpChannelOptions, interestOptions, statusOptions } from "@/lib/constants";
+import { followUpChannelOptions, interestOptions, statusOptions, assignmentRoleOptions } from "@/lib/constants";
 import { getChurchContext } from "@/lib/data";
 import { defaultDueDate, prayerVisibilityOptions } from "@/lib/followUp";
 import { canManageContacts } from "@/lib/permissions";
@@ -15,6 +15,7 @@ import { generateMessage } from "@/lib/whatsapp";
 const contactUpdateSchema = z.object({
   contactId: z.string().uuid(),
   assignedTo: z.string().uuid().or(z.literal("unassigned")),
+  assignedHandlingRole: z.enum(assignmentRoleOptions).or(z.literal("")),
   status: z.enum(statusOptions)
 });
 
@@ -65,6 +66,7 @@ export async function updateContactAction(formData: FormData) {
   const parsed = contactUpdateSchema.safeParse({
     contactId: formData.get("contactId"),
     assignedTo: formData.get("assignedTo"),
+    assignedHandlingRole: formData.get("assignedHandlingRole") || "",
     status: formData.get("status")
   });
 
@@ -73,10 +75,15 @@ export async function updateContactAction(formData: FormData) {
   }
 
   const assignedTo = parsed.data.assignedTo === "unassigned" ? null : parsed.data.assignedTo;
+  const assignedHandlingRole = parsed.data.assignedHandlingRole === "" ? null : parsed.data.assignedHandlingRole;
   const supabase = await createClient();
   const { error } = await supabase
     .from("contacts")
-    .update({ assigned_to: assignedTo, status: parsed.data.status })
+    .update({
+      assigned_to: assignedTo,
+      assigned_handling_role: assignedHandlingRole,
+      status: parsed.data.status
+    })
     .eq("church_id", context.churchId)
     .eq("id", parsed.data.contactId);
 
@@ -313,6 +320,7 @@ export async function addQuickContactAction(formData: FormData) {
       status: assignedTo ? "assigned" : "new",
       urgency: classification.urgency,
       assigned_to: assignedTo,
+      recommended_assigned_role: classification.recommended_assigned_role,
       consent_given: parsed.data.consentStatus === "given",
       consent_at: parsed.data.consentStatus === "given" ? new Date().toISOString() : null,
       consent_source: "manual",

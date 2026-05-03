@@ -7,6 +7,7 @@ import { DeleteContactConfirmModal } from "@/components/app/delete-contact-confi
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
 import { consentScopeLabels, formatDateTime } from "@/lib/followUp";
+import { contactMethodLabels, assignmentRoleLabels } from "@/lib/constants";
 import type { ContactDetailResult } from "@/lib/data";
 
 type ContactSummaryPanelProps = {
@@ -70,7 +71,21 @@ export function ContactSummaryPanel({ contact, error }: ContactSummaryPanelProps
         </div>
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Assigned to</p>
-          <p className="mt-1 font-semibold">{assignedMember?.display_name ?? "Unassigned"}</p>
+          <p className="mt-1 font-semibold">
+            {contact.assigned_handling_role
+              ? assignmentRoleLabels[contact.assigned_handling_role as keyof typeof assignmentRoleLabels] ?? contact.assigned_handling_role
+              : assignedMember?.display_name ?? "Unassigned"}
+          </p>
+          {contact.assigned_handling_role && assignedMember?.display_name ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Person: {assignedMember.display_name}
+            </p>
+          ) : null}
+          {contact.recommended_assigned_role && contact.recommended_assigned_role !== contact.assigned_handling_role ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Recommended: {assignmentRoleLabels[contact.recommended_assigned_role as keyof typeof assignmentRoleLabels] ?? contact.recommended_assigned_role}
+            </p>
+          ) : null}
         </div>
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Consent</p>
@@ -82,9 +97,16 @@ export function ContactSummaryPanel({ contact, error }: ContactSummaryPanelProps
           {contact.privacy_policy_version && (
             <p className="mt-1 text-xs text-muted-foreground">Policy: {contact.privacy_policy_version}</p>
           )}
+          {contact.preferred_contact_methods && contact.preferred_contact_methods.length > 0 ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Preferred: {contact.preferred_contact_methods.map((method: string) => contactMethodLabels[method as keyof typeof contactMethodLabels] ?? method).join(", ")}
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-muted-foreground">No contact preference recorded</p>
+          )}
           {contact.consent_scope?.length ? (
             <p className="mt-1 text-xs text-muted-foreground">
-              {contact.consent_scope.map((scope) => consentScopeLabels[scope] ?? scope).join(", ")}
+              Scope: {contact.consent_scope.map((scope) => consentScopeLabels[scope] ?? scope).join(", ")}
             </p>
           ) : null}
           {contact.consent_text_snapshot && (

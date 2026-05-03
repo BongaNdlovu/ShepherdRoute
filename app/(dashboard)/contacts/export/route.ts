@@ -94,7 +94,7 @@ async function collectContactRows(
     for (const contact of result.contacts) {
       contactIds.push(contact.id);
       const interests = (contact.interests ?? [])
-        .map((interest: Interest) => interestLabels[interest] ?? interest)
+        .map((interest) => interestLabels[interest as Interest] ?? interest)
         .join("; ");
 
       rows.push([

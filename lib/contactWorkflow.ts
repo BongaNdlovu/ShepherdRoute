@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AssignedRole } from "@/lib/classifyContact";
+import type { AssignmentRole } from "@/lib/constants";
 import type { Interest } from "@/lib/constants";
 import type { Database } from "@/lib/supabase/database.types";
 import { createWhatsappLink } from "@/lib/whatsapp";
@@ -16,15 +16,22 @@ export type SuggestedMessageContact = {
   phone: string | null;
 };
 
-const ownerRoleFallbacks: Record<AssignedRole, string[]> = {
+const ownerRoleFallbacks: Record<AssignmentRole, string[]> = {
   pastor: ["pastor", "elder", "admin"],
   elder: ["elder", "pastor", "admin"],
   bible_worker: ["bible_worker", "pastor", "elder", "admin"],
   health_leader: ["health_leader", "pastor", "elder", "admin"],
-  prayer_team: ["prayer_team", "pastor", "elder", "admin"]
+  prayer_team: ["prayer_team", "pastor", "elder", "admin"],
+  youth_leader: ["youth_leader", "elder", "pastor", "admin"],
+  family_ministries: ["elder", "pastor", "admin"],
+  deacon_deaconess: ["elder", "pastor", "admin"],
+  interest_coordinator: ["elder", "pastor", "admin"],
+  event_leader: ["elder", "pastor", "admin"],
+  admin_secretary: ["elder", "pastor", "admin"],
+  general_follow_up_team: ["elder", "pastor", "admin"]
 };
 
-export function chooseWorkflowOwner(team: WorkflowTeamMember[], recommendedRole: AssignedRole) {
+export function chooseWorkflowOwner(team: WorkflowTeamMember[], recommendedRole: AssignmentRole) {
   const fallbackRoles = ownerRoleFallbacks[recommendedRole] ?? ["elder", "pastor", "admin"];
 
   return fallbackRoles

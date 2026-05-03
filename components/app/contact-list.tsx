@@ -6,7 +6,7 @@ import { updateContactAction, updateContactLifecycleAction } from "@/app/(dashbo
 import { InterestPills } from "@/components/app/interest-pills";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
-import { statusLabels, statusOptions } from "@/lib/constants";
+import { statusLabels, statusOptions, contactMethodLabels, assignmentRoleLabels, assignmentRoleOptions, type Interest } from "@/lib/constants";
 import type { ContactListItem } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { generateMessage, createWhatsappLink } from "@/lib/whatsapp";
@@ -33,7 +33,7 @@ export function ContactList({ churchName, contacts, team, compactLists = false, 
           const message = generateMessage({
             name: contact.full_name,
             phone: contact.phone,
-            interests: contact.interests,
+            interests: contact.interests as Interest[],
             churchName,
             eventName: contact.event_name
           });
@@ -60,11 +60,36 @@ export function ContactList({ churchName, contacts, team, compactLists = false, 
                   {contact.event_name ?? "Manual contact"}
                   {contact.best_time_to_contact ? ` - ${contact.best_time_to_contact}` : ""}
                 </p>
+                {contact.preferred_contact_methods && contact.preferred_contact_methods.length > 0 ? (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {contact.preferred_contact_methods.map((method: string) => (
+                      <span key={method} className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-800">
+                        {contactMethodLabels[method as keyof typeof contactMethodLabels] ?? method}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className={cn(compactLists ? "mt-0.5" : "mt-1", "text-xs text-muted-foreground")}>No contact preference recorded</p>
+                )}
               </div>
-              <InterestPills interests={contact.interests} />
+              <InterestPills interests={contact.interests as Interest[]} />
               <div className={cn(compactLists ? "space-y-1" : "space-y-2")}>
                 <StatusBadge status={contact.status} />
-                <p className="text-sm font-semibold text-slate-600">{contact.assigned_name ?? "Unassigned"}</p>
+                <p className="text-sm font-semibold text-slate-600">
+                  {contact.assigned_handling_role
+                    ? assignmentRoleLabels[contact.assigned_handling_role as keyof typeof assignmentRoleLabels] ?? contact.assigned_handling_role
+                    : contact.assigned_name ?? "Unassigned"}
+                </p>
+                {contact.assigned_handling_role && contact.assigned_name ? (
+                  <p className="text-xs text-muted-foreground">
+                    Assigned to: {contact.assigned_name}
+                  </p>
+                ) : null}
+                {contact.recommended_assigned_role && contact.recommended_assigned_role !== contact.assigned_handling_role ? (
+                  <p className="text-xs text-muted-foreground">
+                    Recommended: {assignmentRoleLabels[contact.recommended_assigned_role as keyof typeof assignmentRoleLabels] ?? contact.recommended_assigned_role}
+                  </p>
+                ) : null}
               </div>
               <div className={cn("grid", compactLists ? "gap-1.5" : "gap-2")}>
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -82,12 +107,26 @@ export function ContactList({ churchName, contacts, team, compactLists = false, 
                   <form action={updateContactAction} className="flex gap-2">
                     <input type="hidden" name="contactId" value={contact.id} />
                     <input type="hidden" name="assignedTo" value={contact.assigned_to ?? "unassigned"} />
+                    <select name="assignedHandlingRole" defaultValue={contact.assigned_handling_role ?? ""} className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-ring">
+                      <option value="">No role</option>
+                      {assignmentRoleOptions.map((role) => (
+                        <option key={role} value={role}>{assignmentRoleLabels[role]}</option>
+                      ))}
+                    </select>
+                    <Button type="submit" size="sm" variant="outline">Set Role</Button>
+                  </form>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <form action={updateContactAction} className="flex gap-2">
+                    <input type="hidden" name="contactId" value={contact.id} />
+                    <input type="hidden" name="assignedTo" value={contact.assigned_to ?? "unassigned"} />
+                    <input type="hidden" name="assignedHandlingRole" value={contact.assigned_handling_role ?? ""} />
                     <select name="status" defaultValue={contact.status} className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-ring">
                       {statusOptions.map((status) => (
                         <option key={status} value={status}>{statusLabels[status]}</option>
                       ))}
                     </select>
-                    <Button type="submit" size="sm" variant="outline">Save</Button>
+                    <Button type="submit" size="sm" variant="outline">Save Status</Button>
                   </form>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">

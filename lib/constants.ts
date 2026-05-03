@@ -99,8 +99,57 @@ export const followUpChannelLabels: Record<FollowUpChannel, string> = {
   note: "Note"
 };
 
+export const contactMethodOptions = ["whatsapp", "phone", "email"] as const;
+
+export const contactMethodLabels: Record<ContactMethod, string> = {
+  whatsapp: "WhatsApp",
+  phone: "Phone call",
+  email: "Email"
+};
+
+export const assignmentRoleOptions = [
+  "pastor",
+  "elder",
+  "bible_worker",
+  "prayer_team",
+  "health_leader",
+  "youth_leader",
+  "family_ministries",
+  "deacon_deaconess",
+  "interest_coordinator",
+  "event_leader",
+  "admin_secretary",
+  "general_follow_up_team"
+] as const;
+
+export const assignmentRoleLabels: Record<AssignmentRole, string> = {
+  pastor: "Pastor",
+  elder: "Elder",
+  bible_worker: "Bible Worker",
+  prayer_team: "Prayer Team",
+  health_leader: "Health Leader",
+  youth_leader: "Youth Leader",
+  family_ministries: "Family Ministries",
+  deacon_deaconess: "Deacon / Deaconess",
+  interest_coordinator: "Interest Coordinator",
+  event_leader: "Event Leader",
+  admin_secretary: "Admin / Secretary",
+  general_follow_up_team: "General Follow-up Team"
+};
+
+export const appRoleOptions = ["admin", "coordinator", "viewer"] as const;
+
+export const appRoleLabels: Record<AppRole, string> = {
+  admin: "Admin",
+  coordinator: "Coordinator",
+  viewer: "Viewer"
+};
+
 export type Interest = (typeof interestOptions)[number];
 export type FollowUpStatus = (typeof statusOptions)[number];
 export type EventType = (typeof eventTypeOptions)[number];
 export type TeamRole = keyof typeof roleLabels;
 export type FollowUpChannel = (typeof followUpChannelOptions)[number];
+export type ContactMethod = (typeof contactMethodOptions)[number];
+export type AssignmentRole = (typeof assignmentRoleOptions)[number];
+export type AppRole = (typeof appRoleOptions)[number];

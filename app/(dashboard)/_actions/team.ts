@@ -4,7 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { roleOptions, type TeamRole } from "@/lib/constants";
+import { roleOptions, appRoleOptions, type TeamRole } from "@/lib/constants";
 import { getChurchContext } from "@/lib/data";
 import { canInviteRole, canManageTeam } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
@@ -22,6 +22,7 @@ const optionalPhoneSchema = z.preprocess(
 const teamMemberSchema = z.object({
   displayName: z.string().min(2).max(120),
   role: z.enum(roleOptions),
+  appRole: z.enum(appRoleOptions).or(z.literal("")),
   phone: optionalPhoneSchema,
   email: optionalEmailSchema,
   inviteLogin: z.boolean()
@@ -37,6 +38,7 @@ export async function addTeamMemberAction(formData: FormData) {
   const parsed = teamMemberSchema.safeParse({
     displayName: formData.get("displayName"),
     role: formData.get("role"),
+    appRole: formData.get("appRole") || "",
     phone: formData.get("phone"),
     email: formData.get("email"),
     inviteLogin: formData.get("inviteLogin") === "on"
@@ -54,6 +56,8 @@ export async function addTeamMemberAction(formData: FormData) {
     redirect("/settings/team?error=You%20cannot%20assign%20that%20role.");
   }
 
+  const appRole = parsed.data.appRole === "" ? null : parsed.data.role === "admin" ? "admin" : parsed.data.role === "pastor" || parsed.data.role === "elder" ? "coordinator" : "viewer";
+
   const supabase = await createClient();
   const { data: teamMember, error } = await supabase
     .from("team_members")
@@ -61,6 +65,7 @@ export async function addTeamMemberAction(formData: FormData) {
       church_id: context.churchId,
       display_name: parsed.data.displayName,
       role: parsed.data.role,
+      app_role: appRole,
       phone: parsed.data.phone ?? null,
       email: parsed.data.email ?? null
     })

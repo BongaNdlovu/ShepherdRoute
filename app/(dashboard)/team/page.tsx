@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { InlineHelp } from "@/components/app/inline-help";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { roleLabels, roleOptions } from "@/lib/constants";
+import { roleLabels, roleOptions, appRoleLabels, appRoleOptions } from "@/lib/constants";
 import { getChurchContext, getTeamInvitations, getTeamMembers } from "@/lib/data";
 import { absoluteUrl, initials } from "@/lib/utils";
 
@@ -47,6 +47,9 @@ export default async function TeamPage({
                     <div className="min-w-0">
                       <p className="truncate font-bold">{member.display_name}</p>
                       <p className="text-sm text-muted-foreground">{roleLabels[member.role as keyof typeof roleLabels]}</p>
+                      {member.app_role ? (
+                        <p className="text-xs text-muted-foreground">App: {appRoleLabels[member.app_role as keyof typeof appRoleLabels] ?? member.app_role}</p>
+                      ) : null}
                       {member.email || member.phone ? (
                         <p className="truncate text-xs text-muted-foreground">
                           {[member.email, member.phone].filter(Boolean).join(" - ")}
@@ -154,10 +157,19 @@ export default async function TeamPage({
               <Input id="displayName" name="displayName" placeholder="Bible Worker Rachel" required />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="role">Role</Label>
+              <Label htmlFor="role">Church role</Label>
               <select id="role" name="role" defaultValue="bible_worker" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
                 {roleOptions.map((role) => (
                   <option key={role} value={role}>{roleLabels[role]}</option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="appRole">App role (optional)</Label>
+              <select id="appRole" name="appRole" defaultValue="" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
+                <option value="">Auto-detect from church role</option>
+                {appRoleOptions.map((role) => (
+                  <option key={role} value={role}>{appRoleLabels[role]}</option>
                 ))}
               </select>
             </div>

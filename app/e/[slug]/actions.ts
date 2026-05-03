@@ -5,6 +5,7 @@ import { z } from "zod";
 import { classifyContact, type VisitorType } from "@/lib/classifyContact";
 import { eventTemplateTypes } from "@/lib/eventTemplates";
 import { prayerVisibilityOptions } from "@/lib/followUp";
+import { contactMethodOptions } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { getPublicEvent } from "@/lib/data";
 import { getEventTemplate } from "@/lib/eventTemplates";
@@ -20,6 +21,8 @@ const visitorTypeOptions = [
   "general"
 ] as const;
 
+const ContactMethodEnum = z.enum(contactMethodOptions);
+
 const registrationSchema = z.object({
   slug: z.string().min(2),
   fullName: z.string().min(2).max(140),
@@ -34,10 +37,30 @@ const registrationSchema = z.object({
   templateType: z.enum(visitorTypeOptions).default("general"),
   topic: z.string().max(120).optional(),
   prayerVisibility: z.enum(prayerVisibilityOptions).optional(),
-  consent: z.literal("on"),
+  preferred_contact_methods: z.array(ContactMethodEnum).min(1, "Please choose at least one contact method."),
   consentTextSnapshot: z.string().max(1000).optional(),
   privacyPolicyVersion: z.string().max(50).optional(),
   questions: z.string().optional()
+}).superRefine((data, ctx) => {
+  const needsPhone =
+    data.preferred_contact_methods.includes("whatsapp") ||
+    data.preferred_contact_methods.includes("phone");
+
+  if (needsPhone && !data.phone?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["phone"],
+      message: "Please provide a phone number for WhatsApp or phone follow-up."
+    });
+  }
+
+  if (data.preferred_contact_methods.includes("email") && !data.email?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["email"],
+      message: "Please provide an email address for email follow-up."
+    });
+  }
 });
 
 export async function submitRegistrationAction(formData: FormData) {
@@ -55,7 +78,7 @@ export async function submitRegistrationAction(formData: FormData) {
     templateType: formData.get("templateType") || "general",
     topic: formData.get("topic") || undefined,
     prayerVisibility: formData.get("prayerVisibility") || undefined,
-    consent: formData.get("consent"),
+    preferred_contact_methods: formData.getAll("preferred_contact_methods").map(String),
     consentTextSnapshot: formData.get("consentTextSnapshot") || undefined,
     privacyPolicyVersion: formData.get("privacyPolicyVersion") || undefined,
     questions: formData.get("questions") || undefined
@@ -189,14 +212,16 @@ export async function submitRegistrationAction(formData: FormData) {
     p_urgency: classification.urgency,
     p_classification_payload: classificationPayload,
     p_prayer_visibility: finalPrayerVisibility,
-    p_consent_scope: ["follow_up", "whatsapp", "event_updates", ...(selectedInterests.includes("prayer") ? ["prayer"] : [])],
+    p_consent_scope: ["follow_up"],
+    p_preferred_contact_methods: parsed.data.preferred_contact_methods,
     p_consent_source: parsed.data.templateType,
     p_consent_given: true,
     p_consent_text_snapshot: parsed.data.consentTextSnapshot ?? null,
-    p_privacy_policy_version: parsed.data.privacyPolicyVersion ?? "v1.0",
+    p_privacy_policy_version: parsed.data.privacyPolicyVersion ?? "contact-consent-v1",
     p_consent_status: "given",
     p_consent_recorded_by: null,
-    p_form_answers: formAnswers.length > 0 ? JSON.stringify(formAnswers) : null
+    p_form_answers: formAnswers.length > 0 ? JSON.stringify(formAnswers) : null,
+    p_recommended_assigned_role: classification.recommended_assigned_role
   });
 
   if (error) {

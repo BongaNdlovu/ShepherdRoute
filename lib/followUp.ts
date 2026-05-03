@@ -1,4 +1,5 @@
-import type { AssignedRole, ContactTag, Urgency } from "@/lib/classifyContact";
+import type { AssignmentRole } from "@/lib/constants";
+import type { ContactTag, Urgency } from "@/lib/classifyContact";
 
 export type PrayerVisibility =
   | "general_prayer"
@@ -43,7 +44,7 @@ export const consentScopeLabels: Record<string, string> = {
 
 export function defaultDueDate(
   urgency: Urgency,
-  assignedRole?: AssignedRole | string,
+  assignedRole?: AssignmentRole | string,
   tags: ContactTag[] = []
 ) {
   const dueDate = new Date();

@@ -275,12 +275,24 @@ create table if not exists public.team_members (
   membership_id uuid references public.church_memberships(id) on delete set null,
   display_name text not null,
   role public.team_role not null default 'viewer',
+  app_role text,
   phone text,
   email text,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table if exists public.team_members
+  add column if not exists app_role text;
+
+update public.team_members
+set app_role = case
+  when role = 'admin' then 'admin'
+  when role in ('pastor', 'elder') then 'coordinator'
+  else 'viewer'
+end
+where app_role is null;
 
 create table if not exists public.team_invitations (
   id uuid primary key default gen_random_uuid(),
@@ -376,10 +388,13 @@ create table if not exists public.contacts (
   status public.follow_up_status not null default 'new',
   urgency public.urgency_level not null default 'medium',
   assigned_to uuid references public.team_members(id) on delete set null,
+  assigned_handling_role text,
+  recommended_assigned_role text,
   consent_given boolean not null default false,
   consent_at timestamptz,
   consent_source text,
   consent_scope text[] not null default array[]::text[],
+  preferred_contact_methods text[] not null default array[]::text[],
   do_not_contact boolean not null default false,
   do_not_contact_at timestamptz,
   archived_at timestamptz,
@@ -405,6 +420,9 @@ alter table if exists public.contacts
   add column if not exists normalized_area text,
   add column if not exists consent_source text,
   add column if not exists consent_scope text[] not null default array[]::text[],
+  add column if not exists preferred_contact_methods text[] not null default array[]::text[],
+  add column if not exists assigned_handling_role text,
+  add column if not exists recommended_assigned_role text,
   add column if not exists do_not_contact boolean not null default false,
   add column if not exists do_not_contact_at timestamptz,
   add column if not exists archived_at timestamptz,
@@ -2013,6 +2031,8 @@ returns table (
   status public.follow_up_status,
   urgency public.urgency_level,
   assigned_to uuid,
+  assigned_handling_role text,
+  recommended_assigned_role text,
   do_not_contact boolean,
   duplicate_of_contact_id uuid,
   duplicate_match_confidence numeric,
@@ -2041,6 +2061,8 @@ as $$
       contacts.status,
       contacts.urgency,
       contacts.assigned_to,
+      contacts.assigned_handling_role,
+      contacts.recommended_assigned_role,
       contacts.do_not_contact,
       contacts.duplicate_of_contact_id,
       contacts.duplicate_match_confidence,
@@ -2354,6 +2376,7 @@ returns table (
   status public.follow_up_status,
   urgency public.urgency_level,
   assigned_to uuid,
+  assigned_handling_role text,
   do_not_contact boolean,
   duplicate_of_contact_id uuid,
   duplicate_match_confidence numeric,
@@ -2382,6 +2405,8 @@ as $$
       contacts.status,
       contacts.urgency,
       contacts.assigned_to,
+      contacts.assigned_handling_role,
+      contacts.recommended_assigned_role,
       contacts.do_not_contact,
       contacts.duplicate_of_contact_id,
       contacts.duplicate_match_confidence,
@@ -2890,13 +2915,15 @@ create or replace function private.submit_event_registration_impl(
   p_classification_payload jsonb,
   p_prayer_visibility public.prayer_visibility,
   p_consent_scope text[],
+  p_preferred_contact_methods text[],
   p_consent_source text,
   p_consent_given boolean,
   p_consent_text_snapshot text,
   p_privacy_policy_version text,
   p_consent_status text,
   p_consent_recorded_by uuid,
-  p_form_answers jsonb
+  p_form_answers jsonb,
+  p_recommended_assigned_role text
 )
 returns uuid
 language plpgsql
@@ -2986,10 +3013,12 @@ begin
     status,
     urgency,
     assigned_to,
+    recommended_assigned_role,
     consent_given,
     consent_at,
     consent_source,
     consent_scope,
+    preferred_contact_methods,
     consent_text_snapshot,
     privacy_policy_version,
     consent_status,
@@ -3010,10 +3039,12 @@ begin
     case when assigned_owner_id is null then 'new'::public.follow_up_status else 'assigned'::public.follow_up_status end,
     computed_urgency,
     assigned_owner_id,
+    p_recommended_assigned_role,
     true,
     now(),
     coalesce(nullif(p_consent_source, ''), target_event.event_type::text),
     coalesce(p_consent_scope, array['follow_up']::text[]),
+    coalesce(p_preferred_contact_methods, array[]::text[]),
     nullif(p_consent_text_snapshot, ''),
     coalesce(p_privacy_policy_version, 'v1.0'),
     coalesce(p_consent_status, 'given'),
@@ -3216,12 +3247,14 @@ create or replace function public.submit_event_registration(
   p_classification_payload jsonb,
   p_prayer_visibility public.prayer_visibility,
   p_consent_scope text[],
+  p_preferred_contact_methods text[],
   p_consent_source text,
   p_consent_given boolean,
   p_consent_text_snapshot text,
   p_privacy_policy_version text,
   p_consent_status text,
   p_consent_recorded_by uuid,
+  p_recommended_assigned_role text
   p_form_answers jsonb
 )
 returns uuid
@@ -3243,13 +3276,15 @@ as $$
     p_classification_payload,
     p_prayer_visibility,
     p_consent_scope,
+    p_preferred_contact_methods,
     p_consent_source,
     p_consent_given,
     p_consent_text_snapshot,
     p_privacy_policy_version,
     p_consent_status,
     p_consent_recorded_by,
-    p_form_answers
+    p_form_answers,
+    p_recommended_assigned_role
   );
 $$;
 
@@ -3267,13 +3302,15 @@ grant execute on function public.submit_event_registration(
   jsonb,
   public.prayer_visibility,
   text[],
+  text[],
   text,
   boolean,
   text,
   text,
   text,
   uuid,
-  jsonb
+  jsonb,
+  text
 ) to anon, authenticated;
 
 -- Prayer privacy RPC with role-based visibility filtering
