@@ -920,10 +920,12 @@ declare
   church_name text;
   full_name text;
   invite_token text;
+  workspace_type text;
 begin
   church_name := coalesce(new.raw_user_meta_data->>'church_name', 'New church');
   full_name := coalesce(new.raw_user_meta_data->>'full_name', new.email, 'Church admin');
   invite_token := nullif(new.raw_user_meta_data->>'invite_token', '');
+  workspace_type := coalesce(new.raw_user_meta_data->>'workspace_type', 'church');
 
   insert into public.profiles (id, full_name, email)
   values (new.id, full_name, new.email)
@@ -936,8 +938,8 @@ begin
     return new;
   end if;
 
-  insert into public.churches (name)
-  values (church_name)
+  insert into public.churches (name, workspace_type)
+  values (church_name, workspace_type)
   returning id into new_church_id;
 
   insert into public.church_memberships (church_id, user_id, role, status)
@@ -2265,6 +2267,133 @@ grant execute on function public.search_follow_ups(
   integer,
   integer
 ) to authenticated;
+
+drop function if exists public.event_follow_up_counts(uuid, uuid);
+
+create or replace function public.event_follow_up_counts(
+  p_church_id uuid,
+  p_event_id uuid
+)
+returns table (
+  pending_follow_ups bigint,
+  completed_follow_ups bigint,
+  overdue_follow_ups bigint,
+  due_now_follow_ups bigint
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    count(*) filter (
+      where f.completed_at is null
+        and (f.status is null or f.status <> 'closed')
+    ) as pending_follow_ups,
+    count(*) filter (
+      where f.completed_at is not null
+    ) as completed_follow_ups,
+    count(*) filter (
+      where f.completed_at is null
+        and f.due_at is not null
+        and f.due_at < now()
+    ) as overdue_follow_ups,
+    count(*) filter (
+      where f.completed_at is null
+        and f.due_at is not null
+        and f.due_at <= now()
+    ) as due_now_follow_ups
+  from public.follow_ups f
+  inner join public.contacts c on c.id = f.contact_id
+  where f.church_id = p_church_id
+    and c.church_id = p_church_id
+    and c.event_id = p_event_id
+    and c.deleted_at is null;
+$$;
+
+revoke all on function public.event_follow_up_counts(uuid, uuid) from public;
+grant execute on function public.event_follow_up_counts(uuid, uuid) to authenticated;
+
+drop function if exists public.event_follow_ups_page(uuid, uuid, text, uuid, public.urgency_level, integer, integer);
+
+create or replace function public.event_follow_ups_page(
+  p_church_id uuid,
+  p_event_id uuid,
+  p_status text default 'all',
+  p_assigned_to uuid default null,
+  p_urgency public.urgency_level default null,
+  p_limit integer default 25,
+  p_offset integer default 0
+)
+returns table (
+  id uuid,
+  contact_id uuid,
+  contact_name text,
+  contact_phone text,
+  contact_whatsapp text,
+  contact_email text,
+  contact_status public.follow_up_status,
+  contact_urgency public.urgency_level,
+  assigned_to uuid,
+  assigned_name text,
+  status public.follow_up_status,
+  channel public.follow_up_channel,
+  next_action text,
+  due_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz,
+  total_count bigint
+)
+language sql
+security definer
+set search_path = public
+as $$
+  with filtered as (
+    select
+      f.id,
+      f.contact_id,
+      c.full_name as contact_name,
+      c.phone as contact_phone,
+      c.whatsapp_number as contact_whatsapp,
+      c.email as contact_email,
+      c.status as contact_status,
+      c.urgency as contact_urgency,
+      f.assigned_to,
+      tm.display_name as assigned_name,
+      f.status,
+      f.channel,
+      f.next_action,
+      f.due_at,
+      f.completed_at,
+      f.created_at
+    from public.follow_ups f
+    inner join public.contacts c on c.id = f.contact_id
+    left join public.team_members tm on tm.id = f.assigned_to
+    where f.church_id = p_church_id
+      and c.church_id = p_church_id
+      and c.event_id = p_event_id
+      and c.deleted_at is null
+      and (p_assigned_to is null or f.assigned_to = p_assigned_to)
+      and (p_urgency is null or c.urgency = p_urgency)
+      and (
+        p_status is null
+        or p_status = 'all'
+        or (p_status = 'overdue' and f.completed_at is null and f.due_at < now())
+        or (p_status = 'today' and f.completed_at is null and f.due_at >= date_trunc('day', now()) and f.due_at < date_trunc('day', now()) + interval '1 day')
+        or (p_status = 'upcoming' and f.completed_at is null and f.due_at >= date_trunc('day', now()) + interval '1 day')
+        or (p_status = 'completed' and f.completed_at is not null)
+      )
+  )
+  select
+    filtered.*,
+    count(*) over() as total_count
+  from filtered
+  order by filtered.due_at asc nulls last, filtered.created_at desc
+  limit greatest(1, least(coalesce(p_limit, 25), 100))
+  offset greatest(0, coalesce(p_offset, 0));
+$$;
+
+revoke all on function public.event_follow_ups_page(uuid, uuid, text, uuid, public.urgency_level, integer, integer) from public;
+grant execute on function public.event_follow_ups_page(uuid, uuid, text, uuid, public.urgency_level, integer, integer) to authenticated;
 
 drop function if exists public.export_contacts(
   uuid,

@@ -74,6 +74,31 @@ export function canManageEvents(role: TeamRole, appRole?: AppRole | null) {
   return ["admin", "pastor", "elder", "health_leader", "youth_leader"].includes(effectiveRole);
 }
 
+export function canViewEventWorkspace(role: TeamRole, appRole?: AppRole | null) {
+  const effectiveRole = getEffectiveRole(role, appRole);
+  return ["admin", "pastor", "elder", "bible_worker", "health_leader", "prayer_team", "youth_leader", "viewer"].includes(effectiveRole);
+}
+
+export function canViewEventContacts(role: TeamRole, appRole?: AppRole | null) {
+  const effectiveRole = getEffectiveRole(role, appRole);
+  return ["admin", "pastor", "elder", "bible_worker", "health_leader", "youth_leader", "viewer"].includes(effectiveRole);
+}
+
+export function canViewEventReports(role: TeamRole, appRole?: AppRole | null) {
+  const effectiveRole = getEffectiveRole(role, appRole);
+  return ["admin", "pastor", "elder", "health_leader", "youth_leader", "viewer"].includes(effectiveRole);
+}
+
+export function canExportEventReports(role: TeamRole, appRole?: AppRole | null) {
+  const effectiveRole = getEffectiveRole(role, appRole);
+  return ["admin", "pastor"].includes(effectiveRole);
+}
+
+export function canManageEventAssignments(role: TeamRole, appRole?: AppRole | null) {
+  const effectiveRole = getEffectiveRole(role, appRole);
+  return ["admin", "pastor", "elder", "bible_worker", "health_leader", "youth_leader"].includes(effectiveRole);
+}
+
 export function canManageContacts(role: TeamRole, appRole?: AppRole | null) {
   const effectiveRole = getEffectiveRole(role, appRole);
   return ["admin", "pastor", "elder", "bible_worker", "health_leader", "youth_leader"].includes(effectiveRole);

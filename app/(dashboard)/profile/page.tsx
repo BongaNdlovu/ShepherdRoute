@@ -70,8 +70,8 @@ export default async function ProfilePage({
 
         <Card>
           <CardHeader>
-            <CardTitle>Church access</CardTitle>
-            <CardDescription>Your roles are managed by church admins, pastors, or the ShepherdRoute owner.</CardDescription>
+            <CardTitle>{context.workspaceLabel} access</CardTitle>
+            <CardDescription>Your roles are managed by {context.workspaceLabel.toLowerCase()} admins, pastors, or the ShepherdRoute owner.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
             {profile.memberships.map((membership) => (

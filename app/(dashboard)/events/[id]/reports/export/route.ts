@@ -1,8 +1,9 @@
 import { streamCsvResponse } from "@/lib/csv";
 import { interestLabels, statusLabels, type FollowUpStatus, type Interest } from "@/lib/constants";
 import { getChurchContext, getEventReportContactsPage, getEventReportExportMeta } from "@/lib/data";
-import { canManageEvents } from "@/lib/permissions";
+import { canExportEventReports } from "@/lib/permissions";
 import { slugify } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/server";
 
 const EXPORT_BATCH_SIZE = 1000;
 const EVENT_EXPORT_HEADERS = ["Name", "Phone", "Area", "Interests", "Status", "Urgency", "Created At"];
@@ -11,7 +12,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const { id } = await params;
   const context = await getChurchContext();
 
-  if (!canManageEvents(context.role as "admin" | "pastor" | "elder" | "bible_worker" | "health_leader" | "prayer_team" | "youth_leader" | "viewer", undefined)) {
+  if (!canExportEventReports(context.role as "admin" | "pastor" | "elder" | "bible_worker" | "health_leader" | "prayer_team" | "youth_leader" | "viewer", context.appRole as "admin" | "viewer" | "coordinator" | null)) {
     return new Response("Unauthorized", { status: 403 });
   }
 
@@ -21,7 +22,20 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     return new Response("Event not found", { status: 404 });
   }
 
-  return streamCsvResponse(`${slugify(event.name)}-report.csv`, EVENT_EXPORT_HEADERS, eventRows(context.churchId, id));
+  // Audit log before export
+  const supabase = await createClient();
+  await supabase
+    .from("audit_logs")
+    .insert({
+      church_id: context.churchId,
+      user_id: context.userId,
+      action: "event_report_export",
+      resource_type: "event",
+      resource_id: id,
+      metadata: { event_name: event.name }
+    });
+
+  return streamCsvResponse(`${slugify(event.name)}-${new Date().toISOString().split("T")[0]}-contacts.csv`, EVENT_EXPORT_HEADERS, eventRows(context.churchId, id));
 }
 
 async function* eventRows(churchId: string, eventId: string) {

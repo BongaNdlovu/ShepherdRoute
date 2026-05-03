@@ -31,7 +31,7 @@ export default async function TeamPage({
 
   return (
     <DashboardShell
-      title="Church team"
+      title={`${context.workspaceLabel} team`}
       description="Add assignable workers now, then invite login access only when they need to use the dashboard."
     >
       <section className="grid gap-5 xl:grid-cols-[1fr_380px]">

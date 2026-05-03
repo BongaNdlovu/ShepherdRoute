@@ -29,6 +29,14 @@ const eventArchiveSchema = z.object({
   archived: z.enum(["true", "false"])
 });
 
+const updateEventSchema = z.object({
+  eventId: z.string().uuid(),
+  name: z.string().min(2).max(140),
+  description: z.string().max(500).optional(),
+  startsOn: z.string().optional(),
+  location: z.string().max(180).optional()
+});
+
 const deleteEventSchema = z.object({
   eventId: z.string().uuid(),
   eventName: z.string().min(2),
@@ -39,13 +47,7 @@ const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
 const httpsUrlRegex = /^https:\/\/.*/;
 
 async function requireEventManager(context: Awaited<ReturnType<typeof getChurchContext>>, supabase: SupabaseClient, fallbackPath = "/events") {
-  const { data: currentUserTeamMember } = await supabase
-    .from("team_members")
-    .select("app_role")
-    .eq("church_id", context.churchId)
-    .eq("membership_id", context.userId)
-    .maybeSingle();
-  if (!canManageEvents(context.role as TeamRole, currentUserTeamMember?.app_role as AppRole | null)) {
+  if (!canManageEvents(context.role as TeamRole, context.appRole as AppRole | null)) {
     redirect(`${fallbackPath}?error=You%20do%20not%20have%20permission%20to%20manage%20events.`);
   }
 }
@@ -146,6 +148,42 @@ export async function updateEventStatusAction(formData: FormData) {
   redirect(`/events/${parsed.data.eventId}`);
 }
 
+export async function updateEventAction(formData: FormData) {
+  const context = await getChurchContext();
+  const parsed = updateEventSchema.safeParse({
+    eventId: formData.get("eventId"),
+    name: formData.get("name"),
+    description: formData.get("description") || undefined,
+    startsOn: formData.get("startsOn") || undefined,
+    location: formData.get("location") || undefined
+  });
+
+  if (!parsed.success) {
+    redirect("/events?error=Could%20not%20update%20the%20event.");
+  }
+
+  const supabase = await createClient();
+  await requireEventManager(context, supabase);
+  const { error } = await supabase
+    .from("events")
+    .update({
+      name: parsed.data.name,
+      description: parsed.data.description,
+      starts_on: parsed.data.startsOn || null,
+      location: parsed.data.location
+    })
+    .eq("church_id", context.churchId)
+    .eq("id", parsed.data.eventId);
+
+  if (error) {
+    redirect(`/events/${parsed.data.eventId}/settings?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/events");
+  revalidatePath(`/events/${parsed.data.eventId}`);
+  redirect(`/events/${parsed.data.eventId}/settings?updated=true`);
+}
+
 export async function updateEventArchiveAction(formData: FormData) {
   const context = await getChurchContext();
   const parsed = eventArchiveSchema.safeParse({
@@ -194,6 +232,27 @@ export async function deleteEventAction(formData: FormData) {
 
   const supabase = await createClient();
   await requireEventManager(context, supabase);
+
+  // Count contacts for this event before allowing deletion
+  const { count: contactCount, error: contactCountError } = await supabase
+    .from("contacts")
+    .select("id", { count: "exact", head: true })
+    .eq("church_id", context.churchId)
+    .eq("event_id", parsed.data.eventId)
+    .is("deleted_at", null);
+
+  if (contactCountError) {
+    redirect(`/events/${parsed.data.eventId}/settings?error=${encodeURIComponent(contactCountError.message)}`);
+  }
+
+  if ((contactCount ?? 0) > 0) {
+    redirect(
+      `/events/${parsed.data.eventId}/settings?error=${encodeURIComponent(
+        "This event has contacts and cannot be deleted. Archive or close it instead."
+      )}`
+    );
+  }
+
   const { error } = await supabase
     .from("events")
     .delete()

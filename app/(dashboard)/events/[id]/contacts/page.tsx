@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { getChurchContext } from "@/lib/data";
+import { getChurchContext, getTeamMembers } from "@/lib/data";
 import { getEventContactsPage, type EventContactsParams } from "@/lib/data-events";
+import { statusOptions, urgencyOptions } from "@/lib/constants";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { InterestPills } from "@/components/app/interest-pills";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
@@ -21,6 +22,7 @@ export default async function EventContactsPage({
   const { id } = await params;
   const query = await searchParams;
   const context = await getChurchContext();
+  const team = await getTeamMembers(context.churchId);
   const { contacts, totalCount, page, pageSize } = await getEventContactsPage(context.churchId, id, query);
 
   const totalPages = Math.ceil(totalCount / pageSize);
@@ -31,9 +33,70 @@ export default async function EventContactsPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Event Contacts</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            Event Contacts
+            <span className="text-sm font-normal text-muted-foreground">{totalCount} total</span>
+          </CardTitle>
           <CardDescription>
-            All people captured from this event ({totalCount} total).
+            <div className="flex flex-wrap gap-4 mt-2">
+              <select
+                name="status"
+                defaultValue={query.status || "all"}
+                onChange={(e) => {
+                  const url = new URL(window.location.href);
+                  if (e.target.value === "all") {
+                    url.searchParams.delete("status");
+                  } else {
+                    url.searchParams.set("status", e.target.value);
+                  }
+                  window.location.href = url.toString();
+                }}
+                className="h-8 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="all">All Status</option>
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>{status.replace(/_/g, " ")}</option>
+                ))}
+              </select>
+              <select
+                name="urgency"
+                defaultValue={query.urgency || "all"}
+                onChange={(e) => {
+                  const url = new URL(window.location.href);
+                  if (e.target.value === "all") {
+                    url.searchParams.delete("urgency");
+                  } else {
+                    url.searchParams.set("urgency", e.target.value);
+                  }
+                  window.location.href = url.toString();
+                }}
+                className="h-8 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="all">All Urgency</option>
+                {urgencyOptions.map((urgency) => (
+                  <option key={urgency} value={urgency}>{urgency.charAt(0).toUpperCase() + urgency.slice(1)}</option>
+                ))}
+              </select>
+              <select
+                name="assignedTo"
+                defaultValue={query.assignedTo || "all"}
+                onChange={(e) => {
+                  const url = new URL(window.location.href);
+                  if (e.target.value === "all") {
+                    url.searchParams.delete("assignedTo");
+                  } else {
+                    url.searchParams.set("assignedTo", e.target.value);
+                  }
+                  window.location.href = url.toString();
+                }}
+                className="h-8 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="all">All Assignments</option>
+                {team.map((member) => (
+                  <option key={member.id} value={member.id}>{member.display_name}</option>
+                ))}
+              </select>
+            </div>
           </CardDescription>
         </CardHeader>
         <CardContent>

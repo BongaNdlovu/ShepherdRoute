@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle2, HeartHandshake } from "lucide-react";
+import { CheckCircle2, HeartHandshake, AlertCircle } from "lucide-react";
 import type { Metadata } from "next";
 import { submitRegistrationAction } from "@/app/e/[slug]/actions";
 import { BrandLogo } from "@/components/app/brand-logo";
@@ -19,6 +19,7 @@ import {
   replacePlaceholders
 } from "@/lib/eventCustomization";
 import { prayerVisibilityLabels, prayerVisibilityOptions } from "@/lib/followUp";
+import { isHealthRelatedEvent } from "@/lib/workspace-type";
 import type { CSSProperties } from "react";
 
 function getSafeHttpsUrl(value?: string | null) {
@@ -105,8 +106,9 @@ export default async function PublicEventPage({
   const event = await getPublicEvent(slug);
   const template = getEventTemplate(event.event_type);
   const publicInfo = getEffectivePublicInfo(event, template);
-  const branding = getEffectiveBrandingConfig(event);
+  const brandingConfig = getEffectiveBrandingConfig(event);
   const formConfig = getEffectiveFormConfig(event, template);
+  const isHealthEvent = isHealthRelatedEvent(event.event_type);
 
   const shouldShowTopic = Boolean(template.topicOptions?.length) && formConfig.show_topic;
 
@@ -119,25 +121,25 @@ export default async function PublicEventPage({
       className="min-h-screen px-4 py-6 md:py-10 bg-[radial-gradient(circle_at_top_left,var(--event-primary,#fde68a)_0,var(--event-accent,#f7f3eb)_34%,#f8fafc_100%)]"
       style={
         {
-          "--event-primary": branding.primary_color,
-          "--event-accent": branding.accent_color
+          "--event-primary": brandingConfig.primary_color,
+          "--event-accent": brandingConfig.accent_color
         } as CSSProperties
       }
     >
       <section className="mx-auto max-w-3xl">
         <Card className="overflow-hidden rounded-2xl border-white/80 bg-white/95 shadow-card">
-          {branding.cover_image_url ? (
+          {brandingConfig.cover_image_url ? (
             <ExternalBrandImage
-              src={branding.cover_image_url}
+              src={brandingConfig.cover_image_url}
               alt={`${event.name} cover`}
               className="h-48 w-full object-cover"
               loading="eager"
             />
           ) : null}
           <CardHeader className="text-center">
-            {publicInfo.show_logo && branding.logo_url ? (
+            {publicInfo.show_logo && brandingConfig.logo_url ? (
               <ExternalBrandImage
-                src={branding.logo_url}
+                src={brandingConfig.logo_url}
                 alt={`${event.church_name} logo`}
                 className="mx-auto h-24 w-auto object-contain"
               />
@@ -151,6 +153,14 @@ export default async function PublicEventPage({
             <CardDescription>
               {publicInfo.description}
             </CardDescription>
+            {isHealthEvent && (
+              <div className="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-3 flex gap-3 items-start">
+                <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-amber-800">
+                  This event provides general health information and is not a substitute for professional medical advice, diagnosis, or treatment.
+                </p>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             {query.submitted ? (

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getChurchContext } from "@/lib/data";
+import { getChurchContext, getTeamMembers } from "@/lib/data";
 import { getEventFollowUpsPage, type EventFollowUpsParams } from "@/lib/data-events";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
@@ -20,6 +20,7 @@ export default async function EventFollowUpsPage({
   const { id } = await params;
   const query = await searchParams;
   const context = await getChurchContext();
+  const team = await getTeamMembers(context.churchId);
   const { followUps, totalCount, page, pageSize } = await getEventFollowUpsPage(context.churchId, id, query);
 
   const totalPages = Math.ceil(totalCount / pageSize);
@@ -30,9 +31,52 @@ export default async function EventFollowUpsPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Event Follow-ups</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            Event Follow-ups
+            <span className="text-sm font-normal text-muted-foreground">{totalCount} total</span>
+          </CardTitle>
           <CardDescription>
-            All follow-up tasks for contacts from this event ({totalCount} total).
+            <div className="flex flex-wrap gap-4 mt-2">
+              <select
+                name="status"
+                defaultValue={query.status || "all"}
+                onChange={(e) => {
+                  const url = new URL(window.location.href);
+                  if (e.target.value === "all") {
+                    url.searchParams.delete("status");
+                  } else {
+                    url.searchParams.set("status", e.target.value);
+                  }
+                  window.location.href = url.toString();
+                }}
+                className="h-8 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="all">All Status</option>
+                <option value="overdue">Overdue</option>
+                <option value="today">Due Today</option>
+                <option value="upcoming">Upcoming</option>
+                <option value="completed">Completed</option>
+              </select>
+              <select
+                name="assignedTo"
+                defaultValue={query.assignedTo || "all"}
+                onChange={(e) => {
+                  const url = new URL(window.location.href);
+                  if (e.target.value === "all") {
+                    url.searchParams.delete("assignedTo");
+                  } else {
+                    url.searchParams.set("assignedTo", e.target.value);
+                  }
+                  window.location.href = url.toString();
+                }}
+                className="h-8 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="all">All Assignments</option>
+                {team.map((member) => (
+                  <option key={member.id} value={member.id}>{member.display_name}</option>
+                ))}
+              </select>
+            </div>
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -47,11 +91,11 @@ export default async function EventFollowUpsPage({
             </div>
             <div className="divide-y">
               {followUps.map((followUp) => (
-                <Link key={followUp.id} href={`/contacts/${followUp.contact_id}`} className="grid gap-3 px-4 py-4 hover:bg-amber-50 md:grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr] md:items-center">
-                  <div>
+                <div key={followUp.id} className="grid gap-3 px-4 py-4 md:grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr] md:items-center items-start">
+                  <Link href={`/contacts/${followUp.contact_id}`} className="hover:underline">
                     <p className="font-bold">{followUp.contact_name}</p>
                     <p className="text-sm text-muted-foreground">{followUp.contact_phone}</p>
-                  </div>
+                  </Link>
                   <StatusBadge status={followUp.status} />
                   <p className="text-sm text-muted-foreground">{followUp.channel ?? "None"}</p>
                   <p className="text-sm">
@@ -62,7 +106,7 @@ export default async function EventFollowUpsPage({
                     <StatusBadge status={followUp.contact_status} />
                     <UrgencyBadge urgency={followUp.contact_urgency} />
                   </div>
-                </Link>
+                </div>
               ))}
               {!followUps.length ? (
                 <div className="p-8 text-center">

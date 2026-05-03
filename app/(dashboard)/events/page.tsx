@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, QrCode } from "lucide-react";
+import { Plus, QrCode, UsersRound, ClipboardList, Settings2, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -63,11 +63,29 @@ export default async function EventsPage() {
                   <p className="mt-1 break-all text-sm font-medium text-foreground">{`${origin}/e/${event.slug}`}</p>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <Button asChild variant="outline">
-                    <Link href={`/events/${event.id}`}>View event</Link>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/events/${event.id}/contacts`}>
+                      <UsersRound className="h-4 w-4 mr-2" />
+                      Contacts
+                    </Link>
                   </Button>
-                  <Button asChild variant="outline">
-                    <Link href={`/events/${event.id}/customize`}>Customize form</Link>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/events/${event.id}/follow-ups`}>
+                      <ClipboardList className="h-4 w-4 mr-2" />
+                      Follow-ups
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/events/${event.id}/reports`}>
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Reports
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/events/${event.id}/settings`}>
+                      <Settings2 className="h-4 w-4 mr-2" />
+                      Settings
+                    </Link>
                   </Button>
                 </div>
               </CardContent>

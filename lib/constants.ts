@@ -30,6 +30,8 @@ export const statusOptions = [
   "closed"
 ] as const;
 
+export const urgencyOptions = ["low", "medium", "high"] as const;
+
 export const eventTypeOptions = [
   "sabbath_visitor",
   "health_expo",
@@ -147,6 +149,7 @@ export const appRoleLabels: Record<AppRole, string> = {
 
 export type Interest = (typeof interestOptions)[number];
 export type FollowUpStatus = (typeof statusOptions)[number];
+export type UrgencyLevel = (typeof urgencyOptions)[number];
 export type EventType = (typeof eventTypeOptions)[number];
 export type TeamRole = keyof typeof roleLabels;
 export type FollowUpChannel = (typeof followUpChannelOptions)[number];

@@ -114,7 +114,7 @@ export type EventWorkspaceSummary = {
 export async function getEventWorkspaceSummary(churchId: string, eventId: string): Promise<EventWorkspaceSummary> {
   const supabase = await createClient();
 
-  const [{ data: event }, totalContacts, newContacts, assignedContacts, pendingFollowUps, completedFollowUps, overdueFollowUps, highUrgencyContacts, eventContactIds, recentContacts, dueFollowUps, teamSnapshot] = await Promise.all([
+  const [{ data: event }, totalContacts, newContacts, assignedContacts, followUpCounts, highUrgencyContacts, eventContactIds, recentContacts, dueFollowUps, teamSnapshot] = await Promise.all([
     supabase
       .from("events")
       .select("*")
@@ -148,25 +148,10 @@ export async function getEventWorkspaceSummary(churchId: string, eventId: string
       .is("deleted_at", null)
       .is("archived_at", null),
 
-    supabase
-      .from("follow_ups")
-      .select("id", { count: "exact", head: true })
-      .eq("church_id", churchId)
-      .is("completed_at", null)
-      .gte("due_at", new Date().toISOString()),
-
-    supabase
-      .from("follow_ups")
-      .select("id", { count: "exact", head: true })
-      .eq("church_id", churchId)
-      .not("completed_at", "is", null),
-
-    supabase
-      .from("follow_ups")
-      .select("id", { count: "exact", head: true })
-      .eq("church_id", churchId)
-      .is("completed_at", null)
-      .lt("due_at", new Date().toISOString()),
+    supabase.rpc("event_follow_up_counts", {
+      p_church_id: churchId,
+      p_event_id: eventId
+    }),
 
     supabase
       .from("contacts")
@@ -200,10 +185,12 @@ export async function getEventWorkspaceSummary(churchId: string, eventId: string
         contact_id,
         due_at,
         status,
-        contacts!inner(full_name, phone),
+        contacts!inner(id, full_name, phone, event_id, deleted_at),
         team_members(display_name)
       `)
       .eq("church_id", churchId)
+      .eq("contacts.event_id", eventId)
+      .is("contacts.deleted_at", null)
       .is("completed_at", null)
       .lte("due_at", new Date().toISOString())
       .order("due_at", { ascending: true })
@@ -221,6 +208,8 @@ export async function getEventWorkspaceSummary(churchId: string, eventId: string
   if (!event) {
     notFound();
   }
+
+  const counts = Array.isArray(followUpCounts) ? followUpCounts[0] : followUpCounts;
 
   const contactIds = (eventContactIds.data ?? []).map((c: { id: string }) => c.id);
 
@@ -288,9 +277,9 @@ export async function getEventWorkspaceSummary(churchId: string, eventId: string
       totalContacts: totalContacts.count ?? 0,
       newContacts: newContacts.count ?? 0,
       assignedContacts: assignedContacts.count ?? 0,
-      pendingFollowUps: pendingFollowUps.count ?? 0,
-      completedFollowUps: completedFollowUps.count ?? 0,
-      overdueFollowUps: overdueFollowUps.count ?? 0,
+      pendingFollowUps: Number(counts?.pending_follow_ups ?? 0),
+      completedFollowUps: Number(counts?.completed_follow_ups ?? 0),
+      overdueFollowUps: Number(counts?.overdue_follow_ups ?? 0),
       highUrgencyContacts: highUrgencyContacts.count ?? 0,
       prayerRequests: prayerRequests.count ?? 0,
       bibleStudyInterests: bibleStudyInterests.count ?? 0,
@@ -429,92 +418,53 @@ export async function getEventFollowUpsPage(
   params: EventFollowUpsParams = {}
 ): Promise<EventFollowUpsPage> {
   const supabase = await createClient();
-  const page = params.page ?? 1;
-  const pageSize = params.pageSize ?? 25;
+  const page = Math.max(1, Number(params.page ?? 1));
+  const pageSize = Math.min(100, Math.max(1, Number(params.pageSize ?? 25)));
   const offset = (page - 1) * pageSize;
 
-  const { data: eventContactIds } = await supabase
-    .from("contacts")
-    .select("id")
-    .eq("church_id", churchId)
-    .eq("event_id", eventId)
-    .is("deleted_at", null);
-
-  const contactIds = (eventContactIds ?? []).map((c: { id: string }) => c.id);
-
-  let query = supabase
-    .from("follow_ups")
-    .select(`
-      id,
-      contact_id,
-      assigned_to,
-      status,
-      channel,
-      next_action,
-      due_at,
-      completed_at,
-      created_at,
-      contacts!inner(
-        id,
-        full_name,
-        phone,
-        whatsapp_number,
-        email,
-        status,
-        urgency
-      ),
-      team_members(display_name)
-    `)
-    .eq("church_id", churchId)
-    .in("contact_id", contactIds)
-    .order("due_at", { ascending: true, nullsFirst: false })
-    .range(offset, offset + pageSize - 1);
-
-  if (params.assignedTo) {
-    query = query.eq("assigned_to", params.assignedTo);
-  }
-
-  if (params.status && params.status !== "all") {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    switch (params.status) {
-      case "overdue":
-        query = query.is("completed_at", null).lt("due_at", now.toISOString());
-        break;
-      case "today":
-        query = query.is("completed_at", null)
-          .gte("due_at", today.toISOString())
-          .lt("due_at", tomorrow.toISOString());
-        break;
-      case "upcoming":
-        query = query.is("completed_at", null).gte("due_at", tomorrow.toISOString());
-        break;
-      case "completed":
-        query = query.not("completed_at", "is", null);
-        break;
-    }
-  }
-
-  const { data, error } = await query;
+  const { data, error } = await supabase.rpc("event_follow_ups_page", {
+    p_church_id: churchId,
+    p_event_id: eventId,
+    p_status: params.status ?? "all",
+    p_assigned_to: params.assignedTo ?? null,
+    p_urgency: params.urgency ?? null,
+    p_limit: pageSize,
+    p_offset: offset
+  });
 
   if (error) {
     throw new Error(error.message);
   }
 
-  const followUps = (data ?? []).map((row: { id: string; contact_id: string; contacts: { full_name: string; phone: string; whatsapp_number: string | null; email: string | null; status: FollowUpStatus; urgency: "low" | "medium" | "high" }[]; team_members: { display_name: string }[]; assigned_to: string | null; status: FollowUpStatus; channel: string | null; next_action: string | null; due_at: string | null; completed_at: string | null; created_at: string }) => ({
+  const followUps = (data ?? []).map((row: {
+    id: string;
+    contact_id: string;
+    contact_name: string;
+    contact_phone: string;
+    contact_whatsapp: string | null;
+    contact_email: string | null;
+    contact_status: FollowUpStatus;
+    contact_urgency: "low" | "medium" | "high";
+    assigned_to: string | null;
+    assigned_name: string | null;
+    status: FollowUpStatus;
+    channel: string | null;
+    next_action: string | null;
+    due_at: string | null;
+    completed_at: string | null;
+    created_at: string;
+    total_count: bigint;
+  }) => ({
     id: row.id,
     contact_id: row.contact_id,
-    contact_name: row.contacts[0]?.full_name ?? "",
-    contact_phone: row.contacts[0]?.phone ?? "",
-    contact_whatsapp: row.contacts[0]?.whatsapp_number ?? null,
-    contact_email: row.contacts[0]?.email ?? null,
-    contact_status: row.contacts[0]?.status,
-    contact_urgency: row.contacts[0]?.urgency,
+    contact_name: row.contact_name,
+    contact_phone: row.contact_phone,
+    contact_whatsapp: row.contact_whatsapp,
+    contact_email: row.contact_email,
+    contact_status: row.contact_status,
+    contact_urgency: row.contact_urgency,
     assigned_to: row.assigned_to,
-    assigned_name: row.team_members[0]?.display_name ?? null,
+    assigned_name: row.assigned_name,
     status: row.status,
     channel: row.channel,
     next_action: row.next_action,
@@ -523,15 +473,11 @@ export async function getEventFollowUpsPage(
     created_at: row.created_at
   }));
 
-  const { count } = await supabase
-    .from("follow_ups")
-    .select("id", { count: "exact", head: true })
-    .eq("church_id", churchId)
-    .in("contact_id", contactIds);
+  const totalCount = Number(data?.[0]?.total_count ?? 0);
 
   return {
     followUps,
-    totalCount: count ?? 0,
+    totalCount,
     page,
     pageSize
   };

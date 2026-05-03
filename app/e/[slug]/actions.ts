@@ -91,6 +91,10 @@ export async function submitRegistrationAction(formData: FormData) {
   const template = getEventTemplate(event.event_type);
   const formConfig = getEffectiveFormConfig(event, template);
 
+  // Derive visitorType and templateType from server-loaded event, not client-submitted values
+  const serverVisitorType = event.event_type as VisitorType;
+  const serverTemplateType = event.event_type as VisitorType;
+
   // Parse phone and email based on visibility
   const phone = formConfig.show_phone ? parsed.data.phone?.trim() : undefined;
   const email = formConfig.show_email ? parsed.data.email?.trim() : undefined;
@@ -193,12 +197,12 @@ export async function submitRegistrationAction(formData: FormData) {
   const classification = classifyContact({
     selectedInterests: selectedInterests,
     message: classifierMessage,
-    visitorType: parsed.data.visitorType as VisitorType,
-    templateType: parsed.data.templateType as VisitorType
+    visitorType: serverVisitorType,
+    templateType: serverTemplateType
   });
   const classificationPayload = {
     ...classification,
-    template_type: parsed.data.templateType,
+    template_type: serverTemplateType,
     selected_topic: parsed.data.topic ?? null,
     classification_version: "rule_v1",
     rule_based: true,
@@ -220,9 +224,9 @@ export async function submitRegistrationAction(formData: FormData) {
     p_prayer_visibility: finalPrayerVisibility,
     p_consent_scope: ["follow_up"],
     p_preferred_contact_methods: parsed.data.preferred_contact_methods,
-    p_consent_source: parsed.data.templateType,
+    p_consent_source: serverTemplateType,
     p_consent_given: true,
-    p_consent_text_snapshot: parsed.data.consentTextSnapshot ?? null,
+    p_consent_text_snapshot: `Contact follow-up consent for ${event.name}. Methods: ${parsed.data.preferred_contact_methods.join(", ")}.`,
     p_privacy_policy_version: parsed.data.privacyPolicyVersion ?? "contact-consent-v1",
     p_consent_status: "given",
     p_consent_recorded_by: null,

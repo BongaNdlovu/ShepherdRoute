@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Archive, CalendarDays, Heart, Lock, MapPin, QrCode, Trash2, Undo2, Unlock, UsersRound, BookOpen, Droplets } from "lucide-react";
-import { deleteEventAction, updateEventArchiveAction, updateEventStatusAction } from "@/app/(dashboard)/actions";
+import { Archive, CalendarDays, Heart, Lock, MapPin, QrCode, Undo2, Unlock, UsersRound, BookOpen, Droplets } from "lucide-react";
+import { updateEventArchiveAction, updateEventStatusAction } from "@/app/(dashboard)/actions";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { InterestPills } from "@/components/app/interest-pills";
 import { QrCard } from "@/components/app/qr-card";
@@ -282,27 +282,6 @@ export default async function EventDetailPage({
           </Card>
         )}
       </div>
-
-      <Card className="border-rose-200">
-        <CardHeader>
-          <CardTitle className="text-rose-700">Delete event</CardTitle>
-          <CardDescription>Use this for test events or permanent cleanup. Contacts captured from this event will remain, but their event link will be cleared by the database.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form action={deleteEventAction} className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-            <input type="hidden" name="eventId" value={event.id} />
-            <input type="hidden" name="eventName" value={event.name} />
-            <div className="grid gap-2">
-              <label htmlFor="confirmation" className="text-sm font-bold">Type the event name to delete</label>
-              <input id="confirmation" name="confirmation" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring" placeholder={event.name} />
-            </div>
-            <Button type="submit" variant="destructive">
-              <Trash2 className="h-4 w-4" />
-              Delete event
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
     </section>
   );
 }

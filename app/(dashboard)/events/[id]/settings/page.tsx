@@ -1,8 +1,11 @@
 import { Archive, Lock, QrCode, Trash2, Undo2, Unlock } from "lucide-react";
-import { deleteEventAction, updateEventArchiveAction, updateEventStatusAction } from "@/app/(dashboard)/actions";
+import { deleteEventAction, updateEventArchiveAction, updateEventStatusAction, updateEventAction } from "@/app/(dashboard)/_actions/events";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { getChurchContext, getEvent } from "@/lib/data";
 import { absoluteRequestUrl } from "@/lib/server-url";
 
@@ -24,6 +27,37 @@ export default async function EventSettingsPage({
   return (
     <section className="space-y-4">
       <EventWorkspaceTabs eventId={event.id} />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Event details</CardTitle>
+          <CardDescription>Edit the basic information for this event.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form action={updateEventAction} className="grid gap-4">
+            <input type="hidden" name="eventId" value={event.id} />
+            <div className="grid gap-2">
+              <Label htmlFor="name">Event name</Label>
+              <Input id="name" name="name" defaultValue={event.name} required />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea id="description" name="description" defaultValue={event.description || ""} rows={3} />
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="startsOn">Start date</Label>
+                <Input id="startsOn" name="startsOn" type="date" defaultValue={event.starts_on ? event.starts_on.split("T")[0] : ""} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="location">Location</Label>
+                <Input id="location" name="location" defaultValue={event.location || ""} />
+              </div>
+            </div>
+            <Button type="submit">Save changes</Button>
+          </form>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -100,8 +134,7 @@ export default async function EventSettingsPage({
         <CardHeader>
           <CardTitle className="text-rose-700">Delete event</CardTitle>
           <CardDescription>
-            Use this for test events or permanent cleanup. Contacts captured from this event will remain,
-            but their event link will be cleared by the database.
+            Only empty test events can be deleted. Events with contacts must be archived or closed so registration history and reports remain safe.
           </CardDescription>
         </CardHeader>
         <CardContent>

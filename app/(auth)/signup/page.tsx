@@ -67,7 +67,7 @@ export default async function SignupPage({
               <Label htmlFor="password">Password</Label>
               <Input id="password" name="password" type="password" autoComplete="new-password" minLength={8} required />
             </div>
-            <Button size="lg" type="submit">{params.invite ? "Create account" : "Create church account"}</Button>
+            <Button size="lg" type="submit">{params.invite ? "Create account" : "Create workspace account"}</Button>
           </form>
           <p className="mt-5 text-center text-sm text-muted-foreground">
             Already have an account?{" "}

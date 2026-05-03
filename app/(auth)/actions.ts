@@ -8,6 +8,7 @@ import { friendlyAuthError } from "@/lib/app-errors";
 import { createClient } from "@/lib/supabase/server";
 import { absoluteUrl } from "@/lib/utils";
 import { getPreferredDashboardPathForUser } from "@/lib/data-profile";
+import { normalizeWorkspaceType } from "@/lib/workspace-type";
 
 const optionalInviteTokenSchema = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -30,6 +31,7 @@ const signupSchema = loginSchema.extend({
     (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
     z.string().trim().min(2).max(120).optional()
   ),
+  workspaceType: z.enum(["church", "ministry"]).default("church"),
   fullName: z.string().min(2).max(120),
   platformSignupCode: optionalSignupCodeSchema
 }).superRefine((value, context) => {
@@ -95,6 +97,7 @@ export async function signupAction(formData: FormData) {
   const rawInviteToken = normalizeInviteToken(formData.get("inviteToken"));
   const parsed = signupSchema.safeParse({
     churchName: formData.get("churchName"),
+    workspaceType: formData.get("workspaceType") || "church",
     fullName: formData.get("fullName"),
     email: formData.get("email"),
     password: formData.get("password"),
@@ -116,7 +119,10 @@ export async function signupAction(formData: FormData) {
         full_name: parsed.data.fullName,
         ...(parsed.data.inviteToken
           ? { invite_token: parsed.data.inviteToken }
-          : { church_name: parsed.data.churchName })
+          : {
+              church_name: parsed.data.churchName,
+              workspace_type: normalizeWorkspaceType(parsed.data.workspaceType)
+            })
       }
     }
   });

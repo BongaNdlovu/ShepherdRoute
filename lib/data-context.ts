@@ -27,6 +27,9 @@ export type ChurchContext = {
   isAppAdmin: boolean;
   appAdminRole: string | null;
   isProtectedOwner: boolean;
+  membershipId: string;
+  teamMemberId: string | null;
+  appRole: string | null;
 };
 
 export const getChurchContext = cache(async function getChurchContext(): Promise<ChurchContext> {
@@ -50,7 +53,7 @@ export const getChurchContext = cache(async function getChurchContext(): Promise
       .single(),
     supabase
       .from("church_memberships")
-      .select("church_id, role, churches(name, workspace_type, workspace_status)")
+      .select("id, church_id, role, churches(name, workspace_type, workspace_status)")
       .eq("user_id", user.id)
       .eq("status", "active")
       .order("created_at", { ascending: true }),
@@ -70,6 +73,7 @@ export const getChurchContext = cache(async function getChurchContext(): Promise
   const selectedWorkspaceType = (selectedChurch?.workspace_type === "ministry" ? "ministry" : "church") as WorkspaceType;
   const selectedWorkspaceStatus = (selectedChurch?.workspace_status === "inactive" ? "inactive" : "active") as WorkspaceStatus;
   const selectedWorkspaceLabel = selectedWorkspaceType === "ministry" ? "Ministry" : "Church";
+  const selectedMembershipId = (selectedMembership as { id: string }).id;
 
   const membershipOptions = memberships.map((membership) => {
     const church = Array.isArray(membership.churches) ? membership.churches[0] : membership.churches;
@@ -83,6 +87,14 @@ export const getChurchContext = cache(async function getChurchContext(): Promise
     };
   });
 
+  const { data: currentTeamMember } = await supabase
+    .from("team_members")
+    .select("id, app_role")
+    .eq("church_id", selectedMembership.church_id)
+    .eq("membership_id", selectedMembershipId)
+    .eq("is_active", true)
+    .maybeSingle();
+
   return {
     userId: user.id,
     churchId: selectedMembership.church_id,
@@ -95,6 +107,9 @@ export const getChurchContext = cache(async function getChurchContext(): Promise
     memberships: membershipOptions,
     isAppAdmin: Boolean(appAdmin),
     appAdminRole: appAdmin?.role ?? null,
-    isProtectedOwner: appAdmin?.is_protected_owner ?? false
+    isProtectedOwner: appAdmin?.is_protected_owner ?? false,
+    membershipId: selectedMembershipId,
+    teamMemberId: currentTeamMember?.id ?? null,
+    appRole: currentTeamMember?.app_role ?? null
   };
 });

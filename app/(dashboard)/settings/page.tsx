@@ -29,7 +29,7 @@ export default async function SettingsPage({
   return (
     <DashboardShell
       title="Settings"
-      description="Manage simple account preferences and church setup links."
+      description={`Manage simple account preferences and ${context.workspaceLabel.toLowerCase()} setup links.`}
     >
       <section className="space-y-5">
         {params.error ? <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{params.error}</p> : null}
@@ -74,7 +74,7 @@ export default async function SettingsPage({
           <div className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Church className="h-5 w-5" /> Church workspace</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Church className="h-5 w-5" /> {context.workspaceLabel} workspace</CardTitle>
                 <CardDescription>{context.churchName}</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-2">
@@ -91,7 +91,7 @@ export default async function SettingsPage({
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-muted-foreground">
                 <p>Your login email is managed by Supabase Auth and is read-only in ShepherdRoute for now.</p>
-                <p>Church roles are managed by authorized church leaders or the ShepherdRoute owner.</p>
+                <p>{context.workspaceLabel} roles are managed by authorized {context.workspaceLabel.toLowerCase()} leaders or the ShepherdRoute owner.</p>
                 <p>Prayer request visibility is protected by role-based access rules.</p>
               </CardContent>
             </Card>
