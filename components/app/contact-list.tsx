@@ -6,7 +6,7 @@ import { updateContactAction, updateContactLifecycleAction } from "@/app/(dashbo
 import { InterestPills } from "@/components/app/interest-pills";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
-import { statusLabels, statusOptions, contactMethodLabels, assignmentRoleLabels, assignmentRoleOptions, type Interest } from "@/lib/constants";
+import { statusLabels, statusOptions, contactMethodLabels, assignmentRoleLabels, assignmentRoleOptions } from "@/lib/constants";
 import type { ContactListItem } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { generateMessage, createWhatsappLink } from "@/lib/whatsapp";
@@ -33,7 +33,7 @@ export function ContactList({ churchName, contacts, team, compactLists = false, 
           const message = generateMessage({
             name: contact.full_name,
             phone: contact.phone,
-            interests: contact.interests as Interest[],
+            interests: contact.interests,
             churchName,
             eventName: contact.event_name
           });
@@ -72,7 +72,7 @@ export function ContactList({ churchName, contacts, team, compactLists = false, 
                   <p className={cn(compactLists ? "mt-0.5" : "mt-1", "text-xs text-muted-foreground")}>No contact preference recorded</p>
                 )}
               </div>
-              <InterestPills interests={contact.interests as Interest[]} />
+              <InterestPills interests={contact.interests} />
               <div className={cn(compactLists ? "space-y-1" : "space-y-2")}>
                 <StatusBadge status={contact.status} />
                 <p className="text-sm font-semibold text-slate-600">

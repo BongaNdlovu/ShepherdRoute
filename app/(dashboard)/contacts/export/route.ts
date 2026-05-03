@@ -1,6 +1,6 @@
 import { getChurchContext, getContactsPage } from "@/lib/data";
 import { csvResponse, toCsv } from "@/lib/csv";
-import { interestLabels, statusLabels, type FollowUpStatus, type Interest } from "@/lib/constants";
+import { interestLabels, statusLabels, type FollowUpStatus } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -94,7 +94,7 @@ async function collectContactRows(
     for (const contact of result.contacts) {
       contactIds.push(contact.id);
       const interests = (contact.interests ?? [])
-        .map((interest) => interestLabels[interest as Interest] ?? interest)
+        .map((interest) => interestLabels[interest] ?? interest)
         .join("; ");
 
       rows.push([

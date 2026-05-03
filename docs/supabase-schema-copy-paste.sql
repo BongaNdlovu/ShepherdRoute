@@ -2013,6 +2013,8 @@ as $$
     filtered.status,
     filtered.urgency,
     filtered.assigned_to,
+    filtered.assigned_handling_role,
+    filtered.recommended_assigned_role,
     filtered.do_not_contact,
     filtered.duplicate_of_contact_id,
     filtered.duplicate_match_confidence,
@@ -2357,6 +2359,8 @@ as $$
     filtered.status,
     filtered.urgency,
     filtered.assigned_to,
+    filtered.assigned_handling_role,
+    filtered.recommended_assigned_role,
     filtered.do_not_contact,
     filtered.duplicate_of_contact_id,
     filtered.duplicate_match_confidence,
@@ -2772,6 +2776,30 @@ drop function if exists private.submit_event_registration_impl(
   boolean
 );
 
+drop function if exists private.submit_event_registration_impl(
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  public.interest_tag[],
+  text,
+  public.urgency_level,
+  jsonb,
+  public.prayer_visibility,
+  text[],
+  text,
+  boolean,
+  text,
+  text,
+  text,
+  uuid,
+  jsonb,
+  text
+);
+
 create or replace function private.submit_event_registration_impl(
   p_slug text,
   p_full_name text,
@@ -2819,6 +2847,7 @@ declare
   first_name text;
   digits text;
   journey_title text;
+  form_answer jsonb;
 begin
   if p_consent_given is distinct from true then
     raise exception 'Consent is required before follow-up can be requested.';
@@ -2854,6 +2883,13 @@ begin
         when 'bible_worker' then array['bible_worker','pastor','elder','admin']
         when 'health_leader' then array['health_leader','pastor','elder','admin']
         when 'prayer_team' then array['prayer_team','pastor','elder','admin']
+        when 'youth_leader' then array['youth_leader','elder','pastor','admin']
+        when 'family_ministries' then array['elder','pastor','admin']
+        when 'deacon_deaconess' then array['elder','pastor','admin']
+        when 'interest_coordinator' then array['elder','pastor','admin']
+        when 'event_leader' then array['elder','pastor','admin']
+        when 'admin_secretary' then array['elder','pastor','admin']
+        when 'general_follow_up_team' then array['elder','pastor','admin']
         else array['elder','pastor','admin']
       end
     )
@@ -2864,6 +2900,13 @@ begin
       when 'bible_worker' then array['bible_worker','pastor','elder','admin']
       when 'health_leader' then array['health_leader','pastor','elder','admin']
       when 'prayer_team' then array['prayer_team','pastor','elder','admin']
+      when 'youth_leader' then array['youth_leader','elder','pastor','admin']
+      when 'family_ministries' then array['elder','pastor','admin']
+      when 'deacon_deaconess' then array['elder','pastor','admin']
+      when 'interest_coordinator' then array['elder','pastor','admin']
+      when 'event_leader' then array['elder','pastor','admin']
+      when 'admin_secretary' then array['elder','pastor','admin']
+      when 'general_follow_up_team' then array['elder','pastor','admin']
       else array['elder','pastor','admin']
     end,
     role::text
@@ -2929,6 +2972,39 @@ begin
     values (target_event.church_id, new_contact_id, selected_interest)
     on conflict (contact_id, interest) do nothing;
   end loop;
+
+  -- Insert form answers if provided
+  if jsonb_array_length(p_form_answers) > 0 then
+    for form_answer in select * from jsonb_to_recordset(p_form_answers) as x(
+      question_name text,
+      question_label text,
+      question_type text,
+      answer_value jsonb,
+      answer_display jsonb
+    )
+    loop
+      insert into public.contact_form_answers (
+        church_id,
+        contact_id,
+        event_id,
+        question_name,
+        question_label,
+        question_type,
+        answer_value,
+        answer_display
+      )
+      values (
+        target_event.church_id,
+        new_contact_id,
+        target_event.id,
+        form_answer.question_name,
+        form_answer.question_label,
+        form_answer.question_type,
+        form_answer.answer_value,
+        form_answer.answer_display
+      );
+    end loop;
+  end if;
 
   if nullif(trim(coalesce(p_message, '')), '') is not null then
     insert into public.prayer_requests (church_id, contact_id, request_text, visibility)
@@ -3055,7 +3131,13 @@ grant execute on function private.submit_event_registration_impl(
   public.prayer_visibility,
   text[],
   text,
-  boolean
+  boolean,
+  text,
+  text,
+  text,
+  uuid,
+  jsonb,
+  text
 ) to anon, authenticated;
 
 create or replace function public.submit_event_registration(

@@ -29,7 +29,7 @@ export type ContactListItem = {
   event_id: string | null;
   event_name: string | null;
   assigned_name: string | null;
-  interests: string[];
+  interests: Interest[];
   preferred_contact_methods: string[] | null;
   total_count: number;
 };
@@ -188,7 +188,7 @@ export async function getContact(churchId: string, id: string): Promise<ContactD
   const [{ data: contact, error: contactError }, { data: prayer }, { data: team }, { data: followUps }, { data: messages }] = await Promise.all([
     supabase
       .from("contacts")
-      .select("id, person_id, full_name, phone, email, whatsapp_number, area, language, best_time_to_contact, status, urgency, assigned_to, assigned_handling_role, consent_given, consent_at, consent_source, consent_scope, preferred_contact_methods, consent_status, consent_text_snapshot, privacy_policy_version, consent_recorded_by, do_not_contact, do_not_contact_at, archived_at, duplicate_of_contact_id, duplicate_match_confidence, duplicate_match_reason, classification_payload, events(name, event_type), team_members(display_name), contact_interests(interest)")
+      .select("id, person_id, full_name, phone, email, whatsapp_number, area, language, best_time_to_contact, status, urgency, assigned_to, assigned_handling_role, recommended_assigned_role, consent_given, consent_at, consent_source, consent_scope, preferred_contact_methods, consent_status, consent_text_snapshot, privacy_policy_version, consent_recorded_by, do_not_contact, do_not_contact_at, archived_at, duplicate_of_contact_id, duplicate_match_confidence, duplicate_match_reason, classification_payload, events(name, event_type), team_members(display_name), contact_interests(interest)")
       .eq("church_id", churchId)
       .eq("id", id)
       .is("deleted_at", null)

@@ -2119,6 +2119,8 @@ as $$
     filtered.status,
     filtered.urgency,
     filtered.assigned_to,
+    filtered.assigned_handling_role,
+    filtered.recommended_assigned_role,
     filtered.do_not_contact,
     filtered.duplicate_of_contact_id,
     filtered.duplicate_match_confidence,
@@ -2377,6 +2379,7 @@ returns table (
   urgency public.urgency_level,
   assigned_to uuid,
   assigned_handling_role text,
+  recommended_assigned_role text,
   do_not_contact boolean,
   duplicate_of_contact_id uuid,
   duplicate_match_confidence numeric,
@@ -2462,6 +2465,8 @@ as $$
     filtered.status,
     filtered.urgency,
     filtered.assigned_to,
+    filtered.assigned_handling_role,
+    filtered.recommended_assigned_role,
     filtered.do_not_contact,
     filtered.duplicate_of_contact_id,
     filtered.duplicate_match_confidence,
@@ -2984,6 +2989,13 @@ begin
         when 'bible_worker' then array['bible_worker','pastor','elder','admin']
         when 'health_leader' then array['health_leader','pastor','elder','admin']
         when 'prayer_team' then array['prayer_team','pastor','elder','admin']
+        when 'youth_leader' then array['youth_leader','elder','pastor','admin']
+        when 'family_ministries' then array['elder','pastor','admin']
+        when 'deacon_deaconess' then array['elder','pastor','admin']
+        when 'interest_coordinator' then array['elder','pastor','admin']
+        when 'event_leader' then array['elder','pastor','admin']
+        when 'admin_secretary' then array['elder','pastor','admin']
+        when 'general_follow_up_team' then array['elder','pastor','admin']
         else array['elder','pastor','admin']
       end
     )
@@ -2994,6 +3006,13 @@ begin
       when 'bible_worker' then array['bible_worker','pastor','elder','admin']
       when 'health_leader' then array['health_leader','pastor','elder','admin']
       when 'prayer_team' then array['prayer_team','pastor','elder','admin']
+      when 'youth_leader' then array['youth_leader','elder','pastor','admin']
+      when 'family_ministries' then array['elder','pastor','admin']
+      when 'deacon_deaconess' then array['elder','pastor','admin']
+      when 'interest_coordinator' then array['elder','pastor','admin']
+      when 'event_leader' then array['elder','pastor','admin']
+      when 'admin_secretary' then array['elder','pastor','admin']
+      when 'general_follow_up_team' then array['elder','pastor','admin']
       else array['elder','pastor','admin']
     end,
     role::text
