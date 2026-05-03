@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +27,8 @@ export default async function EventCustomizePage({
 
   return (
     <section className="space-y-6">
+      <EventWorkspaceTabs eventId={event.event.id} />
+
       <div>
         <h1 className="text-2xl font-black">Customize form: {event.event.name}</h1>
         <p className="text-muted-foreground">Customize the public form heading, description, and branding for this event.</p>
