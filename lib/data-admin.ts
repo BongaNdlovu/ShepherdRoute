@@ -53,6 +53,8 @@ export type OwnerPaginationParams = {
   pageSize?: string;
 };
 
+export type OwnerWorkspaceType = 'church' | 'ministry';
+
 export type OwnerPaginatedResult<T> = {
   items: T[];
   total: number;
@@ -195,7 +197,7 @@ export async function getOwnerAccountRows() {
   return (data ?? []) as OwnerAccountRow[];
 }
 
-export async function getOwnerChurchesPage(params: OwnerPaginationParams): Promise<OwnerPaginatedResult<OwnerChurchListItem>> {
+async function getOwnerWorkspacesPage(params: OwnerPaginationParams = {}, workspaceType: OwnerWorkspaceType): Promise<OwnerPaginatedResult<OwnerChurchListItem>> {
   const supabase = await createClient();
   const page = normalizePage(params.page);
   const pageSize = normalizePageSize(params.pageSize);
@@ -205,6 +207,7 @@ export async function getOwnerChurchesPage(params: OwnerPaginationParams): Promi
   let query = supabase
     .from("churches")
     .select("id, name, created_at, workspace_type, workspace_status, status_changed_at, status_change_reason, team_members(count), church_memberships(count), events(count)", { count: "exact" })
+    .eq("workspace_type", workspaceType)
     .order("created_at", { ascending: false })
     .range(offset, offset + pageSize - 1);
 
@@ -265,6 +268,14 @@ export async function getOwnerChurchesPage(params: OwnerPaginationParams): Promi
   }));
 
   return pageResult(items, count ?? 0, page, pageSize);
+}
+
+export async function getOwnerChurchesPage(params: OwnerPaginationParams = {}): Promise<OwnerPaginatedResult<OwnerChurchListItem>> {
+  return getOwnerWorkspacesPage(params, "church");
+}
+
+export async function getOwnerMinistriesPage(params: OwnerPaginationParams = {}): Promise<OwnerPaginatedResult<OwnerChurchListItem>> {
+  return getOwnerWorkspacesPage(params, "ministry");
 }
 
 export async function getOwnerChurchDetail(churchId: string): Promise<OwnerChurchDetail> {

@@ -109,4 +109,90 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  .cinematic-shell {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid hsl(var(--border));
+    background:
+      radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 32rem),
+      radial-gradient(circle at bottom right, rgba(15, 23, 42, 0.12), transparent 28rem),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+    box-shadow:
+      0 24px 80px rgba(15, 23, 42, 0.10),
+      inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  }
+
+  .cinematic-shell::before {
+    content: '';
+    position: absolute;
+    inset: -35%;
+    pointer-events: none;
+    background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.45) 48%, transparent 62%);
+    transform: translateX(-18%) rotate(8deg);
+    opacity: 0.45;
+  }
+
+  .cinematic-dark-panel {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    background:
+      radial-gradient(circle at top left, rgba(59, 130, 246, 0.24), transparent 28rem),
+      radial-gradient(circle at bottom right, rgba(245, 158, 11, 0.10), transparent 24rem),
+      linear-gradient(135deg, #0f172a, #111827 58%, #020617);
+    color: #f8fafc;
+    box-shadow: 0 28px 90px rgba(15, 23, 42, 0.24);
+  }
+
+  .cinematic-dark-panel::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: linear-gradient(to bottom, black, transparent 80%);
+  }
+
+  .cinematic-lift {
+    transition:
+      transform 180ms ease,
+      box-shadow 180ms ease,
+      border-color 180ms ease;
+  }
+
+  .cinematic-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.14);
+  }
+
+  .cinematic-fade-up {
+    animation: cinematic-fade-up 560ms ease both;
+  }
+}
+
+@keyframes cinematic-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinematic-fade-up {
+    animation: none !important;
+  }
+
+  .cinematic-lift,
+  .cinematic-lift:hover {
+    transition: none !important;
+    transform: none !important;
+  }
 }

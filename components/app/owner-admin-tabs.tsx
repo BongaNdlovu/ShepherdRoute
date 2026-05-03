@@ -9,7 +9,25 @@ const tabs = [
   { href: "/contacts", label: "Contacts" }
 ];
 
-export function OwnerAdminTabs({ churchId, active }: { churchId: string; active: "overview" | "team" | "profiles" | "events" | "contacts" }) {
+type OwnerAdminTabsProps = {
+  churchId?: string;
+  workspaceId?: string;
+  basePath?: '/admin/churches' | '/admin/ministries';
+  active: "overview" | "team" | "profiles" | "events" | "contacts";
+};
+
+export function OwnerAdminTabs({
+  churchId,
+  workspaceId,
+  basePath = '/admin/churches',
+  active
+}: OwnerAdminTabsProps) {
+  const resolvedWorkspaceId = workspaceId ?? churchId;
+
+  if (!resolvedWorkspaceId) {
+    return null;
+  }
+
   const activeMap = {
     overview: "",
     team: "/team",
@@ -25,7 +43,7 @@ export function OwnerAdminTabs({ churchId, active }: { churchId: string; active:
         return (
           <Link
             key={tab.href || "overview"}
-            href={`/admin/churches/${churchId}${tab.href}`}
+            href={`${basePath}/${resolvedWorkspaceId}${tab.href}`}
             className={cn(
               "rounded-md px-3 py-2 text-sm font-semibold transition",
               isActive ? "bg-primary text-primary-foreground" : "text-slate-600 hover:bg-muted"

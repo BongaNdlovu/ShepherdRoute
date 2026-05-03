@@ -1,4 +1,6 @@
 export * from "@/lib/data-admin";
+
+export { getOwnerMinistriesPage } from "./data-admin";
 export * from "@/lib/data-contacts";
 export * from "@/lib/data-context";
 export * from "@/lib/data-events";
