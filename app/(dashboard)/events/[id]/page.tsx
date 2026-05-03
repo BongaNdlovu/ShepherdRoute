@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Archive, CalendarDays, Heart, Lock, MapPin, QrCode, Undo2, Unlock, UsersRound, BookOpen, Droplets, Trash2 } from "lucide-react";
 import { deleteEventAction, updateEventArchiveAction, updateEventStatusAction } from "@/app/(dashboard)/actions";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { InterestPills } from "@/components/app/interest-pills";
 import { QrCard } from "@/components/app/qr-card";
@@ -31,8 +32,9 @@ export default async function EventDetailPage({
   const isArchived = Boolean(event.archived_at);
 
   return (
-    <section className="space-y-4">
-      <EventWorkspaceTabs eventId={event.id} />
+    <CinematicSection className="cinematic-fade-up">
+      <section className="space-y-4">
+        <EventWorkspaceTabs eventId={event.id} />
 
       <Card>
         <CardHeader>
@@ -298,5 +300,6 @@ export default async function EventDetailPage({
         )}
       </div>
     </section>
+    </CinematicSection>
   );
 }

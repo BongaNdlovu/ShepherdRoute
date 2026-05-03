@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Activity, ClipboardList, Download, Heart, UsersRound } from "lucide-react";
 import { StatCard } from "@/components/app/stat-card";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,17 +30,19 @@ export default async function EventReportPage({
     });
   } catch {
     return (
-      <section className="space-y-4">
-        <EventWorkspaceTabs eventId={id} />
-        <Card>
-          <CardContent className="p-6">
-            <h1 className="text-lg font-semibold">Access restricted</h1>
-            <p className="text-sm text-muted-foreground">
-              You do not have permission to view event reports.
-            </p>
-          </CardContent>
-        </Card>
-      </section>
+      <CinematicSection className="cinematic-fade-up">
+        <section className="space-y-4">
+          <EventWorkspaceTabs eventId={id} />
+          <Card>
+            <CardContent className="p-6">
+              <h1 className="text-lg font-semibold">Access restricted</h1>
+              <p className="text-sm text-muted-foreground">
+                You do not have permission to view event reports.
+              </p>
+            </CardContent>
+          </Card>
+        </section>
+      </CinematicSection>
     );
   }
 
@@ -47,8 +50,9 @@ export default async function EventReportPage({
   const template = getEventTemplate(event.event_type);
 
   return (
-    <section className="space-y-4">
-      <EventWorkspaceTabs eventId={event.id} />
+    <CinematicSection className="cinematic-fade-up">
+      <section className="space-y-4">
+        <EventWorkspaceTabs eventId={event.id} />
 
       <header className="flex flex-col gap-3 rounded-lg border bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
         <div>
@@ -137,5 +141,6 @@ export default async function EventReportPage({
         </Card>
       </div>
     </section>
+    </CinematicSection>
   );
 }

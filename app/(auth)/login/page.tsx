@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { loginAction } from "@/app/(auth)/actions";
 import { BrandLogo } from "@/components/app/brand-logo";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CardTitle, CardDescription } from "@/components/ui/card";
 
 export const metadata = {
   title: "Login"
@@ -20,15 +21,15 @@ export default async function LoginPage({
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
+      <CinematicSection className="w-full max-w-md">
+        <div className="text-center">
           <BrandLogo className="mx-auto mb-3 h-20 w-auto object-contain" priority />
           <CardTitle className="text-2xl">{params.invite ? "Login to accept invite" : "Welcome back to ShepherdRoute"}</CardTitle>
           <CardDescription>
             {params.invite ? "Use the invited email address so the workspace can be linked safely." : "The follow-up pathway for churches that care."}
           </CardDescription>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="mt-4">
           {params.error ? (
             <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
               {params.error}
@@ -52,8 +53,8 @@ export default async function LoginPage({
               Create an account
             </Link>
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </CinematicSection>
     </main>
   );
 }

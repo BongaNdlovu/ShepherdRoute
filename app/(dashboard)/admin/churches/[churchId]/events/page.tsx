@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { OwnerAdminTabs } from "@/components/app/owner-admin-tabs";
 import { OwnerPagination } from "@/components/app/owner-pagination";
 import { OwnerSearchForm } from "@/components/app/owner-search-form";
@@ -28,10 +29,10 @@ export default async function OwnerChurchEventsPage({
 
   return (
     <section className="space-y-4">
-      <header className="rounded-lg border bg-white p-5 shadow-sm">
+      <CinematicSection variant="dark" className="cinematic-fade-up">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-700">Owner church view</p>
-        <h2 className="mt-1 text-2xl font-black tracking-tight">{church.name} - Events</h2>
-      </header>
+        <h2 className="mt-1 text-2xl font-black tracking-tight text-white">{church.name} - Events</h2>
+      </CinematicSection>
 
       <OwnerAdminTabs churchId={church.id} active="events" />
 

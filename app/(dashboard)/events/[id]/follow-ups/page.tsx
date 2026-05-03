@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getChurchContext, getTeamMembers } from "@/lib/data";
 import { getEventFollowUpsPage, type EventFollowUpsParams } from "@/lib/data-events";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
@@ -26,8 +27,9 @@ export default async function EventFollowUpsPage({
   const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
-    <section className="space-y-4">
-      <EventWorkspaceTabs eventId={id} />
+    <CinematicSection className="cinematic-fade-up">
+      <section className="space-y-4">
+        <EventWorkspaceTabs eventId={id} />
 
       <Card>
         <CardHeader>
@@ -143,5 +145,6 @@ export default async function EventFollowUpsPage({
         </CardContent>
       </Card>
     </section>
+    </CinematicSection>
   );
 }

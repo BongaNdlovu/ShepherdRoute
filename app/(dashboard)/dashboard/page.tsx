@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Activity, AlertTriangle, CalendarClock, ClipboardList, Droplets, Heart, HeartPulse, Plus, QrCode, UserRoundCheck, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { ContextualBanner, type OnboardingStep } from "@/components/app/contextual-banner";
 import { DashboardShell } from "@/components/app/dashboard-shell";
 import { EmptyState } from "@/components/app/empty-state";
@@ -92,8 +93,9 @@ export default async function DashboardPage() {
         </div>
       }
     >
-      <section className="space-y-5">
-        {showOnboardingBanner ? <ContextualBanner steps={onboardingSteps} /> : null}
+      <CinematicSection className="cinematic-fade-up">
+        <section className="space-y-5">
+          {showOnboardingBanner ? <ContextualBanner steps={onboardingSteps} /> : null}
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <StatCard icon={CalendarClock} title="Due today" value={summary.due_today_count} note="Follow-up tasks due before midnight." />
@@ -188,6 +190,7 @@ export default async function DashboardPage() {
           </div>
         </div>
       </section>
+      </CinematicSection>
     </DashboardShell>
   );
 }

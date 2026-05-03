@@ -3,6 +3,7 @@ import { getChurchContext, getTeamMembers } from "@/lib/data";
 import { getEventContactsPage, type EventContactsParams } from "@/lib/data-events";
 import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 import { statusOptions, urgencyOptions } from "@/lib/constants";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { InterestPills } from "@/components/app/interest-pills";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
@@ -32,17 +33,19 @@ export default async function EventContactsPage({
     });
   } catch {
     return (
-      <section className="space-y-4">
-        <EventWorkspaceTabs eventId={id} />
-        <Card>
-          <CardContent className="p-6">
-            <h1 className="text-lg font-semibold">Access restricted</h1>
-            <p className="text-sm text-muted-foreground">
-              You do not have permission to view event contacts.
-            </p>
-          </CardContent>
-        </Card>
-      </section>
+      <CinematicSection className="cinematic-fade-up">
+        <section className="space-y-4">
+          <EventWorkspaceTabs eventId={id} />
+          <Card>
+            <CardContent className="p-6">
+              <h1 className="text-lg font-semibold">Access restricted</h1>
+              <p className="text-sm text-muted-foreground">
+                You do not have permission to view event contacts.
+              </p>
+            </CardContent>
+          </Card>
+        </section>
+      </CinematicSection>
     );
   }
 
@@ -52,8 +55,9 @@ export default async function EventContactsPage({
   const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
-    <section className="space-y-4">
-      <EventWorkspaceTabs eventId={id} />
+    <CinematicSection className="cinematic-fade-up">
+      <section className="space-y-4">
+        <EventWorkspaceTabs eventId={id} />
 
       <Card>
         <CardHeader>
@@ -182,5 +186,6 @@ export default async function EventContactsPage({
         </CardContent>
       </Card>
     </section>
+    </CinematicSection>
   );
 }

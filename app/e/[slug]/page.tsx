@@ -6,6 +6,7 @@ import { BrandLogo } from "@/components/app/brand-logo";
 import { ExternalBrandImage } from "@/components/app/external-brand-image";
 import { PendingSubmitButton } from "@/components/app/pending-submit-button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -126,7 +127,8 @@ export default async function PublicEventPage({
         } as CSSProperties
       }
     >
-      <section className="mx-auto max-w-3xl">
+      <CinematicSection>
+        <section className="mx-auto max-w-3xl">
         <Card className="overflow-hidden rounded-2xl border-white/80 bg-white/95 shadow-card">
           {brandingConfig.cover_image_url ? (
             <ExternalBrandImage
@@ -377,6 +379,7 @@ export default async function PublicEventPage({
           <Link href="/copyright" className="font-semibold underline-offset-4 hover:underline">Copyright notice</Link>
         </footer>
       </section>
+      </CinematicSection>
     </main>
   );
 }

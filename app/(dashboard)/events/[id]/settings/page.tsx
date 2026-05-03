@@ -1,5 +1,6 @@
 import { Archive, Lock, QrCode, Trash2, Undo2, Unlock } from "lucide-react";
 import { deleteEventAction, updateEventArchiveAction, updateEventStatusAction, updateEventAction } from "@/app/(dashboard)/_actions/events";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,17 +31,19 @@ export default async function EventSettingsPage({
     });
   } catch {
     return (
-      <section className="space-y-4">
-        <EventWorkspaceTabs eventId={id} />
-        <Card>
-          <CardContent className="p-6">
-            <h1 className="text-lg font-semibold">Access restricted</h1>
-            <p className="text-sm text-muted-foreground">
-              You do not have permission to edit event settings.
-            </p>
-          </CardContent>
-        </Card>
-      </section>
+      <CinematicSection className="cinematic-fade-up">
+        <section className="space-y-4">
+          <EventWorkspaceTabs eventId={id} />
+          <Card>
+            <CardContent className="p-6">
+              <h1 className="text-lg font-semibold">Access restricted</h1>
+              <p className="text-sm text-muted-foreground">
+                You do not have permission to edit event settings.
+              </p>
+            </CardContent>
+          </Card>
+        </section>
+      </CinematicSection>
     );
   }
 
@@ -49,8 +52,9 @@ export default async function EventSettingsPage({
   const isArchived = Boolean(event.archived_at);
 
   return (
-    <section className="space-y-4">
-      <EventWorkspaceTabs eventId={event.id} />
+    <CinematicSection className="cinematic-fade-up">
+      <section className="space-y-4">
+        <EventWorkspaceTabs eventId={event.id} />
 
       <Card>
         <CardHeader>
@@ -184,5 +188,6 @@ export default async function EventSettingsPage({
         </CardContent>
       </Card>
     </section>
+    </CinematicSection>
   );
 }

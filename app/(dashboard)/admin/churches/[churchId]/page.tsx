@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CalendarClock, ClipboardList, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { OwnerAdminTabs } from "@/components/app/owner-admin-tabs";
 import { StatCard } from "@/components/app/stat-card";
 import { getOwnerChurchDetail } from "@/lib/data";
@@ -23,16 +24,16 @@ export default async function OwnerChurchDetailPage({
 
   return (
     <section className="space-y-4">
-      <header className="rounded-lg border bg-white p-5 shadow-sm">
+      <CinematicSection variant="dark" className="cinematic-fade-up">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-700">Owner church view</p>
-            <h2 className="mt-1 text-2xl font-black tracking-tight">{church.name}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h2 className="mt-1 text-2xl font-black tracking-tight text-white">{church.name}</h2>
+            <p className="mt-1 text-sm text-slate-300">
               {church.workspace_type === "ministry" ? "Ministry" : "Church"} · {church.workspace_status === "active" ? "Active" : "Inactive"} · Created {new Date(church.created_at).toLocaleDateString()} · Timezone {church.timezone}
             </p>
             {church.status_change_reason ? (
-              <p className="mt-1 text-sm text-muted-foreground">Reason: {church.status_change_reason}</p>
+              <p className="mt-1 text-sm text-slate-300">Reason: {church.status_change_reason}</p>
             ) : null}
           </div>
           <form action={updateOwnerWorkspaceTypeAction} className="flex flex-wrap gap-2">
@@ -42,10 +43,10 @@ export default async function OwnerChurchDetailPage({
               <option value="church">Church</option>
               <option value="ministry">Ministry</option>
             </select>
-            <Button type="submit" variant="outline">Update type</Button>
+            <Button type="submit" variant="secondary">Update type</Button>
           </form>
         </div>
-      </header>
+      </CinematicSection>
 
       <OwnerAdminTabs churchId={church.id} active="overview" />
 

@@ -3,6 +3,7 @@ import { Download, UserPlus } from "lucide-react";
 import { ContactList } from "@/components/app/contact-list";
 import { ContactsFilterForm } from "@/components/app/contacts-filter-form";
 import { ContactsPagination } from "@/components/app/contacts-pagination";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { DashboardShell } from "@/components/app/dashboard-shell";
 import { InlineHelp } from "@/components/app/inline-help";
 import { QuickContactForm } from "@/components/app/quick-contact-form";
@@ -65,51 +66,54 @@ export default async function ContactsPage({
         </div>
       }
     >
-      <section className="grid gap-5 xl:grid-cols-[1fr_380px]">
-        <Card>
-          <CardContent className="p-5">
-            {params.error ? <p className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">{params.error}</p> : null}
-            <ContactsFilterForm params={params} events={events} team={team} />
-            <ContactsPagination
-              params={params}
-              page={page}
-              pageCount={pageCount}
-              pageSize={contactsPage.pageSize}
-              total={total}
-              visibleCount={contacts.length}
-            />
-            <ContactList churchName={context.churchName} contacts={contacts} team={team} compactLists={preferences.compactLists} canManageContacts={userCanManageContacts} />
-          </CardContent>
-        </Card>
-
-        <div className="space-y-4">
+      <CinematicSection className="cinematic-fade-up">
+        <section className="space-y-5">
           <Card>
             <CardHeader>
-              <CardTitle>Understanding contact status</CardTitle>
-              <CardDescription>These labels help your team know where each visitor is in the follow-up pathway.</CardDescription>
+              <ContactsFilterForm events={events} params={params} team={team} />
             </CardHeader>
-            <CardContent className="space-y-3">
-              <InlineHelp>
-                <strong>New:</strong> First-time visitor who has not been contacted yet. Needs an initial call or message.
-              </InlineHelp>
-              <InlineHelp>
-                <strong>Contacted:</strong> You have reached out. Now follow their interest and continue the conversation.
-              </InlineHelp>
-              <InlineHelp>
-                <strong>In Progress:</strong> Active follow-up happening. Bible studies, prayer support, or ministry engagement underway.
-              </InlineHelp>
-              <InlineHelp>
-                <strong>Discipling:</strong> Regular contact. Attending church, joining small groups, or preparing for baptism.
-              </InlineHelp>
-              <InlineHelp>
-                <strong>Completed:</strong> Follow-up journey finished. They are now integrated into church life.
-              </InlineHelp>
+            <CardContent className="space-y-4">
+              <ContactList churchName={context.churchName} contacts={contacts} team={team} compactLists={preferences.compactLists} canManageContacts={userCanManageContacts} />
+              <ContactsPagination
+                page={page}
+                pageCount={pageCount}
+                pageSize={contactsPage.pageSize}
+                total={total}
+                visibleCount={contacts.length}
+                params={params}
+              />
             </CardContent>
           </Card>
 
-          <QuickContactForm events={events} />
-        </div>
-      </section>
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Understanding contact status</CardTitle>
+                <CardDescription>These labels help your team know where each visitor is in the follow-up pathway.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <InlineHelp>
+                  <strong>New:</strong> First-time visitor who has not been contacted yet. Needs an initial call or message.
+                </InlineHelp>
+                <InlineHelp>
+                  <strong>Contacted:</strong> You have reached out. Now follow their interest and continue the conversation.
+                </InlineHelp>
+                <InlineHelp>
+                  <strong>In Progress:</strong> Active follow-up happening. Bible studies, prayer support, or ministry engagement underway.
+                </InlineHelp>
+                <InlineHelp>
+                  <strong>Discipling:</strong> Regular contact. Attending church, joining small groups, or preparing for baptism.
+                </InlineHelp>
+                <InlineHelp>
+                  <strong>Completed:</strong> Follow-up journey finished. They are now integrated into church life.
+                </InlineHelp>
+              </CardContent>
+            </Card>
+
+            <QuickContactForm events={events} />
+          </div>
+        </section>
+      </CinematicSection>
     </DashboardShell>
   );
 }

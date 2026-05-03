@@ -3,6 +3,7 @@ import { Church, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { OwnerPagination } from "@/components/app/owner-pagination";
 import { OwnerSearchForm } from "@/components/app/owner-search-form";
 import { StatCard } from "@/components/app/stat-card";
@@ -25,12 +26,20 @@ export default async function OwnerChurchesPage({
 
   return (
     <section className="space-y-4">
-      <header className="rounded-lg border bg-white p-5 shadow-sm">
-        <h2 className="text-2xl font-black tracking-tight">Churches</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Search and open church workspaces without loading every contact, event, and profile at once.
-        </p>
-      </header>
+      <CinematicSection variant="dark" className="cinematic-fade-up">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-slate-300">Owner Admin</p>
+            <h2 className="text-3xl font-bold tracking-tight text-white">Owner Churches</h2>
+            <p className="mt-2 max-w-2xl text-sm text-slate-300">
+              Search and open church workspaces without loading every contact, event, and profile at once.
+            </p>
+          </div>
+          <Button asChild variant="secondary">
+            <Link href="/admin">Back to Owner Dashboard</Link>
+          </Button>
+        </div>
+      </CinematicSection>
 
       <StatCard icon={Church} title="Churches found" value={churchesPage.total} note="Matching the current search." />
 
@@ -52,7 +61,7 @@ export default async function OwnerChurchesPage({
 
           <div className="grid gap-3">
             {churchesPage.items.map((church) => (
-              <div key={church.church_id} className="grid gap-3 rounded-lg border bg-white p-4 lg:grid-cols-[1.4fr_0.6fr_0.6fr_0.6fr_0.6fr_auto] lg:items-center">
+              <div key={church.church_id} className="cinematic-lift grid gap-3 rounded-lg border bg-white p-4 lg:grid-cols-[1.4fr_0.6fr_0.6fr_0.6fr_0.6fr_auto] lg:items-center">
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="font-bold">{church.church_name}</p>

@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { acceptEventInvitation } from '@/app/(dashboard)/_actions/event-assignments';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CinematicSection } from '@/components/ui/cinematic-section';
 
 function AcceptEventInvitationContent() {
   const searchParams = useSearchParams();
@@ -40,11 +41,13 @@ function AcceptEventInvitationContent() {
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6 text-center">
-            <p>Processing invitation...</p>
-          </CardContent>
-        </Card>
+        <CinematicSection>
+          <Card className="w-full max-w-md">
+            <CardContent className="p-6 text-center">
+              <p>Processing invitation...</p>
+            </CardContent>
+          </Card>
+        </CinematicSection>
       </div>
     );
   }
@@ -52,36 +55,40 @@ function AcceptEventInvitationContent() {
   if (status === 'error') {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Invitation Error</CardTitle>
-            <CardDescription>Could not accept the event invitation</CardDescription>
-          </CardHeader>
-          <CardContent className="p-6">
-            <p className="text-destructive mb-4">{message}</p>
-            <Button onClick={() => router.push('/')}>Return to Home</Button>
-          </CardContent>
-        </Card>
+        <CinematicSection>
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Invitation Error</CardTitle>
+              <CardDescription>Could not accept the event invitation</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              <p className="text-destructive mb-4">{message}</p>
+              <Button onClick={() => router.push('/')}>Return to Home</Button>
+            </CardContent>
+          </Card>
+        </CinematicSection>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Invitation Accepted</CardTitle>
-          <CardDescription>You have been added to the event team</CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          <p className="mb-4">{message}</p>
-          {eventId && (
-            <Button onClick={() => router.push(`/events/${eventId}/team`)}>
-              Go to Event Team
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+      <CinematicSection>
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Invitation Accepted</CardTitle>
+            <CardDescription>You have been added to the event team</CardDescription>
+          </CardHeader>
+          <CardContent className="p-6">
+            <p className="mb-4">{message}</p>
+            {eventId && (
+              <Button onClick={() => router.push(`/events/${eventId}/team`)}>
+                Go to Event Team
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </CinematicSection>
     </div>
   );
 }

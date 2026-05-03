@@ -3,6 +3,7 @@ import { Plus, QrCode, UsersRound, ClipboardList, Settings2, BarChart3 } from "l
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { DashboardShell } from "@/components/app/dashboard-shell";
 import { EmptyState } from "@/components/app/empty-state";
 import { QrCard } from "@/components/app/qr-card";
@@ -33,7 +34,8 @@ export default async function EventsPage() {
         </Button>
       }
     >
-      <section className="space-y-5">
+      <CinematicSection className="cinematic-fade-up">
+        <section className="space-y-5">
         {events.length ? (
           <div className="grid gap-4 lg:grid-cols-3">
             {events.map((event) => (
@@ -103,6 +105,7 @@ export default async function EventsPage() {
 
       {currentEvent ? <QrCard eventName={currentEvent.name} url={`${origin}/e/${currentEvent.slug}`} /> : null}
       </section>
+      </CinematicSection>
     </DashboardShell>
   );
 }

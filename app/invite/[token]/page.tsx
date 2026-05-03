@@ -6,6 +6,7 @@ import { BrandLogo } from "@/components/app/brand-logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { roleLabels } from "@/lib/constants";
 import { getTeamInvitationPreview } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
@@ -40,7 +41,8 @@ export default async function InvitePage({
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <Card className="w-full max-w-lg">
+      <CinematicSection>
+        <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
           <BrandLogo className="mx-auto mb-3 h-20 w-auto object-contain" priority />
           <CardTitle className="text-2xl">Join {preview.church_name}</CardTitle>
@@ -107,6 +109,7 @@ export default async function InvitePage({
           ) : null}
         </CardContent>
       </Card>
+      </CinematicSection>
     </main>
   );
 }

@@ -3,6 +3,7 @@ import { ClipboardList } from "lucide-react";
 import { FollowUpsFilterForm } from "@/components/app/follow-ups-filter-form";
 import { FollowUpsPagination } from "@/components/app/follow-ups-pagination";
 import { FollowUpsQueueList } from "@/components/app/follow-ups-queue-list";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { DashboardShell } from "@/components/app/dashboard-shell";
 import { InlineHelp } from "@/components/app/inline-help";
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,8 @@ export default async function FollowUpsPage({
         </Button>
       }
     >
-      <section className="space-y-5">
+      <CinematicSection className="cinematic-fade-up">
+        <section className="space-y-5">
         <Card>
           <CardHeader>
             <CardTitle>Queue</CardTitle>
@@ -78,6 +80,7 @@ export default async function FollowUpsPage({
           <strong>How follow-up tasks work:</strong> When a visitor registers at an event, a follow-up task is created automatically based on their interests. Use this queue to call, message, or assign tasks to team members. Mark tasks as &quot;Contacted&quot; when you reach out, and &quot;Completed&quot; when the follow-up journey is finished.
         </InlineHelp>
       </section>
+      </CinematicSection>
     </DashboardShell>
   );
 }

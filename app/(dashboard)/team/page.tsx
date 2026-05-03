@@ -3,6 +3,7 @@ import { addTeamMemberAction, revokeTeamInvitationAction } from "@/app/(dashboar
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { DashboardShell } from "@/components/app/dashboard-shell";
 import { InlineHelp } from "@/components/app/inline-help";
 import { Input } from "@/components/ui/input";
@@ -34,7 +35,8 @@ export default async function TeamPage({
       title={`${context.workspaceLabel} team`}
       description="Add assignable workers now, then invite login access only when they need to use the dashboard."
     >
-      <section className="grid gap-5 xl:grid-cols-[1fr_380px]">
+      <CinematicSection className="cinematic-fade-up">
+        <section className="grid gap-5 xl:grid-cols-[1fr_380px]">
         <div className="grid gap-4">
           <Card>
             <CardContent className="p-5">
@@ -194,6 +196,7 @@ export default async function TeamPage({
           </CardContent>
         </Card>
       </section>
+      </CinematicSection>
     </DashboardShell>
   );
 }

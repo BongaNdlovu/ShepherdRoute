@@ -4,6 +4,7 @@ import { updateAccountSettingsAction } from "@/app/(dashboard)/actions";
 import { resetContactDataAction } from "@/app/(dashboard)/_actions/settings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { DashboardShell } from "@/components/app/dashboard-shell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +32,8 @@ export default async function SettingsPage({
       title="Settings"
       description={`Manage simple account preferences and ${context.workspaceLabel.toLowerCase()} setup links.`}
     >
-      <section className="space-y-5">
+      <CinematicSection className="cinematic-fade-up">
+        <section className="space-y-5">
         {params.error ? <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{params.error}</p> : null}
         {params.updated ? <p className="rounded-md bg-success/10 p-3 text-sm text-success">Settings updated.</p> : null}
         {params.reset === "success" ? <p className="rounded-md bg-success/10 p-3 text-sm text-success">Contact data has been reset successfully.</p> : null}
@@ -131,6 +133,7 @@ export default async function SettingsPage({
           </div>
         </div>
       </section>
+      </CinematicSection>
     </DashboardShell>
   );
 }

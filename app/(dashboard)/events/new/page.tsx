@@ -1,6 +1,7 @@
 import { createEventAction } from "@/app/(dashboard)/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,7 +22,8 @@ export default async function NewEventPage({
   const preselectedTemplate = params.template && eventTypeOptions.includes(params.template as never) ? params.template : null;
 
   return (
-    <Card>
+    <CinematicSection className="cinematic-fade-up">
+      <Card>
       <CardHeader>
         <CardTitle>Create event</CardTitle>
         <CardDescription>
@@ -95,5 +97,6 @@ export default async function NewEventPage({
         </form>
       </CardContent>
     </Card>
+    </CinematicSection>
   );
 }

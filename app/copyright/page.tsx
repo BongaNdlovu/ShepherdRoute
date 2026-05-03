@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 
 export const metadata = {
   title: "Copyright Notice"
@@ -10,7 +11,8 @@ export default function CopyrightPage() {
 
   return (
     <main className="min-h-screen bg-background px-4 py-8">
-      <section className="mx-auto max-w-3xl">
+      <CinematicSection>
+        <section className="mx-auto max-w-3xl">
         <Card>
           <CardHeader>
             <CardTitle>Copyright notice</CardTitle>
@@ -29,6 +31,7 @@ export default function CopyrightPage() {
           </CardContent>
         </Card>
       </section>
+      </CinematicSection>
     </main>
   );
 }

@@ -1,6 +1,7 @@
 import { createDataRequestAction, updateDataRequestStatusAction } from "@/app/(dashboard)/_actions/privacy";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,7 +46,8 @@ export default async function PrivacyPage({
   };
 
   return (
-    <section className="space-y-6">
+    <CinematicSection className="cinematic-fade-up">
+      <section className="space-y-6">
       <div>
         <h1 className="text-2xl font-black">Privacy & Data Requests</h1>
         <p className="text-muted-foreground">Manage privacy compliance and data subject requests.</p>
@@ -178,5 +180,6 @@ export default async function PrivacyPage({
         </CardContent>
       </Card>
     </section>
+    </CinematicSection>
   );
 }

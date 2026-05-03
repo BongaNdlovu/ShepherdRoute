@@ -3,6 +3,7 @@ import { updateProfileAction } from "@/app/(dashboard)/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { roleLabels } from "@/lib/constants";
@@ -26,8 +27,9 @@ export default async function ProfilePage({
   }
 
   return (
-    <section className="space-y-4">
-      <header className="rounded-lg border bg-white p-5 shadow-sm">
+    <CinematicSection className="cinematic-fade-up">
+      <section className="space-y-4">
+        <header className="rounded-lg border bg-white p-5 shadow-sm">
         <div className="flex items-start gap-3">
           <div className="rounded-md bg-primary/10 p-3 text-primary">
             <UserRound className="h-6 w-6" />
@@ -89,5 +91,6 @@ export default async function ProfilePage({
         </Card>
       </div>
     </section>
+    </CinematicSection>
   );
 }

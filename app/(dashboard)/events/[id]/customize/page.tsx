@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,8 +27,9 @@ export default async function EventCustomizePage({
   const template = getEventTemplate(event.event.event_type);
 
   return (
-    <section className="space-y-6">
-      <EventWorkspaceTabs eventId={event.event.id} />
+    <CinematicSection className="cinematic-fade-up">
+      <section className="space-y-6">
+        <EventWorkspaceTabs eventId={event.event.id} />
 
       <div>
         <h1 className="text-2xl font-black">Customize form: {event.event.name}</h1>
@@ -417,6 +419,7 @@ export default async function EventCustomizePage({
 
         <Button type="submit" size="lg">Save customization</Button>
       </form>
-    </section>
+      </section>
+    </CinematicSection>
   );
 }

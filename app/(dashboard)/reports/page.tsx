@@ -1,5 +1,6 @@
 import { AlertTriangle, BarChart3, CalendarClock, ClipboardList, Droplets, UserCheck, UserX } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 import { DashboardShell } from "@/components/app/dashboard-shell";
 import { StatCard } from "@/components/app/stat-card";
 import { getChurchContext, getOutreachReportSummary } from "@/lib/data";
@@ -17,7 +18,8 @@ export default async function ReportsPage() {
       title="Outreach report"
       description="Board-ready summary for pastors, elders, health ministries, and personal ministries."
     >
-      <section className="space-y-5">
+      <CinematicSection className="cinematic-fade-up">
+        <section className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard icon={BarChart3} title="Total contacts" value={summary.total_contacts} note="Across all recorded events." />
           <StatCard icon={UserCheck} title="Followed up" value={summary.followed_up_count} note="Contacts no longer in new status." />
@@ -66,6 +68,7 @@ export default async function ReportsPage() {
           </Card>
         </div>
       </section>
+      </CinematicSection>
     </DashboardShell>
   );
 }

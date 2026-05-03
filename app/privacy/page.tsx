@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CinematicSection } from "@/components/ui/cinematic-section";
 
 export const metadata = {
   title: "Privacy Notice"
@@ -9,7 +10,8 @@ export const metadata = {
 export default function PrivacyPage() {
   return (
     <main className="min-h-screen bg-background px-4 py-8">
-      <section className="mx-auto max-w-3xl">
+      <CinematicSection>
+        <section className="mx-auto max-w-3xl">
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2 text-amber-700">
@@ -97,6 +99,7 @@ export default function PrivacyPage() {
           </CardContent>
         </Card>
       </section>
+      </CinematicSection>
     </main>
   );
 }
