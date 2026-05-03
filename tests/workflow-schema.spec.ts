@@ -14,6 +14,44 @@ const teamActions = readFileSync("app/(dashboard)/_actions/team.ts", "utf8");
 const publicEventPage = readFileSync("app/e/[slug]/page.tsx", "utf8");
 const authActions = readFileSync("app/(auth)/actions.ts", "utf8");
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function expectRpcReturnFields(
+  dbTypes: string,
+  functionName: string,
+  expectedFields: Array<[fieldName: string, fieldType: string]>
+) {
+  const functionBlockMatch = dbTypes.match(
+    new RegExp(`${escapeRegExp(functionName)}:\\s*\\{[\\s\\S]*?Args:[\\s\\S]*?Returns:\\s*`)
+  );
+
+  expect(functionBlockMatch, `${functionName} RPC definition should exist`).toBeTruthy();
+
+  const startIndex = functionBlockMatch
+    ? functionBlockMatch.index! + functionBlockMatch[0].length
+    : -1;
+
+  const remaining = startIndex >= 0 ? dbTypes.slice(startIndex) : "";
+
+  const arrayGenericMatch = remaining.match(/^Array<\{([\s\S]*?)\}>\s*;?/);
+  const shorthandArrayMatch = remaining.match(/^\{([\s\S]*?)\}\[\]\s*;?/);
+
+  const returnBody = arrayGenericMatch?.[1] ?? shorthandArrayMatch?.[1] ?? "";
+
+  expect(
+    returnBody,
+    `${functionName} Returns should use either Array<{...}> or {...}[] syntax`
+  ).toBeTruthy();
+
+  for (const [fieldName, fieldType] of expectedFields) {
+    expect(returnBody, `${functionName} should return ${fieldName}: ${fieldType}`).toMatch(
+      new RegExp(`${escapeRegExp(fieldName)}:\\s*${escapeRegExp(fieldType)}\\s*;?`)
+    );
+  }
+}
+
 test.describe("accountability and privacy workflow schema", () => {
   test("schema includes duplicate-aware people and journey storage", () => {
     expect(schema).toContain("create table if not exists public.people");
@@ -170,12 +208,19 @@ test.describe("workflow helpers", () => {
   test("report RPC type definitions match report summary table returns", () => {
     const dbTypes = readFileSync("lib/supabase/database.types.ts", "utf8");
 
-    expect(dbTypes).toMatch(
-      /outreach_report_summary:\s*\{[\s\S]*?Returns: Array<\{[\s\S]*?baptism_count: number;[\s\S]*?waiting_reply_count: number;[\s\S]*?no_consent_count: number;[\s\S]*?events: Json;[\s\S]*?\}>;/
-    );
-    expect(dbTypes).toMatch(
-      /event_report_summary:\s*\{[\s\S]*?Returns: Array<\{[\s\S]*?baptism_count: number;[\s\S]*?follow_up_count: number;[\s\S]*?status_counts: Json;[\s\S]*?interest_counts: Json;[\s\S]*?\}>;/
-    );
+    expectRpcReturnFields(dbTypes, "outreach_report_summary", [
+      ["baptism_count", "number"],
+      ["waiting_reply_count", "number"],
+      ["no_consent_count", "number"],
+      ["events", "Json"]
+    ]);
+
+    expectRpcReturnFields(dbTypes, "event_report_summary", [
+      ["baptism_count", "number"],
+      ["follow_up_count", "number"],
+      ["status_counts", "Json"],
+      ["interest_counts", "Json"]
+    ]);
   });
 
   test("dashboard sidebar keeps logout visible below scrollable content", () => {
