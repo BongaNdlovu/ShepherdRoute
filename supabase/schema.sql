@@ -356,16 +356,16 @@ create table if not exists public.event_assignments (
   id uuid primary key default gen_random_uuid(),
   church_id uuid not null references public.churches(id) on delete cascade,
   event_id uuid not null references public.events(id) on delete cascade,
-  team_member_id uuid references public.team_members(id) on delete cascade,
+  team_member_id uuid references public.team_members(id) on delete set null,
   invitee_email text,
-  invitation_token_hash text unique,
-  status public.event_assignment_status not null default 'pending',
+  invitation_token_hash text,
   invitation_expires_at timestamptz,
   invited_by uuid references public.profiles(id) on delete set null,
   invited_at timestamptz not null default now(),
   accepted_at timestamptz,
   revoked_at timestamptz,
   revoked_by uuid references public.profiles(id) on delete set null,
+  status public.event_assignment_status not null default 'pending',
   can_view_contacts boolean not null default false,
   can_assign_contacts boolean not null default false,
   can_view_reports boolean not null default false,
@@ -376,21 +376,12 @@ create table if not exists public.event_assignments (
   can_delete_event boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint event_assignments_email_or_member_check check (
-    team_member_id is not null or invitee_email is not null
-  ),
-  constraint event_assignments_invite_token_required_for_pending_email check (
-    not (team_member_id is null and status = 'pending' and invitation_token_hash is null)
-  ),
-  constraint event_assignments_direct_assignment_not_pending check (
-    not (team_member_id is not null and status = 'pending')
-  ),
-  constraint event_assignments_invitee_email_lowercase_check check (
-    invitee_email is null or invitee_email = lower(invitee_email)
-  ),
-  unique (church_id, event_id, team_member_id),
-  unique (church_id, event_id, invitee_email)
+  constraint event_assignments_exactly_one_identifier check (team_member_id is not null or invitee_email is not null),
+  constraint event_assignments_email_lowercase check (invitee_email is null or invitee_email = lower(invitee_email))
 );
+
+create unique index if not exists event_assignments_church_event_team_member on public.event_assignments (church_id, event_id, team_member_id);
+create unique index if not exists event_assignments_church_event_invitee_email on public.event_assignments (church_id, event_id, invitee_email);
 
 create table if not exists public.people (
   id uuid primary key default gen_random_uuid(),

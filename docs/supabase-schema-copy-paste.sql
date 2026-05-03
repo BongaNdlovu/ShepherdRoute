@@ -366,8 +366,6 @@ create table if not exists public.event_assignments (
   can_delete_event boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint event_assignments_church_event_check check (church_id = (select church_id from public.events where events.id = event_id)),
-  constraint event_assignments_team_member_church_check check (team_member_id is null or (select church_id from public.team_members where team_members.id = team_member_id) = church_id),
   constraint event_assignments_exactly_one_identifier check (team_member_id is not null or invitee_email is not null),
   constraint event_assignments_email_lowercase check (invitee_email is null or invitee_email = lower(invitee_email))
 );
