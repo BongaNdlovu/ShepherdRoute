@@ -21,14 +21,14 @@ type ContactListProps = {
 
 export function ContactList({ churchName, contacts, team, compactLists = false, canManageContacts = false }: ContactListProps) {
   return (
-    <div className="mt-5 overflow-hidden rounded-lg border">
-      <div className="hidden grid-cols-[1.15fr_1fr_1.1fr_1.2fr] bg-muted px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground xl:grid">
+    <div className="mt-5 overflow-hidden rounded-2xl border border-border/70 bg-card shadow-card">
+      <div className="hidden grid-cols-[1.15fr_1fr_1.1fr_1.2fr] bg-muted/50 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:grid">
         <span>Contact</span>
         <span>Interest</span>
         <span>Pathway</span>
         <span>Quick actions</span>
       </div>
-      <div className="divide-y">
+      <div className="divide-y divide-border/70">
         {contacts.map((contact) => {
           const message = generateMessage({
             name: contact.full_name,
@@ -42,18 +42,18 @@ export function ContactList({ churchName, contacts, team, compactLists = false, 
             <div
               key={contact.id}
               className={cn(
-                "grid transition hover:bg-amber-50 xl:grid-cols-[1.15fr_1fr_1.1fr_1.2fr] xl:items-center",
+                "grid transition-colors hover:bg-accent/5 xl:grid-cols-[1.15fr_1fr_1.1fr_1.2fr] xl:items-center",
                 compactLists ? "gap-2 px-3 py-2" : "gap-4 px-4 py-4"
               )}
             >
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Link href={`/contacts/${contact.id}`} className="font-bold underline-offset-4 hover:underline">
+                  <Link href={`/contacts/${contact.id}`} className="font-semibold text-foreground underline-offset-4 hover:underline">
                     {contact.full_name}
                   </Link>
                   <UrgencyBadge urgency={contact.urgency} />
-                  {contact.do_not_contact ? <span className="rounded-md bg-slate-200 px-2 py-1 text-xs font-bold text-slate-700">Do not contact</span> : null}
-                  {contact.duplicate_of_contact_id ? <span className="rounded-md bg-amber-100 px-2 py-1 text-xs font-bold text-amber-800">Journey match</span> : null}
+                  {contact.do_not_contact ? <span className="rounded-md bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground">Do not contact</span> : null}
+                  {contact.duplicate_of_contact_id ? <span className="rounded-md bg-accent/10 px-2 py-1 text-xs font-semibold text-accent">Journey match</span> : null}
                 </div>
                 <p className={cn(compactLists ? "mt-0.5 text-xs" : "mt-1 text-sm", "text-muted-foreground")}>{contact.phone ?? "No phone"}{contact.email ? ` - ${contact.email}` : ""}{contact.area ? ` - ${contact.area}` : ""}</p>
                 <p className={cn(compactLists ? "mt-0.5" : "mt-1", "text-xs text-muted-foreground")}>
@@ -63,7 +63,7 @@ export function ContactList({ churchName, contacts, team, compactLists = false, 
                 {contact.preferred_contact_methods && contact.preferred_contact_methods.length > 0 ? (
                   <div className="mt-1 flex flex-wrap gap-1">
                     {contact.preferred_contact_methods.map((method: string) => (
-                      <span key={method} className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-800">
+                      <span key={method} className="rounded-md bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">
                         {contactMethodLabels[method as keyof typeof contactMethodLabels] ?? method}
                       </span>
                     ))}
@@ -75,7 +75,7 @@ export function ContactList({ churchName, contacts, team, compactLists = false, 
               <InterestPills interests={contact.interests} />
               <div className={cn(compactLists ? "space-y-1" : "space-y-2")}>
                 <StatusBadge status={contact.status} />
-                <p className="text-sm font-semibold text-slate-600">
+                <p className="text-sm font-medium text-foreground">
                   {contact.assigned_handling_role
                     ? assignmentRoleLabels[contact.assigned_handling_role as keyof typeof assignmentRoleLabels] ?? contact.assigned_handling_role
                     : contact.assigned_name ?? "Unassigned"}

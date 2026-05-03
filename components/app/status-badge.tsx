@@ -8,16 +8,16 @@ export function StatusBadge({ status }: { status: FollowUpStatus }) {
       : status === "waiting"
         ? "warning"
         : status === "baptism_interest"
-          ? "danger"
+          ? "destructive"
           : status === "contacted" || status === "attended_church"
             ? "success"
-            : "info";
+            : "accent";
 
   return <Badge variant={variant}>{statusLabels[status]}</Badge>;
 }
 
 export function UrgencyBadge({ urgency }: { urgency: "low" | "medium" | "high" }) {
   const label = urgency[0].toUpperCase() + urgency.slice(1);
-  const variant = urgency === "high" ? "danger" : urgency === "medium" ? "warning" : "muted";
+  const variant = urgency === "high" ? "destructive" : urgency === "medium" ? "warning" : "muted";
   return <Badge variant={variant}>{label}</Badge>;
 }

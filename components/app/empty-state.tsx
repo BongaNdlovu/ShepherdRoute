@@ -1,11 +1,12 @@
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface EmptyStateProps {
-  icon: LucideIcon;
+  icon?: LucideIcon;
   title: string;
-  description: string;
+  description?: string;
   action?: {
     href: string;
     label: string;
@@ -14,16 +15,33 @@ interface EmptyStateProps {
     href: string;
     label: string;
   };
+  className?: string;
 }
 
-export function EmptyState({ icon: Icon, title, description, action, secondaryAction }: EmptyStateProps) {
+export function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  action,
+  secondaryAction,
+  className,
+}: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border bg-white p-8 text-center">
-      <div className="rounded-full bg-amber-100 p-4">
-        <Icon className="h-8 w-8 text-amber-700" />
-      </div>
-      <h3 className="mt-4 text-lg font-bold">{title}</h3>
-      <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">{description}</p>
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center rounded-2xl border border-border/70 bg-card p-8 text-center shadow-card",
+        className
+      )}
+    >
+      {Icon ? (
+        <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+          <Icon className="h-7 w-7" />
+        </div>
+      ) : null}
+      <h3 className="text-lg font-semibold tracking-tight text-foreground">{title}</h3>
+      {description ? (
+        <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">{description}</p>
+      ) : null}
       {action ? (
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Button asChild>

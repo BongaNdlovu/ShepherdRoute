@@ -125,7 +125,7 @@ export default async function PublicEventPage({
       }
     >
       <section className="mx-auto max-w-3xl">
-        <Card className="overflow-hidden border-white/80 bg-white/95 shadow-xl">
+        <Card className="overflow-hidden rounded-2xl border-white/80 bg-white/95 shadow-card">
           {branding.cover_image_url ? (
             <ExternalBrandImage
               src={branding.cover_image_url}
@@ -145,7 +145,7 @@ export default async function PublicEventPage({
               <BrandLogo className="mx-auto h-24 w-auto object-contain" priority />
             ) : null}
             {publicInfo.show_church_name ? (
-              <p className="mt-4 text-sm font-bold uppercase tracking-[0.18em] text-amber-700">{event.church_name}</p>
+              <p className="mt-4 text-sm font-semibold uppercase tracking-[0.18em] text-accent">{event.church_name}</p>
             ) : null}
             <CardTitle className="text-3xl">{publicInfo.heading}</CardTitle>
             <CardDescription>
@@ -154,9 +154,9 @@ export default async function PublicEventPage({
           </CardHeader>
           <CardContent>
             {query.submitted ? (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-6 text-center text-emerald-900">
+              <div className="rounded-2xl border border-success/20 bg-success/10 p-6 text-center text-success">
                 <CheckCircle2 className="mx-auto h-12 w-12" />
-                <h2 className="mt-4 text-2xl font-black">{publicInfo.thank_you_heading}</h2>
+                <h2 className="mt-4 text-2xl font-semibold">{publicInfo.thank_you_heading}</h2>
                 <p className="mx-auto mt-2 max-w-xl text-sm leading-6">
                   {thankYouMessage}
                 </p>
@@ -181,7 +181,7 @@ export default async function PublicEventPage({
                   <div className="grid gap-2">
                     <Label htmlFor="phone">
                       Phone / WhatsApp
-                      {formConfig.require_phone && <span className="text-rose-600"> *</span>}
+                      {formConfig.require_phone && <span className="text-destructive"> *</span>}
                     </Label>
                     <Input
                       id="phone"
@@ -196,7 +196,7 @@ export default async function PublicEventPage({
                   <div className="grid gap-2">
                     <Label htmlFor="email">
                       Email
-                      {formConfig.require_email && <span className="text-rose-600"> *</span>}
+                      {formConfig.require_email && <span className="text-destructive"> *</span>}
                     </Label>
                     <Input
                       id="email"
@@ -217,7 +217,7 @@ export default async function PublicEventPage({
                 {formConfig.show_language ? (
                   <div className="grid gap-2">
                     <Label htmlFor="language">Preferred language</Label>
-                    <select id="language" name="language" defaultValue="English" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
+                    <select id="language" name="language" defaultValue="English" className="h-10 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                       <option>English</option>
                       <option>isiZulu</option>
                       <option>Afrikaans</option>
@@ -230,7 +230,7 @@ export default async function PublicEventPage({
                 {formConfig.show_best_time ? (
                   <div className="grid gap-2 md:col-span-2">
                     <Label htmlFor="bestTimeToContact">Best time to contact</Label>
-                    <select id="bestTimeToContact" name="bestTimeToContact" defaultValue="" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
+                    <select id="bestTimeToContact" name="bestTimeToContact" defaultValue="" className="h-10 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                       <option value="">No preference</option>
                       <option>Morning</option>
                       <option>Afternoon</option>
@@ -243,7 +243,7 @@ export default async function PublicEventPage({
                 {shouldShowTopic ? (
                   <div className="grid gap-2">
                     <Label htmlFor="topic">Seminar topic</Label>
-                    <select id="topic" name="topic" defaultValue="" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
+                    <select id="topic" name="topic" defaultValue="" className="h-10 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                       <option value="">Select a topic</option>
                       {template.topicOptions?.map((topic) => (
                         <option key={topic} value={topic}>{topic}</option>
@@ -255,12 +255,12 @@ export default async function PublicEventPage({
                 {formConfig.show_interests && formConfig.interest_options.length > 0 && (
                   <div className="grid gap-2">
                     <Label className="flex items-center gap-2">
-                      <HeartHandshake className="h-4 w-4 text-amber-700" />
+                      <HeartHandshake className="h-4 w-4 text-accent" />
                       How can we serve you?
                     </Label>
                     <div className="grid gap-2 sm:grid-cols-2">
                       {formConfig.interest_options.map((option, index) => (
-                        <label key={`${option.value}-${index}`} className="flex items-start gap-2 rounded-md border bg-white px-3 py-3 text-sm font-semibold">
+                        <label key={`${option.value}-${index}`} className="flex items-start gap-2 rounded-xl border border-border/70 bg-white px-3 py-3 text-sm font-medium transition hover:bg-accent/5">
                           <input type="checkbox" name="interests" value={option.value} className="mt-0.5 h-4 w-4" />
                           <span>
                             {option.label}
@@ -275,10 +275,10 @@ export default async function PublicEventPage({
                 {formConfig.questions.length > 0 && (
                   <div className="space-y-4">
                     {formConfig.questions.map((question) => (
-                      <div key={question.name} className="grid gap-3 rounded-xl border bg-white/80 p-4 shadow-sm">
+                      <div key={question.name} className="grid gap-3 rounded-2xl border border-border/70 bg-white/80 p-4 shadow-sm">
                         <Label htmlFor={question.name}>
                           {question.label}
-                          {question.required && <span className="text-red-500"> *</span>}
+                          {question.required && <span className="text-destructive"> *</span>}
                         </Label>
                         {question.description && (
                           <p className="text-sm text-muted-foreground">{question.description}</p>
@@ -288,7 +288,7 @@ export default async function PublicEventPage({
                             id={question.name}
                             name={question.name}
                             required={question.required}
-                            className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring"
+                            className="h-10 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           >
                             <option value="">Select an option</option>
                             {question.options.map((option) => (
@@ -299,7 +299,7 @@ export default async function PublicEventPage({
                         {question.type === "radio" && (
                           <div className="grid gap-2">
                             {question.options.map((option) => (
-                              <label key={option.value} className="flex items-center gap-3 rounded-lg border bg-white px-4 py-3 text-sm font-semibold transition hover:bg-amber-50">
+                              <label key={option.value} className="flex items-center gap-3 rounded-xl border border-border/70 bg-white px-4 py-3 text-sm font-medium transition hover:bg-accent/5">
                                 <input
                                   type="radio"
                                   name={question.name}
@@ -315,7 +315,7 @@ export default async function PublicEventPage({
                         {question.type === "checkbox_group" && (
                           <div className="grid gap-2 sm:grid-cols-2">
                             {question.options.map((option) => (
-                              <label key={option.value} className="flex items-center gap-3 rounded-lg border bg-white px-4 py-3 text-sm font-semibold transition hover:bg-amber-50">
+                              <label key={option.value} className="flex items-center gap-3 rounded-xl border border-border/70 bg-white px-4 py-3 text-sm font-medium transition hover:bg-accent/5">
                                 <input
                                   type="checkbox"
                                   name={question.name}
@@ -343,7 +343,7 @@ export default async function PublicEventPage({
                 {formConfig.show_prayer_visibility ? (
                   <div className="grid gap-2">
                     <Label htmlFor="prayerVisibility">Who may view a prayer request?</Label>
-                    <select id="prayerVisibility" name="prayerVisibility" defaultValue="general_prayer" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
+                    <select id="prayerVisibility" name="prayerVisibility" defaultValue="general_prayer" className="h-10 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                       {prayerVisibilityOptions.map((visibility) => (
                         <option key={visibility} value={visibility}>{prayerVisibilityLabels[visibility]}</option>
                       ))}
@@ -361,7 +361,7 @@ export default async function PublicEventPage({
             )}
           </CardContent>
         </Card>
-        <footer className="mt-4 flex flex-col items-center justify-center gap-2 text-center text-xs text-slate-600 sm:flex-row">
+        <footer className="mt-4 flex flex-col items-center justify-center gap-2 text-center text-xs text-muted-foreground sm:flex-row">
           <span>Copyright (c) {new Date().getFullYear()} ShepherdRoute.</span>
           <Link href="/privacy" className="font-semibold underline-offset-4 hover:underline">Privacy notice</Link>
           <Link href="/copyright" className="font-semibold underline-offset-4 hover:underline">Copyright notice</Link>

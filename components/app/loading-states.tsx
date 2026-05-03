@@ -1,9 +1,53 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+
+export function ShimmerBlock({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-xl bg-muted",
+        "after:absolute after:inset-0 after:-translate-x-full after:animate-shimmer after:bg-gradient-to-r after:from-transparent after:via-white/40 after:to-transparent dark:after:via-white/10",
+        className
+      )}
+    />
+  );
+}
+
+export function CardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-border/70 bg-card p-6 shadow-card">
+      <ShimmerBlock className="mb-4 h-4 w-32" />
+      <ShimmerBlock className="mb-2 h-7 w-24" />
+      <ShimmerBlock className="h-4 w-full" />
+    </div>
+  );
+}
+
+export function ListSkeleton({ rows = 5 }: { rows?: number }) {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: rows }).map((_, index) => (
+        <div
+          key={index}
+          className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0 flex-1 space-y-2">
+              <ShimmerBlock className="h-4 w-48 max-w-full" />
+              <ShimmerBlock className="h-3 w-72 max-w-full" />
+            </div>
+            <ShimmerBlock className="h-9 w-24" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function PageHeaderSkeleton() {
   return (
-    <header className="rounded-lg border bg-white p-5 shadow-sm">
+    <header className="rounded-2xl border border-border/70 bg-card p-5 shadow-card">
       <Skeleton className="h-4 w-40" />
       <Skeleton className="mt-3 h-8 w-72 max-w-full" />
       <Skeleton className="mt-3 h-4 w-full max-w-xl" />

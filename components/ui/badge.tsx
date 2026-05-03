@@ -2,23 +2,33 @@ import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-const badgeVariants = cva("inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold", {
-  variants: {
-    variant: {
-      default: "bg-primary text-primary-foreground",
-      secondary: "bg-secondary text-secondary-foreground",
-      muted: "bg-muted text-muted-foreground",
-      outline: "border border-border bg-background",
-      success: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
-      warning: "bg-amber-50 text-amber-700 ring-1 ring-amber-100",
-      info: "bg-sky-50 text-sky-700 ring-1 ring-sky-100",
-      danger: "bg-rose-50 text-rose-700 ring-1 ring-rose-100"
-    }
-  },
-  defaultVariants: {
-    variant: "default"
+const badgeVariants = cva(
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default:
+          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+        secondary:
+          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        destructive:
+          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+        outline: "text-foreground",
+        success:
+          "border-success/20 bg-success/10 text-success dark:bg-success/15",
+        warning:
+          "border-warning/20 bg-warning/10 text-warning dark:bg-warning/15",
+        muted:
+          "border-border bg-muted text-muted-foreground",
+        accent:
+          "border-accent/20 bg-accent/10 text-accent dark:bg-accent/15",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
   }
-});
+);
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
 
