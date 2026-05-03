@@ -8,6 +8,7 @@ import { classifyContact } from "@/lib/classifyContact";
 import { followUpChannelOptions, interestOptions, statusOptions } from "@/lib/constants";
 import { getChurchContext } from "@/lib/data";
 import { defaultDueDate, prayerVisibilityOptions } from "@/lib/followUp";
+import { canManageContacts } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { generateMessage } from "@/lib/whatsapp";
 
@@ -182,6 +183,13 @@ export async function updateContactLifecycleAction(formData: FormData) {
     redirect("/contacts?error=Contact%20not%20found.");
   }
 
+  // Permission check: only allow delete for users with manage contacts permission
+  if (parsed.data.intent === "delete") {
+    if (!canManageContacts(context.role as "admin" | "pastor" | "elder" | "bible_worker" | "health_leader" | "prayer_team" | "youth_leader" | "viewer")) {
+      redirect("/contacts?error=You%20do%20not%20have%20permission%20to%20delete%20contacts.");
+    }
+  }
+
   const update =
     parsed.data.intent === "do_not_contact"
       ? { do_not_contact: true, do_not_contact_at: now }
@@ -238,6 +246,7 @@ export async function updateContactLifecycleAction(formData: FormData) {
 
   revalidatePath("/contacts");
   revalidatePath(`/contacts/${parsed.data.contactId}`);
+  revalidatePath("/dashboard");
 
   if (parsed.data.intent === "archive" || parsed.data.intent === "delete") {
     redirect("/contacts");

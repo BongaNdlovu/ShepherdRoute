@@ -46,6 +46,7 @@ export async function getEvent(churchId: string, id: string) {
       .select("id, full_name, phone, area, status, urgency, created_at, contact_interests(interest)", { count: "exact" })
       .eq("church_id", churchId)
       .eq("event_id", id)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(EVENT_CONTACT_LIMIT)
   ]);

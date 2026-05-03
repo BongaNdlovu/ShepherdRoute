@@ -1,6 +1,9 @@
+"use client";
+
 import { AlertTriangle, ShieldCheck } from "lucide-react";
 import { updateContactLifecycleAction } from "@/app/(dashboard)/actions";
 import { InterestPills } from "@/components/app/interest-pills";
+import { DeleteContactConfirmModal } from "@/components/app/delete-contact-confirm-modal";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
 import { consentScopeLabels, formatDateTime } from "@/lib/followUp";
@@ -116,7 +119,12 @@ export function ContactSummaryPanel({ contact, error }: ContactSummaryPanelProps
         <form action={updateContactLifecycleAction}>
           <input type="hidden" name="contactId" value={contact.id} />
           <input type="hidden" name="intent" value="delete" />
-          <Button type="submit" size="sm" variant="destructive">Delete</Button>
+          <DeleteContactConfirmModal contactId={contact.id} contactName={contact.full_name} onConfirm={(contactId) => {
+            const formData = new FormData();
+            formData.append("contactId", contactId);
+            formData.append("intent", "delete");
+            updateContactLifecycleAction(formData);
+          }} />
         </form>
       </div>
     </>

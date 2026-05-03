@@ -241,6 +241,7 @@ export async function getDashboardData(churchId: string) {
       .from("contacts")
       .select("id, full_name, phone, area, status, urgency, created_at, events(name), contact_interests(interest)")
       .eq("church_id", churchId)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(8),
     supabase
@@ -307,6 +308,7 @@ export async function getEventReportContacts(churchId: string, id: string) {
     .select("id, full_name, phone, area, status, urgency, created_at, contact_interests(interest)")
     .eq("church_id", churchId)
     .eq("event_id", id)
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -339,6 +341,7 @@ export async function getEventReportContactsPage(churchId: string, id: string, o
     .select("id, full_name, phone, area, status, urgency, created_at, contact_interests(interest)")
     .eq("church_id", churchId)
     .eq("event_id", id)
+    .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
