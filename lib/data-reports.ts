@@ -175,6 +175,7 @@ export async function getTodayFollowUps(churchId: string): Promise<TodayFollowUp
         urgency,
         assigned_to,
         do_not_contact,
+        deleted_at,
         events(name),
         contact_interests(interest),
         generated_messages(id, message_text, wa_link, opened_at, purpose, created_at)
@@ -194,7 +195,7 @@ export async function getTodayFollowUps(churchId: string): Promise<TodayFollowUp
 
   return (data ?? []).flatMap((row) => {
     const contactRow = Array.isArray(row.contacts) ? row.contacts[0] ?? null : row.contacts;
-    if (!contactRow || contactRow.status === "closed") return [];
+    if (!contactRow || contactRow.status === "closed" || contactRow.deleted_at) return [];
 
     const event = Array.isArray(contactRow.events) ? contactRow.events[0] ?? null : contactRow.events;
     const teamMember = Array.isArray(row.team_members) ? row.team_members[0] ?? null : row.team_members;

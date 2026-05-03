@@ -2404,6 +2404,7 @@ as $$
     from public.events
     left join public.contacts on contacts.event_id = events.id
       and contacts.church_id = events.church_id
+      and contacts.deleted_at is null
     where events.church_id = p_church_id
     group by events.id, events.name, events.event_type, events.created_at
   )
@@ -2412,12 +2413,14 @@ as $$
       select count(*)
       from public.contacts
       where contacts.church_id = p_church_id
+        and contacts.deleted_at is null
     ) as total_contacts,
     (
       select count(*)
       from public.contacts
       where contacts.church_id = p_church_id
         and contacts.status <> 'new'
+        and contacts.deleted_at is null
     ) as followed_up_count,
     (
       select count(distinct contacts.id)
@@ -2426,6 +2429,7 @@ as $$
         and contact_interests.church_id = contacts.church_id
       where contacts.church_id = p_church_id
         and contact_interests.interest = 'bible_study'
+        and contacts.deleted_at is null
     ) as bible_study_count,
     (
       select count(distinct contacts.id)
@@ -2434,6 +2438,7 @@ as $$
         and contact_interests.church_id = contacts.church_id
       where contacts.church_id = p_church_id
         and contact_interests.interest = 'prayer'
+        and contacts.deleted_at is null
     ) as prayer_count,
     (
       select count(distinct contacts.id)
@@ -2442,6 +2447,7 @@ as $$
         and contact_interests.church_id = contacts.church_id
       where contacts.church_id = p_church_id
         and contact_interests.interest in ('health', 'cooking_class')
+        and contacts.deleted_at is null
     ) as health_count,
     (
       select count(distinct contacts.id)
@@ -2450,12 +2456,14 @@ as $$
         and contact_interests.church_id = contacts.church_id
       where contacts.church_id = p_church_id
         and contact_interests.interest = 'baptism'
+        and contacts.deleted_at is null
     ) as baptism_count,
     (
       select count(*)
       from public.contacts
       where contacts.church_id = p_church_id
         and contacts.urgency = 'high'
+        and contacts.deleted_at is null
     ) as high_priority_count,
     (
       select count(*)
@@ -2463,6 +2471,7 @@ as $$
       where contacts.church_id = p_church_id
         and contacts.assigned_to is null
         and contacts.status <> 'closed'
+        and contacts.deleted_at is null
     ) as unassigned_count,
     (
       select count(distinct follow_ups.contact_id)
@@ -2470,6 +2479,7 @@ as $$
       join public.contacts on contacts.id = follow_ups.contact_id
       where follow_ups.church_id = p_church_id
         and contacts.status <> 'closed'
+        and contacts.deleted_at is null
         and follow_ups.completed_at is null
         and follow_ups.due_at >= date_trunc('day', now())
         and follow_ups.due_at < date_trunc('day', now()) + interval '1 day'
@@ -2480,6 +2490,7 @@ as $$
       join public.contacts on contacts.id = follow_ups.contact_id
       where follow_ups.church_id = p_church_id
         and contacts.status <> 'closed'
+        and contacts.deleted_at is null
         and follow_ups.completed_at is null
         and follow_ups.due_at < now()
     ) as overdue_count,
@@ -2489,6 +2500,7 @@ as $$
       where contacts.church_id = p_church_id
         and contacts.status = 'waiting'
         and contacts.status <> 'closed'
+        and contacts.deleted_at is null
     ) as waiting_reply_count,
     (
       select count(*)
@@ -2496,12 +2508,14 @@ as $$
       where contacts.church_id = p_church_id
         and contacts.consent_given is distinct from true
         and contacts.status <> 'closed'
+        and contacts.deleted_at is null
     ) as no_consent_count,
     (
       select count(*)
       from public.contacts
       where contacts.church_id = p_church_id
         and contacts.do_not_contact = true
+        and contacts.deleted_at is null
     ) as do_not_contact_count,
     coalesce(
       (
@@ -2549,6 +2563,7 @@ as $$
     from public.contacts
     where contacts.church_id = p_church_id
       and contacts.event_id = p_event_id
+      and contacts.deleted_at is null
   )
   select
     (select count(*) from event_contacts) as total_contacts,

@@ -8,6 +8,7 @@ import { QuickContactForm } from "@/components/app/quick-contact-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getChurchContext, getContactsPage, getEvents, getTeamMembers, getUserAccountPreferences } from "@/lib/data";
+import { canManageContacts } from "@/lib/permissions";
 
 export const metadata = {
   title: "Contacts"
@@ -27,6 +28,7 @@ export default async function ContactsPage({
     getUserAccountPreferences(context.userId)
   ]);
   const { contacts, total, page, pageCount } = contactsPage;
+  const userCanManageContacts = canManageContacts(context.role as "admin" | "pastor" | "elder" | "bible_worker" | "health_leader" | "prayer_team" | "youth_leader" | "viewer");
   const exportHref = () => {
     const search = new URLSearchParams();
 
@@ -75,7 +77,7 @@ export default async function ContactsPage({
             total={total}
             visibleCount={contacts.length}
           />
-          <ContactList churchName={context.churchName} contacts={contacts} team={team} compactLists={preferences.compactLists} />
+          <ContactList churchName={context.churchName} contacts={contacts} team={team} compactLists={preferences.compactLists} canManageContacts={userCanManageContacts} />
         </CardContent>
       </Card>
 

@@ -247,6 +247,8 @@ export async function updateContactLifecycleAction(formData: FormData) {
   revalidatePath("/contacts");
   revalidatePath(`/contacts/${parsed.data.contactId}`);
   revalidatePath("/dashboard");
+  revalidatePath("/follow-ups");
+  revalidatePath("/reports");
 
   if (parsed.data.intent === "archive" || parsed.data.intent === "delete") {
     redirect("/contacts");
