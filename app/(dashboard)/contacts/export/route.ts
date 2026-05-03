@@ -1,11 +1,28 @@
 import { getChurchContext, getContactsPage } from "@/lib/data";
 import { csvResponse, toCsv } from "@/lib/csv";
-import { interestLabels, statusLabels, type FollowUpStatus } from "@/lib/constants";
+import { assignmentRoleLabels, interestLabels, statusLabels, type FollowUpStatus } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 const EXPORT_BATCH_SIZE = 100;
-const BASE_CONTACT_HEADERS = ["Name", "Phone", "Email", "Area", "Language", "Event", "Interests", "Status", "Urgency", "Assigned To", "Do Not Contact", "Duplicate Match", "Best Time", "Created At"];
+const BASE_CONTACT_HEADERS = [
+  "Name",
+  "Phone",
+  "Email",
+  "Area",
+  "Language",
+  "Event",
+  "Interests",
+  "Status",
+  "Urgency",
+  "Handling Role",
+  "Recommended Role",
+  "In-App Assignee",
+  "Do Not Contact",
+  "Duplicate Match",
+  "Best Time",
+  "Created At"
+];
 
 type ContactExportFilters = {
   q?: string;
@@ -109,6 +126,14 @@ async function collectContactRows(
         .map((interest) => interestLabels[interest] ?? interest)
         .join("; ");
 
+      const handlingRole = contact.assigned_handling_role
+        ? assignmentRoleLabels[contact.assigned_handling_role as keyof typeof assignmentRoleLabels] ?? contact.assigned_handling_role
+        : "";
+
+      const recommendedRole = contact.recommended_assigned_role
+        ? assignmentRoleLabels[contact.recommended_assigned_role as keyof typeof assignmentRoleLabels] ?? contact.recommended_assigned_role
+        : "";
+
       rows.push([
         contact.full_name,
         contact.phone ?? "",
@@ -119,7 +144,9 @@ async function collectContactRows(
         interests,
         statusLabels[contact.status as FollowUpStatus] ?? contact.status,
         contact.urgency,
-        contact.assigned_name ?? "Unassigned",
+        handlingRole,
+        recommendedRole,
+        contact.assigned_name ?? "",
         contact.do_not_contact ? "Yes" : "No",
         contact.duplicate_of_contact_id ? "Yes" : "No",
         contact.best_time_to_contact ?? "",

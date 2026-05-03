@@ -3490,3 +3490,156 @@ $$;
 
 revoke all on function public.owner_church_events_page(uuid, text, integer, integer) from public;
 grant execute on function public.owner_church_events_page(uuid, text, integer, integer) to authenticated;
+
+-- Handling Role Assignment Safety Migration
+-- Phase 1: Add constraints and follow_ups.assigned_handling_role
+
+-- Validate contact handling roles before adding constraints
+do $$
+declare
+  invalid_count integer;
+begin
+  select count(*) into invalid_count
+  from public.contacts
+  where assigned_handling_role is not null
+    and assigned_handling_role not in (
+      'pastor',
+      'elder',
+      'bible_worker',
+      'prayer_team',
+      'health_leader',
+      'youth_leader',
+      'family_ministries',
+      'deacon_deaconess',
+      'interest_coordinator',
+      'event_leader',
+      'admin_secretary',
+      'general_follow_up_team'
+    );
+
+  if invalid_count > 0 then
+    raise exception 'Cannot add contacts_assigned_handling_role_check: % invalid assigned_handling_role values found.', invalid_count;
+  end if;
+end $$;
+
+-- Validate recommended roles before adding constraints
+do $$
+declare
+  invalid_count integer;
+begin
+  select count(*) into invalid_count
+  from public.contacts
+  where recommended_assigned_role is not null
+    and recommended_assigned_role not in (
+      'pastor',
+      'elder',
+      'bible_worker',
+      'prayer_team',
+      'health_leader',
+      'youth_leader',
+      'family_ministries',
+      'deacon_deaconess',
+      'interest_coordinator',
+      'event_leader',
+      'admin_secretary',
+      'general_follow_up_team'
+    );
+
+  if invalid_count > 0 then
+    raise exception 'Cannot add contacts_recommended_assigned_role_check: % invalid recommended_assigned_role values found.', invalid_count;
+  end if;
+end $$;
+
+alter table if exists public.contacts
+  drop constraint if exists contacts_assigned_handling_role_check;
+
+alter table if exists public.contacts
+  add constraint contacts_assigned_handling_role_check
+  check (
+    assigned_handling_role is null
+    or assigned_handling_role in (
+      'pastor',
+      'elder',
+      'bible_worker',
+      'prayer_team',
+      'health_leader',
+      'youth_leader',
+      'family_ministries',
+      'deacon_deaconess',
+      'interest_coordinator',
+      'event_leader',
+      'admin_secretary',
+      'general_follow_up_team'
+    )
+  );
+
+alter table if exists public.contacts
+  drop constraint if exists contacts_recommended_assigned_role_check;
+
+alter table if exists public.contacts
+  add constraint contacts_recommended_assigned_role_check
+  check (
+    recommended_assigned_role is null
+    or recommended_assigned_role in (
+      'pastor',
+      'elder',
+      'bible_worker',
+      'prayer_team',
+      'health_leader',
+      'youth_leader',
+      'family_ministries',
+      'deacon_deaconess',
+      'interest_coordinator',
+      'event_leader',
+      'admin_secretary',
+      'general_follow_up_team'
+    )
+  );
+
+alter table if exists public.follow_ups
+  add column if not exists assigned_handling_role text;
+
+alter table if exists public.follow_ups
+  drop constraint if exists follow_ups_assigned_handling_role_check;
+
+alter table if exists public.follow_ups
+  add constraint follow_ups_assigned_handling_role_check
+  check (
+    assigned_handling_role is null
+    or assigned_handling_role in (
+      'pastor',
+      'elder',
+      'bible_worker',
+      'prayer_team',
+      'health_leader',
+      'youth_leader',
+      'family_ministries',
+      'deacon_deaconess',
+      'interest_coordinator',
+      'event_leader',
+      'admin_secretary',
+      'general_follow_up_team'
+    )
+  );
+
+create index if not exists follow_ups_church_handling_role_idx
+on public.follow_ups(church_id, assigned_handling_role, due_at)
+where completed_at is null;
+
+-- Backfill contacts with recommended roles
+update public.contacts
+set assigned_handling_role = recommended_assigned_role,
+    updated_at = now()
+where assigned_handling_role is null
+  and recommended_assigned_role is not null
+  and deleted_at is null;
+
+-- Backfill follow-up history from current contact handling role
+update public.follow_ups fu
+set assigned_handling_role = c.assigned_handling_role,
+    updated_at = now()
+from public.contacts c
+where fu.contact_id = c.id
+  and fu.church_id = c.church_id
+  and fu.assigned_handling_role is null
+  and c.assigned_handling_role is not null;

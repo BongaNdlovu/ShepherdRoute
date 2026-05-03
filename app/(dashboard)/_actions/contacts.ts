@@ -16,7 +16,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 const contactUpdateSchema = z.object({
   contactId: z.string().uuid(),
   assignedTo: z.string().uuid().or(z.literal("unassigned")),
-  assignedHandlingRole: z.enum(assignmentRoleOptions).or(z.literal("")),
+  assignedHandlingRole: z.enum(assignmentRoleOptions).or(z.literal("")).optional(),
   status: z.enum(statusOptions)
 });
 
@@ -37,6 +37,7 @@ const quickContactSchema = z.object({
 const followUpNoteSchema = z.object({
   contactId: z.string().uuid(),
   assignedTo: z.string().uuid().or(z.literal("unassigned")),
+  assignedHandlingRole: z.enum(assignmentRoleOptions).or(z.literal("")).optional(),
   channel: z.enum(followUpChannelOptions),
   status: z.enum(statusOptions),
   notes: z.string().max(2000).optional(),
@@ -91,7 +92,9 @@ export async function updateContactAction(formData: FormData) {
   const parsed = contactUpdateSchema.safeParse({
     contactId: formData.get("contactId"),
     assignedTo: formData.get("assignedTo"),
-    assignedHandlingRole: formData.get("assignedHandlingRole") || "",
+    assignedHandlingRole: formData.has("assignedHandlingRole")
+      ? formData.get("assignedHandlingRole") || ""
+      : undefined,
     status: formData.get("status")
   });
 
@@ -100,16 +103,32 @@ export async function updateContactAction(formData: FormData) {
   }
 
   const assignedTo = parsed.data.assignedTo === "unassigned" ? null : parsed.data.assignedTo;
-  const assignedHandlingRole = parsed.data.assignedHandlingRole === "" ? null : parsed.data.assignedHandlingRole;
+  const assignedHandlingRole =
+    parsed.data.assignedHandlingRole === undefined
+      ? undefined
+      : parsed.data.assignedHandlingRole === ""
+        ? null
+        : parsed.data.assignedHandlingRole;
+
   const supabase = await createClient();
   await requireContactManager(context, supabase);
+
+  const contactUpdate: {
+    assigned_to: string | null;
+    status: typeof parsed.data.status;
+    assigned_handling_role?: string | null;
+  } = {
+    assigned_to: assignedTo,
+    status: parsed.data.status
+  };
+
+  if (assignedHandlingRole !== undefined) {
+    contactUpdate.assigned_handling_role = assignedHandlingRole;
+  }
+
   const { error } = await supabase
     .from("contacts")
-    .update({
-      assigned_to: assignedTo,
-      assigned_handling_role: assignedHandlingRole,
-      status: parsed.data.status
-    })
+    .update(contactUpdate)
     .eq("church_id", context.churchId)
     .eq("id", parsed.data.contactId);
 
@@ -117,10 +136,18 @@ export async function updateContactAction(formData: FormData) {
     redirect(`/contacts?error=${actionError(error, "Could not update contact.")}`);
   }
 
+  const { data: updatedContact } = await supabase
+    .from("contacts")
+    .select("assigned_handling_role")
+    .eq("church_id", context.churchId)
+    .eq("id", parsed.data.contactId)
+    .single();
+
   const { error: followUpError } = await supabase.from("follow_ups").insert({
     church_id: context.churchId,
     contact_id: parsed.data.contactId,
     assigned_to: assignedTo,
+    assigned_handling_role: updatedContact?.assigned_handling_role ?? null,
     author_id: context.userId,
     channel: "note",
     status: parsed.data.status,
@@ -141,6 +168,9 @@ export async function addFollowUpNoteAction(formData: FormData) {
   const parsed = followUpNoteSchema.safeParse({
     contactId: formData.get("contactId"),
     assignedTo: formData.get("assignedTo"),
+    assignedHandlingRole: formData.has("assignedHandlingRole")
+      ? formData.get("assignedHandlingRole") || ""
+      : undefined,
     channel: formData.get("channel"),
     status: formData.get("status"),
     notes: formData.get("notes") || undefined,
@@ -154,14 +184,30 @@ export async function addFollowUpNoteAction(formData: FormData) {
   }
 
   const assignedTo = parsed.data.assignedTo === "unassigned" ? null : parsed.data.assignedTo;
+  const assignedHandlingRole =
+    parsed.data.assignedHandlingRole === undefined
+      ? undefined
+      : parsed.data.assignedHandlingRole === ""
+        ? null
+        : parsed.data.assignedHandlingRole;
   const completedAt = parsed.data.markComplete ? new Date().toISOString() : null;
   const supabase = await createClient();
   await requireFollowUpAssigner(context, supabase, "/contacts");
+
+  const { data: currentContact } = await supabase
+    .from("contacts")
+    .select("assigned_handling_role")
+    .eq("church_id", context.churchId)
+    .eq("id", parsed.data.contactId)
+    .single();
+
+  const contactCurrentRole = currentContact?.assigned_handling_role ?? null;
 
   const { error } = await supabase.from("follow_ups").insert({
     church_id: context.churchId,
     contact_id: parsed.data.contactId,
     assigned_to: assignedTo,
+    assigned_handling_role: assignedHandlingRole ?? contactCurrentRole,
     author_id: context.userId,
     channel: parsed.data.channel,
     status: parsed.data.status,
@@ -179,6 +225,7 @@ export async function addFollowUpNoteAction(formData: FormData) {
     .from("contacts")
     .update({
       assigned_to: assignedTo,
+      ...(assignedHandlingRole !== undefined ? { assigned_handling_role: assignedHandlingRole } : {}),
       status: parsed.data.status
     })
     .eq("church_id", context.churchId)
@@ -343,6 +390,7 @@ export async function addQuickContactAction(formData: FormData) {
       status: assignedTo ? "assigned" : "new",
       urgency: classification.urgency,
       assigned_to: assignedTo,
+      assigned_handling_role: classification.recommended_assigned_role,
       recommended_assigned_role: classification.recommended_assigned_role,
       consent_given: parsed.data.consentStatus === "given",
       consent_at: parsed.data.consentStatus === "given" ? new Date().toISOString() : null,
@@ -431,6 +479,7 @@ export async function addQuickContactAction(formData: FormData) {
     church_id: context.churchId,
     contact_id: contact.id,
     assigned_to: assignedTo,
+    assigned_handling_role: classification.recommended_assigned_role,
     author_id: context.userId,
     channel: "note",
     status: assignedTo ? "assigned" : "new",

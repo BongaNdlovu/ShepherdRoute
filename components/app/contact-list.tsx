@@ -96,6 +96,7 @@ export function ContactList({ churchName, contacts, team, compactLists = false, 
                   <form action={updateContactAction} className="flex gap-2">
                     <input type="hidden" name="contactId" value={contact.id} />
                     <input type="hidden" name="status" value={contact.status} />
+                    <input type="hidden" name="assignedHandlingRole" value={contact.assigned_handling_role ?? ""} />
                     <select name="assignedTo" defaultValue={contact.assigned_to ?? "unassigned"} className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-ring">
                       <option value="unassigned">Unassigned</option>
                       {team.map((member) => (

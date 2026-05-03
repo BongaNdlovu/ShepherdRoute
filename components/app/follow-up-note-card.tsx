@@ -4,7 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { followUpChannelLabels, followUpChannelOptions, statusLabels, statusOptions } from "@/lib/constants";
+import {
+  assignmentRoleLabels,
+  assignmentRoleOptions,
+  followUpChannelLabels,
+  followUpChannelOptions,
+  statusLabels,
+  statusOptions
+} from "@/lib/constants";
 import type { ContactDetailResult } from "@/lib/data";
 
 type FollowUpNoteCardProps = {
@@ -33,6 +40,23 @@ export function FollowUpNoteCard({ contact, team }: FollowUpNoteCardProps) {
                 <option key={member.id} value={member.id}>{member.display_name}</option>
               ))}
             </select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="noteAssignedHandlingRole">Handling role</Label>
+            <select
+              id="noteAssignedHandlingRole"
+              name="assignedHandlingRole"
+              defaultValue={contact.assigned_handling_role ?? contact.recommended_assigned_role ?? ""}
+              className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring"
+            >
+              <option value="">No handling role</option>
+              {assignmentRoleOptions.map((role) => (
+                <option key={role} value={role}>{assignmentRoleLabels[role]}</option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              This shows which outside role should continue follow-up, even if that person does not use the app.
+            </p>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <div className="grid gap-2">

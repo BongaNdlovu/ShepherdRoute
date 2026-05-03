@@ -3,7 +3,7 @@ import { updateContactAction } from "@/app/(dashboard)/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { statusLabels, statusOptions } from "@/lib/constants";
+import { assignmentRoleLabels, assignmentRoleOptions, statusLabels, statusOptions } from "@/lib/constants";
 import type { ContactDetailResult } from "@/lib/data";
 
 type FollowUpTrackerCardProps = {
@@ -16,7 +16,9 @@ export function FollowUpTrackerCard({ contact, team }: FollowUpTrackerCardProps)
     <Card className="xl:sticky xl:top-6 xl:self-start">
       <CardHeader>
         <CardTitle>Follow-up tracker</CardTitle>
-        <CardDescription>Assign ownership and move the contact through the pathway.</CardDescription>
+        <CardDescription>
+          Assign an in-app representative and choose the church role that should handle this contact.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form action={updateContactAction} className="grid gap-4">
@@ -29,6 +31,23 @@ export function FollowUpTrackerCard({ contact, team }: FollowUpTrackerCardProps)
                 <option key={member.id} value={member.id}>{member.display_name}</option>
               ))}
             </select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="assignedHandlingRole">Handling role</Label>
+            <select
+              id="assignedHandlingRole"
+              name="assignedHandlingRole"
+              defaultValue={contact.assigned_handling_role ?? contact.recommended_assigned_role ?? ""}
+              className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring"
+            >
+              <option value="">No handling role</option>
+              {assignmentRoleOptions.map((role) => (
+                <option key={role} value={role}>{assignmentRoleLabels[role]}</option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              This can be an outside church/ministry role even if that person does not have app access.
+            </p>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="status">Status</Label>

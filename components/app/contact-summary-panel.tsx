@@ -70,22 +70,23 @@ export function ContactSummaryPanel({ contact, error }: ContactSummaryPanelProps
           <p className="mt-1 font-semibold">{contact.best_time_to_contact ?? "No preference"}</p>
         </div>
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Assigned to</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Handling role</p>
           <p className="mt-1 font-semibold">
             {contact.assigned_handling_role
               ? assignmentRoleLabels[contact.assigned_handling_role as keyof typeof assignmentRoleLabels] ?? contact.assigned_handling_role
-              : assignedMember?.display_name ?? "Unassigned"}
+              : contact.recommended_assigned_role
+                ? `${assignmentRoleLabels[contact.recommended_assigned_role as keyof typeof assignmentRoleLabels] ?? contact.recommended_assigned_role} recommended`
+                : "No handling role"}
           </p>
-          {contact.assigned_handling_role && assignedMember?.display_name ? (
-            <p className="mt-1 text-xs text-muted-foreground">
-              Person: {assignedMember.display_name}
-            </p>
-          ) : null}
           {contact.recommended_assigned_role && contact.recommended_assigned_role !== contact.assigned_handling_role ? (
             <p className="mt-1 text-xs text-muted-foreground">
               Recommended: {assignmentRoleLabels[contact.recommended_assigned_role as keyof typeof assignmentRoleLabels] ?? contact.recommended_assigned_role}
             </p>
           ) : null}
+          <p className="mt-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">In-app representative</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {assignedMember?.display_name ?? "No app user assigned"}
+          </p>
         </div>
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Consent</p>
