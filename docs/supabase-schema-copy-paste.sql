@@ -2625,6 +2625,56 @@ $$;
 revoke all on function public.event_report_summary(uuid, uuid) from public, anon, authenticated;
 grant execute on function public.event_report_summary(uuid, uuid) to authenticated;
 
+drop function if exists public.reset_church_contact_data(uuid);
+
+create or replace function public.reset_church_contact_data(p_church_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_deleted_contacts bigint;
+  v_deleted_people bigint;
+  v_deleted_data_requests bigint;
+begin
+  -- Delete contacts first (cascades to contact_interests, contact_form_answers, follow_ups, prayer_requests, generated_messages)
+  delete from public.contacts
+  where church_id = p_church_id;
+  get diagnostics v_deleted_contacts = row_count;
+
+  -- Delete orphaned people (no longer referenced by any contact)
+  delete from public.people
+  where church_id = p_church_id
+    and id not in (select distinct person_id from public.contacts where person_id is not null);
+  get diagnostics v_deleted_people = row_count;
+
+  -- Delete orphaned data_requests (where related_contact_id was set to null)
+  delete from public.data_requests
+  where church_id = p_church_id
+    and related_contact_id is null;
+  get diagnostics v_deleted_data_requests = row_count;
+
+  -- Insert audit log entry
+  insert into public.audit_logs (church_id, actor_user_id, target_type, target_id, action, metadata)
+  values (
+    p_church_id,
+    auth.uid(),
+    'church',
+    p_church_id,
+    'reset_contact_data',
+    jsonb_build_object(
+      'deleted_contacts', v_deleted_contacts,
+      'deleted_people', v_deleted_people,
+      'deleted_data_requests', v_deleted_data_requests
+    )
+  );
+end;
+$$;
+
+revoke all on function public.reset_church_contact_data(uuid) from public, anon, authenticated;
+grant execute on function public.reset_church_contact_data(uuid) to authenticated;
+
 drop function if exists public.submit_event_registration(
   text,
   text,
