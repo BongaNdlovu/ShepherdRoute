@@ -63,7 +63,7 @@ export default async function OwnerChurchDetailPage({
           <CardDescription>Activate or deactivate this workspace.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={updateOwnerWorkspaceStatusAction} className="grid gap-2 rounded-lg border bg-muted p-3">
+          <form action={updateOwnerWorkspaceStatusAction} className="grid gap-2 surface-panel rounded-2xl p-3">
             <input type="hidden" name="churchId" value={church.id} />
             <input type="hidden" name="workspaceStatus" value={church.workspace_status === "active" ? "inactive" : "active"} />
             <input type="hidden" name="returnTo" value={`/admin/churches/${church.id}`} />

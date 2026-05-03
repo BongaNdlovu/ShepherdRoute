@@ -112,24 +112,60 @@
 
   .cinematic-shell {
     position: relative;
-    border: 1px solid hsl(var(--border));
+    isolation: isolate;
+    min-height: 100dvh;
+    overflow-x: hidden;
     background:
-      radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 32rem),
-      radial-gradient(circle at bottom right, rgba(15, 23, 42, 0.12), transparent 28rem),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
-    box-shadow:
-      0 24px 80px rgba(15, 23, 42, 0.10),
-      inset 0 1px 0 rgba(255, 255, 255, 0.85);
+      radial-gradient(circle at 12% 8%, rgba(255, 255, 255, 0.95), transparent 30rem),
+      radial-gradient(circle at 84% 14%, rgba(219, 234, 254, 0.55), transparent 34rem),
+      radial-gradient(circle at 78% 82%, rgba(254, 243, 199, 0.45), transparent 30rem),
+      linear-gradient(135deg, #fbfaf7 0%, #f7f4ed 45%, #eef3f8 100%);
   }
 
   .cinematic-shell::before {
-    content: '';
-    position: absolute;
-    inset: -35%;
+    content: "";
+    position: fixed;
+    inset: -20%;
+    z-index: -2;
     pointer-events: none;
-    background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.45) 48%, transparent 62%);
-    transform: translateX(-18%) rotate(8deg);
-    opacity: 0.45;
+    background:
+      radial-gradient(circle at 22% 28%, rgba(255, 255, 255, 0.75), transparent 24rem),
+      radial-gradient(circle at 72% 18%, rgba(191, 219, 254, 0.35), transparent 28rem),
+      radial-gradient(circle at 62% 72%, rgba(253, 230, 138, 0.24), transparent 26rem);
+    filter: blur(18px);
+    animation: cinematic-drift 26s ease-in-out infinite alternate;
+  }
+
+  .cinematic-shell::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(15, 23, 42, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15, 23, 42, 0.025) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent 85%);
+  }
+
+  .surface-card {
+    border: 1px solid rgba(226, 232, 240, 0.75);
+    background: rgba(255, 255, 255, 0.88);
+    box-shadow: 0 18px 55px rgba(15, 23, 42, 0.07);
+    backdrop-filter: blur(18px);
+  }
+
+  .surface-panel {
+    border: 1px solid rgba(226, 232, 240, 0.7);
+    background: rgba(255, 255, 255, 0.72);
+    box-shadow: 0 12px 36px rgba(15, 23, 42, 0.055);
+    backdrop-filter: blur(14px);
+  }
+
+  .surface-transparent {
+    background: transparent;
+    box-shadow: none;
   }
 
   .cinematic-dark-panel {
@@ -172,6 +208,18 @@
   }
 }
 
+@keyframes cinematic-drift {
+  0% {
+    transform: translate3d(-1.5%, -1%, 0) scale(1);
+    opacity: 0.72;
+  }
+
+  100% {
+    transform: translate3d(1.5%, 1%, 0) scale(1.04);
+    opacity: 0.95;
+  }
+}
+
 @keyframes cinematic-fade-up {
   from {
     opacity: 0;
@@ -184,6 +232,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .cinematic-shell::before {
+    animation: none;
+  }
+
   .cinematic-fade-up {
     animation: none !important;
   }

@@ -66,7 +66,7 @@ export default async function NewEventPage({
             <div className="grid gap-3 lg:grid-cols-2">
               {eventTemplateOptions.map((template) => (
                 <Link key={template.type} href={`/events/new?template=${template.type}`}>
-                  <div className="rounded-lg border bg-muted/40 p-4 cursor-pointer hover:border-amber-300 hover:bg-amber-50/40 transition">
+                  <div className="rounded-3xl border border-white/55 bg-white/35 p-4 cursor-pointer shadow-sm backdrop-blur-md transition hover:border-amber-300 hover:bg-amber-50/40">
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
                         <p className="font-bold">{template.name}</p>

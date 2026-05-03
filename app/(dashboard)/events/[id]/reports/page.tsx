@@ -93,7 +93,7 @@ export default async function EventReportPage({
                 : null;
 
             return (
-              <div key={section.key} className="rounded-lg border bg-muted/40 p-4">
+              <div key={section.key} className="surface-panel rounded-2xl p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-bold">{section.label}</p>

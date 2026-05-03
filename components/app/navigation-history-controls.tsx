@@ -9,7 +9,7 @@ export function NavigationHistoryControls() {
   const router = useRouter();
 
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border bg-white p-3 shadow-sm">
+    <div className="surface-card mb-4 flex flex-wrap items-center gap-2 rounded-2xl p-3">
       <Button type="button" variant="outline" size="sm" onClick={() => router.back()}>
         <ArrowLeft className="h-4 w-4" />
         Back

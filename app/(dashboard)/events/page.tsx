@@ -60,7 +60,7 @@ export default async function EventsPage() {
                 </p>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="rounded-xl bg-muted/50 p-4">
+                <div className="surface-panel rounded-2xl p-4">
                   <p className="text-sm text-muted-foreground">Public URL</p>
                   <p className="mt-1 break-all text-sm font-medium text-foreground">{`${origin}/e/${event.slug}`}</p>
                 </div>

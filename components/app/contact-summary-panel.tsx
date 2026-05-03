@@ -48,7 +48,7 @@ export function ContactSummaryPanel({ contact, error }: ContactSummaryPanelProps
         </div>
       ) : null}
       <InterestPills interests={contact.contact_interests ?? []} />
-      <div className="grid gap-4 rounded-lg bg-muted p-4 md:grid-cols-2">
+      <div className="grid gap-4 surface-panel rounded-2xl p-4 md:grid-cols-2">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Email</p>
           <p className="mt-1 font-semibold">{contact.email ?? "Not provided"}</p>

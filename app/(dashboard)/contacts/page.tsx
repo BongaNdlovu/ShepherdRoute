@@ -68,11 +68,11 @@ export default async function ContactsPage({
     >
       <CinematicSection className="cinematic-fade-up">
         <section className="space-y-5">
-          <Card>
-            <CardHeader>
-              <ContactsFilterForm events={events} params={params} team={team} />
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <div className="rounded-3xl border border-white/55 bg-white/35 p-4 shadow-sm backdrop-blur-md">
+            <ContactsFilterForm events={events} params={params} team={team} />
+          </div>
+          <div className="overflow-hidden rounded-3xl border border-slate-200/75 bg-white/90 shadow-sm backdrop-blur">
+            <div className="p-6 space-y-4">
               <ContactList churchName={context.churchName} contacts={contacts} team={team} compactLists={preferences.compactLists} canManageContacts={userCanManageContacts} />
               <ContactsPagination
                 page={page}
@@ -82,8 +82,8 @@ export default async function ContactsPage({
                 visibleCount={contacts.length}
                 params={params}
               />
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           <div className="space-y-4">
             <Card>

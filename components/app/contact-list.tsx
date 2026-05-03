@@ -22,7 +22,7 @@ type ContactListProps = {
 export function ContactList({ churchName, contacts, team, compactLists = false, canManageContacts = false }: ContactListProps) {
   return (
     <div className="mt-5 overflow-hidden rounded-2xl border border-border/70 bg-card shadow-card">
-      <div className="hidden grid-cols-[1.15fr_1fr_1.1fr_1.2fr] bg-muted/50 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:grid">
+      <div className="hidden grid-cols-[1.15fr_1fr_1.1fr_1.2fr] bg-slate-50/70 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:grid">
         <span>Contact</span>
         <span>Interest</span>
         <span>Pathway</span>

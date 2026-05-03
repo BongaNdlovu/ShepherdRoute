@@ -28,7 +28,7 @@ export function OwnerPagination({
   pageSize: number;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-lg border bg-muted p-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 surface-panel rounded-2xl p-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
       <p>
         Showing {visibleCount} of {total} records. Page {page} of {pageCount}.
       </p>

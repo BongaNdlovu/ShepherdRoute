@@ -21,7 +21,7 @@ export function FollowUpsQueueList({
 }) {
   return (
     <div className="mt-5 overflow-hidden rounded-lg border">
-      <div className="hidden grid-cols-[1.2fr_1fr_1fr_1.1fr] bg-muted px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground xl:grid">
+      <div className="hidden grid-cols-[1.2fr_1fr_1fr_1.1fr] bg-slate-50/70 px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground xl:grid">
         <span>Contact</span>
         <span>Care path</span>
         <span>Due / owner</span>

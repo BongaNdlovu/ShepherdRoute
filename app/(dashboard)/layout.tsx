@@ -29,15 +29,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const canBypassInactiveWorkspace = context.isAppAdmin;
 
   return (
-    <div className="min-h-screen bg-background cinematic-gradient">
+    <div className="cinematic-shell min-h-dvh">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
       >
         Skip to main content
       </a>
-      <div className="mx-auto flex max-w-7xl flex-col gap-4 p-3 md:flex-row md:p-6">
-        <aside className="flex flex-col rounded-2xl border border-border/70 bg-card p-4 shadow-card md:sticky md:top-6 md:w-72">
+      <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col gap-4 p-3 md:flex-row md:p-6">
+        <aside className="surface-card sticky top-6 hidden h-[calc(100dvh-3rem)] w-72 shrink-0 rounded-3xl p-4 lg:flex flex-col">
           <Link href="/dashboard" className="flex items-center gap-3 rounded-lg bg-primary p-4 text-primary-foreground">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-white p-1.5">
               <BrandLogo className="h-full w-full object-contain" priority />
@@ -50,7 +50,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
             {context.memberships.length > 1 ? (
-              <form action={switchChurchAction} className="mt-3 grid gap-2 rounded-lg border bg-muted p-3">
+              <form action={switchChurchAction} className="mt-3 grid gap-2 surface-panel rounded-2xl p-3">
                 <label htmlFor="churchId" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Workspace
                 </label>
@@ -72,7 +72,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 </Button>
               </form>
             ) : (
-              <p className="mt-3 rounded-lg border bg-muted p-3 text-sm font-semibold text-slate-700">
+              <p className="mt-3 surface-panel rounded-2xl p-3 text-sm font-semibold text-slate-700">
                 {roleLabels[context.role as keyof typeof roleLabels] ?? context.role}
               </p>
             )}
@@ -118,14 +118,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </form>
         </aside>
 
-        <main id="main-content" className="min-w-0 flex-1 overflow-visible">
+        <main id="main-content" className="min-w-0 flex-1 space-y-6 overflow-visible">
           <NavigationHistoryControls />
           {isWorkspaceInactive && !canBypassInactiveWorkspace ? (
             <InactiveWorkspaceNotice name={context.churchName} label={context.workspaceLabel} />
           ) : (
             children
           )}
-          <footer className="mt-6 flex flex-col gap-2 rounded-2xl border border-border/70 bg-card p-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between shadow-card pb-20 md:pb-4">
+          <footer className="surface-card mt-6 flex flex-col gap-2 rounded-3xl p-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between pb-20 md:pb-4">
             <p>Copyright (c) {new Date().getFullYear()} ShepherdRoute. All rights reserved.</p>
             <div className="flex gap-3">
               <Link href="/privacy" className="font-semibold underline-offset-4 hover:underline">Privacy notice</Link>
