@@ -1534,7 +1534,7 @@ grant select on public.churches, public.events to anon, authenticated;
 
 drop function if exists public.owner_church_summaries();
 
-create or replace function public.owner_church_summaries()
+create function public.owner_church_summaries()
 returns table (
   church_id uuid,
   church_name text,
@@ -1549,27 +1549,52 @@ security definer
 set search_path = public, private
 as $$
 begin
-  perform private.require_app_admin();
+  if auth.uid() is null then
+    raise exception 'Login is required.';
+  end if;
+
+  if not private.is_app_admin() then
+    raise exception 'Only app admins can view owner church summaries.';
+  end if;
 
   return query
   select
-    churches.id,
-    churches.name,
+    churches.id as church_id,
+    churches.name as church_name,
     churches.created_at,
-    count(distinct team_members.id) filter (where team_members.is_active) as team_count,
-    count(distinct events.id) as event_count,
-    count(distinct contacts.id) as contact_count,
-    count(distinct contacts.id) filter (where contacts.status = 'new') as new_contact_count
+    coalesce(team_counts.team_count, 0) as team_count,
+    coalesce(event_counts.event_count, 0) as event_count,
+    coalesce(contact_counts.contact_count, 0) as contact_count,
+    coalesce(new_contact_counts.new_contact_count, 0) as new_contact_count
   from public.churches
-  left join public.team_members on team_members.church_id = churches.id
-  left join public.events on events.church_id = churches.id
-  left join public.contacts on contacts.church_id = churches.id
-  group by churches.id, churches.name, churches.created_at
+  left join (
+    select team_members.church_id, count(*) as team_count
+    from public.team_members
+    group by team_members.church_id
+  ) team_counts on team_counts.church_id = churches.id
+  left join (
+    select events.church_id, count(*) as event_count
+    from public.events
+    group by events.church_id
+  ) event_counts on event_counts.church_id = churches.id
+  left join (
+    select contacts.church_id, count(*) as contact_count
+    from public.contacts
+    where contacts.deleted_at is null
+    group by contacts.church_id
+  ) contact_counts on contact_counts.church_id = churches.id
+  left join (
+    select contacts.church_id, count(*) as new_contact_count
+    from public.contacts
+    where contacts.deleted_at is null
+      and contacts.status = 'new'
+    group by contacts.church_id
+  ) new_contact_counts on new_contact_counts.church_id = churches.id
   order by churches.created_at desc;
 end;
 $$;
 
-revoke all on function public.owner_church_summaries() from public, anon, authenticated;
+revoke all on function public.owner_church_summaries() from public;
 grant execute on function public.owner_church_summaries() to authenticated;
 
 drop function if exists public.owner_account_rows();
@@ -2657,52 +2682,79 @@ grant execute on function public.event_report_summary(uuid, uuid) to authenticat
 
 drop function if exists public.reset_church_contact_data(uuid);
 
-create or replace function public.reset_church_contact_data(p_church_id uuid)
+create function public.reset_church_contact_data(p_church_id uuid)
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, private
 as $$
-declare
-  v_deleted_contacts bigint;
-  v_deleted_people bigint;
-  v_deleted_data_requests bigint;
 begin
-  -- Delete contacts first (cascades to contact_interests, contact_form_answers, follow_ups, prayer_requests, generated_messages)
+  if auth.uid() is null then
+    raise exception 'Login is required.';
+  end if;
+
+  if not (
+    private.is_app_admin()
+    or exists (
+      select 1
+      from public.church_memberships
+      where church_id = p_church_id
+        and user_id = auth.uid()
+        and role = 'admin'
+        and status = 'active'
+    )
+  ) then
+    raise exception 'You do not have permission to reset contact data.';
+  end if;
+
+  delete from public.generated_messages
+  where church_id = p_church_id;
+
+  delete from public.prayer_requests
+  where church_id = p_church_id;
+
+  delete from public.follow_ups
+  where church_id = p_church_id;
+
+  delete from public.contact_form_answers
+  where church_id = p_church_id;
+
+  delete from public.contact_interests
+  where church_id = p_church_id;
+
+  delete from public.contact_journey_events
+  where church_id = p_church_id;
+
+  update public.data_requests
+  set related_contact_id = null,
+      updated_at = now()
+  where church_id = p_church_id
+    and related_contact_id is not null;
+
   delete from public.contacts
   where church_id = p_church_id;
-  get diagnostics v_deleted_contacts = row_count;
 
-  -- Delete orphaned people (no longer referenced by any contact)
   delete from public.people
-  where church_id = p_church_id
-    and id not in (select distinct person_id from public.contacts where person_id is not null);
-  get diagnostics v_deleted_people = row_count;
+  where church_id = p_church_id;
 
-  -- Delete orphaned data_requests (where related_contact_id was set to null)
-  delete from public.data_requests
-  where church_id = p_church_id
-    and related_contact_id is null;
-  get diagnostics v_deleted_data_requests = row_count;
-
-  -- Insert audit log entry
-  insert into public.audit_logs (church_id, actor_user_id, target_type, target_id, action, metadata)
+  insert into public.audit_logs (
+    church_id,
+    actor_user_id,
+    target_type,
+    action,
+    metadata
+  )
   values (
     p_church_id,
     auth.uid(),
-    'church',
-    p_church_id,
-    'reset_contact_data',
-    jsonb_build_object(
-      'deleted_contacts', v_deleted_contacts,
-      'deleted_people', v_deleted_people,
-      'deleted_data_requests', v_deleted_data_requests
-    )
+    'church_contact_data',
+    'contact_data.reset',
+    jsonb_build_object('reset_at', now())
   );
 end;
 $$;
 
-revoke all on function public.reset_church_contact_data(uuid) from public, anon, authenticated;
+revoke all on function public.reset_church_contact_data(uuid) from public;
 grant execute on function public.reset_church_contact_data(uuid) to authenticated;
 
 drop function if exists public.submit_event_registration(
