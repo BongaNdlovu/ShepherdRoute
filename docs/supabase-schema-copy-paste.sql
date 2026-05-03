@@ -1444,9 +1444,9 @@ using (private.is_church_member(church_id) or private.is_app_admin());
 
 drop policy if exists "Leaders can manage church events" on public.events;
 create policy "Leaders can manage church events"
--on public.events for all
--using (private.has_church_role(church_id, array['admin','pastor','elder','health_leader','youth_leader']::public.team_role[]))
--with check (private.has_church_role(church_id, array['admin','pastor','elder','health_leader','youth_leader']::public.team_role[]));
+on public.events for all
+using (private.has_church_role(church_id, array['admin','pastor','elder','health_leader','youth_leader']::public.team_role[]))
+with check (private.has_church_role(church_id, array['admin','pastor','elder','health_leader','youth_leader']::public.team_role[]));
 
 drop policy if exists "event assignments select safely" on public.event_assignments;
 create policy "event assignments select safely"
