@@ -468,6 +468,21 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
       { key: "health_interests", label: "Health interests", description: "Member health ministry interests.", interest: "health" },
       { key: "baptism_requests", label: "Baptismal requests", description: "Contacts requesting baptism preparation.", interest: "baptism" },
       { key: "followed_up", label: "Followed up", description: "Requests with follow-up progress.", metric: "followed_up_count" }
+    ],
+    questions: [
+      {
+        name: "member_request_type",
+        label: "What would you like to share with the church?",
+        type: "checkbox_group",
+        required: false,
+        options: [
+          { value: "theological_question", label: "Ask a theological question" },
+          { value: "gratitude_feedback", label: "Express gratitude or feedback" },
+          { value: "suggestion", label: "Suggest church improvements" },
+          { value: "team_involvement", label: "Request to get involved in a team" },
+          { value: "contribute", label: "Contribute towards improving the church" }
+        ]
+      }
     ]
   },
   baptized_member: {
