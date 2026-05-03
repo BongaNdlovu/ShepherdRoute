@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { getChurchContext, getTeamMembers } from "@/lib/data";
 import { getEventContactsPage, type EventContactsParams } from "@/lib/data-events";
+import { requireEventPermission } from "@/lib/data-event-assignments";
 import { statusOptions, urgencyOptions } from "@/lib/constants";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { InterestPills } from "@/components/app/interest-pills";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata = {
   title: "Event Contacts"
@@ -22,6 +24,55 @@ export default async function EventContactsPage({
   const { id } = await params;
   const query = await searchParams;
   const context = await getChurchContext();
+
+  // Check event permission
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { data: appAdmin } = await supabase
+    .from('app_admins')
+    .select('role')
+    .eq('user_id', user?.id)
+    .maybeSingle();
+
+  const { data: membership } = await supabase
+    .from('church_memberships')
+    .select('id, role')
+    .eq('user_id', user?.id)
+    .eq('church_id', context.churchId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  const { data: teamMember } = await supabase
+    .from('team_members')
+    .select('role')
+    .eq('membership_id', membership?.id)
+    .maybeSingle();
+
+  try {
+    await requireEventPermission({
+      userId: user?.id || '',
+      eventId: id,
+      appRole: appAdmin?.role as any,
+      teamRole: teamMember?.role as any || 'viewer',
+      permission: 'can_view_contacts',
+    });
+  } catch (error) {
+    return (
+      <section className="space-y-4">
+        <EventWorkspaceTabs eventId={id} />
+        <Card>
+          <CardContent className="p-6">
+            <h1 className="text-lg font-semibold">Access restricted</h1>
+            <p className="text-sm text-muted-foreground">
+              You do not have permission to view event contacts.
+            </p>
+          </CardContent>
+        </Card>
+      </section>
+    );
+  }
+
   const team = await getTeamMembers(context.churchId);
   const { contacts, totalCount, page, pageSize } = await getEventContactsPage(context.churchId, id, query);
 

@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { getChurchContext, getEvent } from "@/lib/data";
 import { absoluteRequestUrl } from "@/lib/server-url";
+import { requireEventPermission } from "@/lib/data-event-assignments";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata = {
   title: "Event Settings"
@@ -20,6 +22,55 @@ export default async function EventSettingsPage({
 }) {
   const { id } = await params;
   const context = await getChurchContext();
+
+  // Check event permission
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { data: appAdmin } = await supabase
+    .from('app_admins')
+    .select('role')
+    .eq('user_id', user?.id)
+    .maybeSingle();
+
+  const { data: membership } = await supabase
+    .from('church_memberships')
+    .select('id, role')
+    .eq('user_id', user?.id)
+    .eq('church_id', context.churchId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  const { data: teamMember } = await supabase
+    .from('team_members')
+    .select('role')
+    .eq('membership_id', membership?.id)
+    .maybeSingle();
+
+  try {
+    await requireEventPermission({
+      userId: user?.id || '',
+      eventId: id,
+      appRole: appAdmin?.role as any,
+      teamRole: teamMember?.role as any || 'viewer',
+      permission: 'can_edit_event_settings',
+    });
+  } catch (error) {
+    return (
+      <section className="space-y-4">
+        <EventWorkspaceTabs eventId={id} />
+        <Card>
+          <CardContent className="p-6">
+            <h1 className="text-lg font-semibold">Access restricted</h1>
+            <p className="text-sm text-muted-foreground">
+              You do not have permission to edit event settings.
+            </p>
+          </CardContent>
+        </Card>
+      </section>
+    );
+  }
+
   const { event } = await getEvent(context.churchId, id);
   const publicUrl = await absoluteRequestUrl(`/e/${event.slug}`);
   const isArchived = Boolean(event.archived_at);

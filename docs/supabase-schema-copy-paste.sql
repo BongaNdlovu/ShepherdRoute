@@ -78,6 +78,11 @@ exception when duplicate_object then null;
 end $$;
 
 do $$ begin
+  create type public.event_assignment_status as enum ('pending', 'accepted', 'revoked', 'expired');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
   create type public.follow_up_status as enum (
     'new',
     'assigned',
@@ -336,6 +341,43 @@ alter table public.events
   add column if not exists form_config jsonb not null default '{}'::jsonb,
   add column if not exists branding_config jsonb not null default '{}'::jsonb,
   add column if not exists public_info jsonb not null default '{}'::jsonb;
+
+create table if not exists public.event_assignments (
+  id uuid primary key default gen_random_uuid(),
+  church_id uuid not null references public.churches(id) on delete cascade,
+  event_id uuid not null references public.events(id) on delete cascade,
+  team_member_id uuid references public.team_members(id) on delete set null,
+  invitee_email text,
+  invitation_token_hash text,
+  invitation_expires_at timestamptz,
+  invited_by uuid references public.profiles(id) on delete set null,
+  invited_at timestamptz not null default now(),
+  accepted_at timestamptz,
+  revoked_at timestamptz,
+  revoked_by uuid references public.profiles(id) on delete set null,
+  status public.event_assignment_status not null default 'pending',
+  can_view_contacts boolean not null default false,
+  can_assign_contacts boolean not null default false,
+  can_view_reports boolean not null default false,
+  can_export_reports boolean not null default false,
+  can_edit_event_settings boolean not null default false,
+  can_manage_event_team boolean not null default false,
+  can_view_prayer_requests boolean not null default false,
+  can_delete_event boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint event_assignments_church_event_check check (church_id = (select church_id from public.events where events.id = event_id)),
+  constraint event_assignments_team_member_church_check check (team_member_id is null or (select church_id from public.team_members where team_members.id = team_member_id) = church_id),
+  constraint event_assignments_exactly_one_identifier check (team_member_id is not null or invitee_email is not null),
+  constraint event_assignments_email_lowercase check (invitee_email is null or invitee_email = lower(invitee_email))
+);
+
+create index if not exists event_assignments_event_idx on public.event_assignments(event_id);
+create index if not exists event_assignments_team_member_idx on public.event_assignments(team_member_id) where team_member_id is not null;
+create index if not exists event_assignments_invitee_email_idx on public.event_assignments(invitee_email) where invitee_email is not null;
+create index if not exists event_assignments_church_idx on public.event_assignments(church_id);
+create index if not exists event_assignments_status_idx on public.event_assignments(status);
+create index if not exists event_assignments_token_hash_idx on public.event_assignments(invitation_token_hash) where invitation_token_hash is not null;
 
 create table if not exists public.people (
   id uuid primary key default gen_random_uuid(),
@@ -908,6 +950,52 @@ create trigger prayer_requests_touch_updated_at before update on public.prayer_r
 drop trigger if exists generated_messages_touch_updated_at on public.generated_messages;
 create trigger generated_messages_touch_updated_at before update on public.generated_messages for each row execute function public.touch_updated_at();
 
+drop trigger if exists event_assignments_touch_updated_at on public.event_assignments;
+create trigger event_assignments_touch_updated_at before update on public.event_assignments for each row execute function public.touch_updated_at();
+
+create or replace function public.validate_event_assignment_church_scope()
+returns trigger as $$
+declare
+  event_church_id uuid;
+  member_church_id uuid;
+begin
+  select e.church_id
+  into event_church_id
+  from public.events e
+  where e.id = new.event_id;
+
+  if event_church_id is null then
+    raise exception 'Invalid event_id for event assignment';
+  end if;
+
+  if event_church_id <> new.church_id then
+    raise exception 'event_id does not belong to church_id';
+  end if;
+
+  if new.team_member_id is not null then
+    select tm.church_id
+    into member_church_id
+    from public.team_members tm
+    where tm.id = new.team_member_id;
+
+    if member_church_id is null then
+      raise exception 'Invalid team_member_id for event assignment';
+    end if;
+
+    if member_church_id <> new.church_id then
+      raise exception 'team_member_id does not belong to church_id';
+    end if;
+  end if;
+
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists validate_event_assignment_church_scope_trigger on public.event_assignments;
+create trigger validate_event_assignment_church_scope_trigger
+before insert or update on public.event_assignments
+for each row execute function public.validate_event_assignment_church_scope();
+
 create or replace function private.handle_new_user()
 returns trigger
 language plpgsql
@@ -1067,6 +1155,45 @@ as $$
   );
 $$;
 
+create or replace function public.current_user_can_manage_event_assignments(target_event_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.events e
+    left join public.church_memberships cm on cm.user_id = auth.uid()
+    left join public.team_members tm
+      on tm.membership_id = cm.id
+     and tm.church_id = e.church_id
+    left join public.app_admins aa on aa.user_id = auth.uid()
+    where e.id = target_event_id
+      and cm.status = 'active'
+      and (
+        aa.role in ('owner', 'support_admin')
+        or tm.role in ('admin', 'pastor')
+      )
+  );
+$$;
+
+create or replace function public.current_user_team_member_id_for_event(target_event_id uuid)
+returns uuid
+language sql
+security definer
+set search_path = public
+as $$
+  select tm.id
+  from public.events e
+  join public.church_memberships cm on cm.user_id = auth.uid()
+  join public.team_members tm
+    on tm.membership_id = cm.id
+   and tm.church_id = e.church_id
+  where e.id = target_event_id
+  limit 1;
+$$;
+
 create or replace function private.require_app_admin(
   p_allowed_roles public.app_admin_role[] default array['owner','support_admin']::public.app_admin_role[]
 )
@@ -1118,6 +1245,8 @@ revoke all on function private.is_church_member(uuid) from public, anon, authent
 revoke all on function private.is_app_admin() from public, anon, authenticated;
 revoke all on function private.is_app_owner() from public, anon, authenticated;
 revoke all on function private.has_church_role(uuid, public.team_role[]) from public, anon, authenticated;
+revoke all on function public.current_user_can_manage_event_assignments(uuid) from public, anon, authenticated;
+revoke all on function public.current_user_team_member_id_for_event(uuid) from public, anon, authenticated;
 revoke all on function private.hash_invite_token(text) from public, anon, authenticated;
 revoke all on function private.accept_team_invitation_for_user(text, uuid, text) from public, anon, authenticated;
 revoke all on function private.require_app_admin(public.app_admin_role[]) from public;
@@ -1126,6 +1255,8 @@ grant execute on function private.is_church_member(uuid) to anon, authenticated;
 grant execute on function private.is_app_admin() to anon, authenticated;
 grant execute on function private.is_app_owner() to anon, authenticated;
 grant execute on function private.has_church_role(uuid, public.team_role[]) to anon, authenticated;
+grant execute on function public.current_user_can_manage_event_assignments(uuid) to anon, authenticated;
+grant execute on function public.current_user_team_member_id_for_event(uuid) to anon, authenticated;
 grant execute on function private.require_app_admin(public.app_admin_role[]) to authenticated;
 grant execute on function private.require_protected_owner() to authenticated;
 
@@ -1137,6 +1268,7 @@ alter table public.team_members enable row level security;
 alter table public.team_invitations enable row level security;
 alter table public.audit_logs enable row level security;
 alter table public.events enable row level security;
+alter table public.event_assignments enable row level security;
 alter table public.people enable row level security;
 alter table public.contacts enable row level security;
 alter table public.contact_interests enable row level security;
@@ -1312,9 +1444,48 @@ using (private.is_church_member(church_id) or private.is_app_admin());
 
 drop policy if exists "Leaders can manage church events" on public.events;
 create policy "Leaders can manage church events"
-on public.events for all
-using (private.has_church_role(church_id, array['admin','pastor','elder','health_leader','youth_leader']::public.team_role[]))
-with check (private.has_church_role(church_id, array['admin','pastor','elder','health_leader','youth_leader']::public.team_role[]));
+-on public.events for all
+-using (private.has_church_role(church_id, array['admin','pastor','elder','health_leader','youth_leader']::public.team_role[]))
+-with check (private.has_church_role(church_id, array['admin','pastor','elder','health_leader','youth_leader']::public.team_role[]));
+
+drop policy if exists "event assignments select safely" on public.event_assignments;
+create policy "event assignments select safely"
+on public.event_assignments
+for select
+using (
+  public.current_user_can_manage_event_assignments(event_id)
+  or team_member_id = public.current_user_team_member_id_for_event(event_id)
+  or (
+    status = 'accepted'
+    and revoked_at is null
+    and team_member_id = public.current_user_team_member_id_for_event(event_id)
+  )
+);
+
+drop policy if exists "event assignments insert by managers" on public.event_assignments;
+create policy "event assignments insert by managers"
+on public.event_assignments
+for insert
+with check (
+  public.current_user_can_manage_event_assignments(event_id)
+);
+
+drop policy if exists "event assignments update by managers" on public.event_assignments;
+create policy "event assignments update by managers"
+on public.event_assignments
+for update
+using (
+  public.current_user_can_manage_event_assignments(event_id)
+)
+with check (
+  public.current_user_can_manage_event_assignments(event_id)
+);
+
+drop policy if exists "event assignments delete disabled" on public.event_assignments;
+create policy "event assignments delete disabled"
+on public.event_assignments
+for delete
+using (false);
 
 drop policy if exists "Members can view church people" on public.people;
 create policy "Members can view church people"

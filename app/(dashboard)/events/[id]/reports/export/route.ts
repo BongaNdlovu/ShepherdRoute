@@ -1,7 +1,7 @@
 import { streamCsvResponse } from "@/lib/csv";
 import { interestLabels, statusLabels, type FollowUpStatus, type Interest } from "@/lib/constants";
 import { getChurchContext, getEventReportContactsPage, getEventReportExportMeta } from "@/lib/data";
-import { canExportEventReports } from "@/lib/permissions";
+import { requireEventPermission } from "@/lib/data-event-assignments";
 import { slugify } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 
@@ -12,7 +12,39 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const { id } = await params;
   const context = await getChurchContext();
 
-  if (!canExportEventReports(context.role as "admin" | "pastor" | "elder" | "bible_worker" | "health_leader" | "prayer_team" | "youth_leader" | "viewer", context.appRole as "admin" | "viewer" | "coordinator" | null)) {
+  // Check event permission for export
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { data: appAdmin } = await supabase
+    .from('app_admins')
+    .select('role')
+    .eq('user_id', user?.id)
+    .maybeSingle();
+
+  const { data: membership } = await supabase
+    .from('church_memberships')
+    .select('id, role')
+    .eq('user_id', user?.id)
+    .eq('church_id', context.churchId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  const { data: teamMember } = await supabase
+    .from('team_members')
+    .select('role')
+    .eq('membership_id', membership?.id)
+    .maybeSingle();
+
+  try {
+    await requireEventPermission({
+      userId: user?.id || '',
+      eventId: id,
+      appRole: appAdmin?.role as any,
+      teamRole: teamMember?.role as any || 'viewer',
+      permission: 'can_export_reports',
+    });
+  } catch (error) {
     return new Response("Unauthorized", { status: 403 });
   }
 
@@ -23,7 +55,6 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   }
 
   // Audit log before export
-  const supabase = await createClient();
   await supabase
     .from("audit_logs")
     .insert({
