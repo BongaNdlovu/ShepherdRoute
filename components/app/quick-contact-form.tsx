@@ -1,5 +1,5 @@
 import { addQuickContactAction } from "@/app/(dashboard)/actions";
-import { Button } from "@/components/ui/button";
+import { PendingSubmitButton } from "@/components/app/pending-submit-button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -96,7 +96,9 @@ export function QuickContactForm({ events }: QuickContactFormProps) {
               ))}
             </select>
           </div>
-          <Button type="submit">Add contact</Button>
+          <PendingSubmitButton type="submit" pendingText="Adding contact...">
+            Add contact
+          </PendingSubmitButton>
         </form>
       </CardContent>
     </Card>

@@ -2,7 +2,7 @@
 
 import { MessageSquareMore } from "lucide-react";
 import { markFollowUpWaitingAction } from "@/app/(dashboard)/actions";
-import { Button } from "@/components/ui/button";
+import { PendingSubmitButton } from "@/components/app/pending-submit-button";
 
 export function ConversationOngoingConfirmForm({
   followUpId,
@@ -33,10 +33,10 @@ export function ConversationOngoingConfirmForm({
       <input type="hidden" name="followUpId" value={followUpId} />
       <input type="hidden" name="contactId" value={contactId} />
       <input type="hidden" name="returnTo" value={returnTo} />
-      <Button type="submit" variant="secondary" size={size} className="w-full" disabled={disabled}>
+      <PendingSubmitButton type="submit" variant="secondary" size={size} className="w-full" disabled={disabled} pendingText="Updating...">
         <MessageSquareMore className="h-4 w-4" />
         Conversation ongoing
-      </Button>
+      </PendingSubmitButton>
     </form>
   );
 }

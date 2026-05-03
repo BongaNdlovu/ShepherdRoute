@@ -1,5 +1,5 @@
 import { PublicFormSkeleton } from "@/components/app/loading-states";
 
-export default function PublicFormLoading() {
+export default function PublicEventLoading() {
   return <PublicFormSkeleton />;
 }

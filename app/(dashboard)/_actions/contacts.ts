@@ -5,12 +5,13 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { chooseWorkflowOwner, saveSuggestedWhatsappMessage } from "@/lib/contactWorkflow";
 import { classifyContact } from "@/lib/classifyContact";
-import { followUpChannelOptions, interestOptions, statusOptions, assignmentRoleOptions } from "@/lib/constants";
+import { followUpChannelOptions, interestOptions, statusOptions, assignmentRoleOptions, type AppRole, type TeamRole } from "@/lib/constants";
 import { getChurchContext } from "@/lib/data";
 import { defaultDueDate, prayerVisibilityOptions } from "@/lib/followUp";
-import { canManageContacts } from "@/lib/permissions";
+import { canAssignFollowUp, canManageContacts } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { generateMessage } from "@/lib/whatsapp";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 const contactUpdateSchema = z.object({
   contactId: z.string().uuid(),
@@ -61,6 +62,30 @@ const followUpStatusActionSchema = z.object({
   returnTo: z.string().optional()
 });
 
+async function getAppRole(context: Awaited<ReturnType<typeof getChurchContext>>, supabase: SupabaseClient): Promise<AppRole | null> {
+  const { data: currentUserTeamMember } = await supabase
+    .from("team_members")
+    .select("app_role")
+    .eq("church_id", context.churchId)
+    .eq("membership_id", context.userId)
+    .maybeSingle();
+  return currentUserTeamMember?.app_role as AppRole | null;
+}
+
+async function requireContactManager(context: Awaited<ReturnType<typeof getChurchContext>>, supabase: SupabaseClient, fallbackPath = "/contacts") {
+  const appRole = await getAppRole(context, supabase);
+  if (!canManageContacts(context.role as TeamRole, appRole)) {
+    redirect(`${fallbackPath}?error=You%20do%20not%20have%20permission%20to%20manage%20contacts.`);
+  }
+}
+
+async function requireFollowUpAssigner(context: Awaited<ReturnType<typeof getChurchContext>>, supabase: SupabaseClient, fallbackPath = "/follow-ups") {
+  const appRole = await getAppRole(context, supabase);
+  if (!canAssignFollowUp(context.role as TeamRole, appRole)) {
+    redirect(`${fallbackPath}?error=You%20do%20not%20have%20permission%20to%20update%20follow-ups.`);
+  }
+}
+
 export async function updateContactAction(formData: FormData) {
   const context = await getChurchContext();
   const parsed = contactUpdateSchema.safeParse({
@@ -77,6 +102,7 @@ export async function updateContactAction(formData: FormData) {
   const assignedTo = parsed.data.assignedTo === "unassigned" ? null : parsed.data.assignedTo;
   const assignedHandlingRole = parsed.data.assignedHandlingRole === "" ? null : parsed.data.assignedHandlingRole;
   const supabase = await createClient();
+  await requireContactManager(context, supabase);
   const { error } = await supabase
     .from("contacts")
     .update({
@@ -130,6 +156,7 @@ export async function addFollowUpNoteAction(formData: FormData) {
   const assignedTo = parsed.data.assignedTo === "unassigned" ? null : parsed.data.assignedTo;
   const completedAt = parsed.data.markComplete ? new Date().toISOString() : null;
   const supabase = await createClient();
+  await requireFollowUpAssigner(context, supabase, "/contacts");
 
   const { error } = await supabase.from("follow_ups").insert({
     church_id: context.churchId,
@@ -179,6 +206,7 @@ export async function updateContactLifecycleAction(formData: FormData) {
 
   const now = new Date().toISOString();
   const supabase = await createClient();
+  await requireContactManager(context, supabase);
   const { data: contact, error: contactError } = await supabase
     .from("contacts")
     .select("id, person_id")
@@ -190,12 +218,6 @@ export async function updateContactLifecycleAction(formData: FormData) {
     redirect("/contacts?error=Contact%20not%20found.");
   }
 
-  // Permission check: only allow delete for users with manage contacts permission
-  if (parsed.data.intent === "delete") {
-    if (!canManageContacts(context.role as "admin" | "pastor" | "elder" | "bible_worker" | "health_leader" | "prayer_team" | "youth_leader" | "viewer")) {
-      redirect("/contacts?error=You%20do%20not%20have%20permission%20to%20delete%20contacts.");
-    }
-  }
 
   const update =
     parsed.data.intent === "do_not_contact"
@@ -289,6 +311,7 @@ export async function addQuickContactAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  await requireContactManager(context, supabase);
   const classification = classifyContact({
     selectedInterests: parsed.data.interests,
     message: parsed.data.prayerRequest,
@@ -457,8 +480,8 @@ export async function markFollowUpContactedAction(formData: FormData) {
   }
 
   const returnTo = safeReturnTo(parsed.data.returnTo, "/follow-ups");
-
   const supabase = await createClient();
+  await requireFollowUpAssigner(context, supabase);
   const { data: followUp, error: followUpLookupError } = await supabase
     .from("follow_ups")
     .select("id")
@@ -515,6 +538,7 @@ export async function markFollowUpWaitingAction(formData: FormData) {
 
   const returnTo = safeReturnTo(parsed.data.returnTo, "/follow-ups");
   const supabase = await createClient();
+  await requireFollowUpAssigner(context, supabase);
 
   const { data: followUp, error: followUpLookupError } = await supabase
     .from("follow_ups")

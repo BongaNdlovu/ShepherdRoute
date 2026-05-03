@@ -3,11 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { eventTypeOptions, interestOptions, interestLabels } from "@/lib/constants";
+import { eventTypeOptions, interestOptions, interestLabels, type AppRole, type TeamRole } from "@/lib/constants";
+import { canManageEvents } from "@/lib/permissions";
 import { getChurchContext, getEvent } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/utils";
 import { getEventTemplate } from "@/lib/eventTemplates";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 const eventSchema = z.object({
   name: z.string().min(2).max(140),
@@ -35,6 +37,18 @@ const deleteEventSchema = z.object({
 
 const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
 const httpsUrlRegex = /^https:\/\/.*/;
+
+async function requireEventManager(context: Awaited<ReturnType<typeof getChurchContext>>, supabase: SupabaseClient, fallbackPath = "/events") {
+  const { data: currentUserTeamMember } = await supabase
+    .from("team_members")
+    .select("app_role")
+    .eq("church_id", context.churchId)
+    .eq("membership_id", context.userId)
+    .maybeSingle();
+  if (!canManageEvents(context.role as TeamRole, currentUserTeamMember?.app_role as AppRole | null)) {
+    redirect(`${fallbackPath}?error=You%20do%20not%20have%20permission%20to%20manage%20events.`);
+  }
+}
 
 const eventCustomizationSchema = z.object({
   eventId: z.string().uuid(),
@@ -78,6 +92,7 @@ export async function createEventAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  await requireEventManager(context, supabase);
   const baseSlug = slugify(parsed.data.name);
   const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`;
   const { data: event, error } = await supabase
@@ -115,6 +130,7 @@ export async function updateEventStatusAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  await requireEventManager(context, supabase);
   const { error } = await supabase
     .from("events")
     .update({ is_active: parsed.data.isActive === "true" })
@@ -143,6 +159,7 @@ export async function updateEventArchiveAction(formData: FormData) {
 
   const isArchiving = parsed.data.archived === "true";
   const supabase = await createClient();
+  await requireEventManager(context, supabase);
   const { error } = await supabase
     .from("events")
     .update({
@@ -176,6 +193,7 @@ export async function deleteEventAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  await requireEventManager(context, supabase);
   const { error } = await supabase
     .from("events")
     .delete()
@@ -196,6 +214,7 @@ export async function deleteEventAction(formData: FormData) {
 export async function updateEventCustomizationAction(formData: FormData) {
   const context = await getChurchContext();
   const supabase = await createClient();
+  await requireEventManager(context, supabase);
 
   // Get the event to determine its template
   const eventId = formData.get("eventId") as string;

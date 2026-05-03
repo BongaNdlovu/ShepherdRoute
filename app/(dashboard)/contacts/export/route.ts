@@ -15,6 +15,18 @@ type ContactExportFilters = {
   assignedTo?: string;
 };
 
+function normalizeCsvAnswer(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.join("; ");
+  }
+
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return String(value);
+}
+
 async function canExportContacts(context: { role: string; isAppAdmin: boolean; appAdminRole: string | null }): Promise<boolean> {
   // Export allowed for admin, pastor, and app admins
   if (context.role === "admin" || context.role === "pastor") {
@@ -130,24 +142,32 @@ async function collectContactRows(
     .eq("church_id", churchId)
     .in("contact_id", contactIds);
 
-  // Build a map of contact_id to answers and collect all unique question labels
+  // Build a map of contact_id to answers and collect all unique question names in order
   const answersMap = new Map<string, Map<string, unknown>>();
-  const questionLabels = new Set<string>();
+  const questionOrder = new Map<string, string>();
   if (formAnswers) {
     for (const answer of formAnswers) {
       if (!answersMap.has(answer.contact_id)) {
         answersMap.set(answer.contact_id, new Map());
       }
       answersMap.get(answer.contact_id)!.set(answer.question_name, answer.answer_display);
-      questionLabels.add(answer.question_label);
+      if (!questionOrder.has(answer.question_name)) {
+        questionOrder.set(answer.question_name, answer.question_label);
+      }
     }
   }
 
-  // Merge answers into rows
+  const questionNames = Array.from(questionOrder.keys());
+  const questionLabels = questionNames.map((name) => questionOrder.get(name) ?? name);
+
+  // Merge answers into rows with deterministic column ordering
   const rowsWithAnswers = rows.map((row, index) => {
     const contactId = contactIds[index];
-    const contactAnswers = answersMap.get(contactId) || new Map();
-    return [...row, ...Array.from(contactAnswers.values())];
+    const contactAnswers = answersMap.get(contactId) || new Map<string, unknown>();
+    return [
+      ...row,
+      ...questionNames.map((name) => normalizeCsvAnswer(contactAnswers.get(name)))
+    ];
   });
 
   return { rows: rowsWithAnswers, questionLabels: Array.from(questionLabels) };

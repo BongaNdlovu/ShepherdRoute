@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { submitRegistrationAction } from "@/app/e/[slug]/actions";
 import { BrandLogo } from "@/components/app/brand-logo";
 import { ExternalBrandImage } from "@/components/app/external-brand-image";
-import { Button } from "@/components/ui/button";
+import { PendingSubmitButton } from "@/components/app/pending-submit-button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -166,11 +166,6 @@ export default async function PublicEventPage({
                 <input type="hidden" name="slug" value={event.slug} />
                 <input type="hidden" name="visitorType" value={event.event_type} />
                 <input type="hidden" name="templateType" value={event.event_type} />
-                <input
-                  type="hidden"
-                  name="questions"
-                  value={JSON.stringify(formConfig.questions)}
-                />
 
                 <div className="grid gap-2">
                   <Label htmlFor="fullName">Full name</Label>
@@ -359,7 +354,9 @@ export default async function PublicEventPage({
                 <input type="hidden" name="consentTextSnapshot" value={consentText} />
                 <input type="hidden" name="privacyPolicyVersion" value="contact-consent-v1" />
                 <ContactMethodConsent />
-                <Button type="submit" size="lg">Submit visitor form</Button>
+                <PendingSubmitButton size="lg" pendingText="Submitting...">
+                  Submit visitor form
+                </PendingSubmitButton>
                 </form>
             )}
           </CardContent>

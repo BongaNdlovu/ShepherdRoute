@@ -39,8 +39,7 @@ const registrationSchema = z.object({
   prayerVisibility: z.enum(prayerVisibilityOptions).optional(),
   preferred_contact_methods: z.array(ContactMethodEnum).min(1, "Please choose at least one contact method."),
   consentTextSnapshot: z.string().max(1000).optional(),
-  privacyPolicyVersion: z.string().max(50).optional(),
-  questions: z.string().optional()
+  privacyPolicyVersion: z.string().max(50).optional()
 }).superRefine((data, ctx) => {
   const needsPhone =
     data.preferred_contact_methods.includes("whatsapp") ||
@@ -80,8 +79,7 @@ export async function submitRegistrationAction(formData: FormData) {
     prayerVisibility: formData.get("prayerVisibility") || undefined,
     preferred_contact_methods: formData.getAll("preferred_contact_methods").map(String),
     consentTextSnapshot: formData.get("consentTextSnapshot") || undefined,
-    privacyPolicyVersion: formData.get("privacyPolicyVersion") || undefined,
-    questions: formData.get("questions") || undefined
+    privacyPolicyVersion: formData.get("privacyPolicyVersion") || undefined
   });
 
   if (!parsed.success) {
@@ -117,7 +115,7 @@ export async function submitRegistrationAction(formData: FormData) {
   const allowedInterests = new Set(formConfig.interest_options.map((option) => option.value));
   const selectedInterests = submittedInterests.filter((interest) => allowedInterests.has(interest));
 
-  // Parse form answers from questions (only visible questions from formConfig)
+  // Parse form answers from questions (validate against server-side formConfig.questions)
   const formAnswers: Array<{
     question_name: string;
     question_label: string;
@@ -126,52 +124,60 @@ export async function submitRegistrationAction(formData: FormData) {
     answer_display: unknown;
   }> = [];
 
-  if (parsed.data.questions) {
-    try {
-      const questions = JSON.parse(parsed.data.questions) as Array<{
-        name: string;
-        label: string;
-        type: string;
-        required: boolean;
-        options: Array<{ value: string; label: string }>;
-      }>;
+  for (const question of formConfig.questions) {
+    const allowedOptions = question.options ?? [];
+    const allowedValues = new Set(allowedOptions.map((option) => option.value));
 
-      // Only process questions that are visible in formConfig
-      const visibleQuestions = formConfig.questions;
+    const submittedValues = formData
+      .getAll(question.name)
+      .map(String)
+      .map((value) => value.trim())
+      .filter((value) => value !== "");
 
-      for (const question of questions) {
-        // Skip if question is not visible
-        const isVisible = visibleQuestions.some((vq) => vq.name === question.name);
-        if (!isVisible) continue;
+    const invalidValues = submittedValues.filter((value) => !allowedValues.has(value));
 
-        const values = formData.getAll(question.name).map(String);
-
-        if (values.length === 0) {
-          if (question.required) {
-            redirect(`/e/${parsed.data.slug}?error=Please%20answer%20the%20required%20question:%20${encodeURIComponent(question.label)}`);
-          }
-          continue;
-        }
-
-        const answerValue = question.type === "checkbox_group" ? values : values[0];
-        const optionLabels = values.map((v) => {
-          const option = question.options.find((o) => o.value === v);
-          return option?.label || v;
-        });
-        const answerDisplay = question.type === "checkbox_group" ? optionLabels : optionLabels[0];
-
-        formAnswers.push({
-          question_name: question.name,
-          question_label: question.label,
-          question_type: question.type,
-          answer_value: answerValue,
-          answer_display: answerDisplay
-        });
-      }
-    } catch (e) {
-      // If question parsing fails, continue without answers
-      console.error("Failed to parse questions:", e);
+    if (invalidValues.length > 0) {
+      redirect(
+        `/e/${parsed.data.slug}?error=${encodeURIComponent(
+          `Invalid answer submitted for: ${question.label}`
+        )}`
+      );
     }
+
+    if (submittedValues.length === 0) {
+      if (question.required) {
+        redirect(
+          `/e/${parsed.data.slug}?error=${encodeURIComponent(
+            `Please answer the required question: ${question.label}`
+          )}`
+        );
+      }
+      continue;
+    }
+
+    if ((question.type === "radio" || question.type === "select") && submittedValues.length > 1) {
+      redirect(
+        `/e/${parsed.data.slug}?error=${encodeURIComponent(
+          `Please choose one answer for: ${question.label}`
+        )}`
+      );
+    }
+
+    const optionLabels = submittedValues.map((value) => {
+      const option = allowedOptions.find((candidate) => candidate.value === value);
+      return option?.label ?? value;
+    });
+
+    const answerValue = question.type === "checkbox_group" ? submittedValues : submittedValues[0];
+    const answerDisplay = question.type === "checkbox_group" ? optionLabels : optionLabels[0];
+
+    formAnswers.push({
+      question_name: question.name,
+      question_label: question.label,
+      question_type: question.type,
+      answer_value: answerValue,
+      answer_display: answerDisplay
+    });
   }
 
   // Use defaults for hidden fields

@@ -1375,7 +1375,7 @@ with check (actor_user_id = auth.uid() and (private.is_app_admin() or private.is
 drop policy if exists "Members can view church events" on public.events;
 create policy "Members can view church events"
 on public.events for select
-using (private.is_church_member(church_id) or private.is_app_admin() or is_active = true);
+using (private.is_church_member(church_id) or private.is_app_admin());
 
 drop policy if exists "Leaders can manage church events" on public.events;
 create policy "Leaders can manage church events"

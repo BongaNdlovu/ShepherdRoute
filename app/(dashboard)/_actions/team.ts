@@ -4,7 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { roleOptions, appRoleOptions, type TeamRole } from "@/lib/constants";
+import { roleOptions, appRoleOptions, type AppRole, type TeamRole } from "@/lib/constants";
 import { getChurchContext } from "@/lib/data";
 import { canInviteRole, canManageTeam } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
@@ -30,8 +30,17 @@ const teamMemberSchema = z.object({
 
 export async function addTeamMemberAction(formData: FormData) {
   const context = await getChurchContext();
+  const supabase = await createClient();
+  
+  // Fetch current user's team member record to get app_role
+  const { data: currentUserTeamMember } = await supabase
+    .from("team_members")
+    .select("app_role")
+    .eq("church_id", context.churchId)
+    .eq("membership_id", context.userId)
+    .maybeSingle();
 
-  if (!canManageTeam(context.role as TeamRole)) {
+  if (!canManageTeam(context.role as TeamRole, currentUserTeamMember?.app_role as AppRole | null)) {
     redirect("/settings/team?error=Only%20admins%20and%20pastors%20can%20manage%20team%20members.");
   }
 
@@ -52,13 +61,12 @@ export async function addTeamMemberAction(formData: FormData) {
     redirect("/settings/team?error=Add%20an%20email%20address%20before%20inviting%20login%20access.");
   }
 
-  if (!canInviteRole(context.role as TeamRole, parsed.data.role)) {
+  if (!canInviteRole(context.role as TeamRole, parsed.data.role, currentUserTeamMember?.app_role as AppRole | null)) {
     redirect("/settings/team?error=You%20cannot%20assign%20that%20role.");
   }
 
   const appRole = parsed.data.appRole === "" ? null : parsed.data.role === "admin" ? "admin" : parsed.data.role === "pastor" || parsed.data.role === "elder" ? "coordinator" : "viewer";
 
-  const supabase = await createClient();
   const { data: teamMember, error } = await supabase
     .from("team_members")
     .insert({
@@ -128,8 +136,17 @@ export async function addTeamMemberAction(formData: FormData) {
 
 export async function revokeTeamInvitationAction(formData: FormData) {
   const context = await getChurchContext();
+  const supabase = await createClient();
+  
+  // Fetch current user's team member record to get app_role
+  const { data: currentUserTeamMember } = await supabase
+    .from("team_members")
+    .select("app_role")
+    .eq("church_id", context.churchId)
+    .eq("membership_id", context.userId)
+    .maybeSingle();
 
-  if (!canManageTeam(context.role as TeamRole)) {
+  if (!canManageTeam(context.role as TeamRole, currentUserTeamMember?.app_role as AppRole | null)) {
     redirect("/settings/team?error=Only%20admins%20and%20pastors%20can%20manage%20team%20invitations.");
   }
 
@@ -141,7 +158,6 @@ export async function revokeTeamInvitationAction(formData: FormData) {
     redirect("/settings/team?error=Could%20not%20revoke%20that%20invitation.");
   }
 
-  const supabase = await createClient();
   const { data: invitation } = await supabase
     .from("team_invitations")
     .select("id, email, role")

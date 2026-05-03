@@ -2,7 +2,7 @@
 
 import { CheckCircle2 } from "lucide-react";
 import { markFollowUpContactedAction } from "@/app/(dashboard)/actions";
-import { Button } from "@/components/ui/button";
+import { PendingSubmitButton } from "@/components/app/pending-submit-button";
 
 export function MarkContactedConfirmForm({
   followUpId,
@@ -33,10 +33,10 @@ export function MarkContactedConfirmForm({
       <input type="hidden" name="followUpId" value={followUpId} />
       <input type="hidden" name="contactId" value={contactId} />
       <input type="hidden" name="returnTo" value={returnTo} />
-      <Button type="submit" variant="outline" size={size} className="w-full" disabled={disabled}>
+      <PendingSubmitButton type="submit" variant="outline" size={size} className="w-full" disabled={disabled} pendingText="Marking...">
         <CheckCircle2 className="h-4 w-4" />
         Mark contacted
-      </Button>
+      </PendingSubmitButton>
     </form>
   );
 }
