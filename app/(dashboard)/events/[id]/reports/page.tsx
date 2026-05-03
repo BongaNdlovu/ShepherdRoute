@@ -50,11 +50,11 @@ export default async function EventReportPage({
     await requireEventPermission({
       userId: user?.id || '',
       eventId: id,
-      appRole: appAdmin?.role as any,
-      teamRole: teamMember?.role as any || 'viewer',
+      appRole: appAdmin?.role as 'owner' | 'support_admin' | 'billing_admin' | null,
+      teamRole: teamMember?.role as 'admin' | 'pastor' | 'elder' | 'bible_worker' | 'health_leader' | 'prayer_team' | 'youth_leader' | 'viewer' | null || 'viewer',
       permission: 'can_view_reports',
     });
-  } catch (error) {
+  } catch {
     return (
       <section className="space-y-4">
         <EventWorkspaceTabs eventId={id} />

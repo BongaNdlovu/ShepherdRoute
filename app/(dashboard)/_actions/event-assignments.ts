@@ -9,7 +9,6 @@ import {
 } from '@/lib/event-permission-presets';
 import { requireEventPermission } from '@/lib/data-event-assignments';
 import type { AppAdminRole } from '@/lib/permissions';
-import type { TeamRole } from '@/lib/constants';
 
 function hashToken(token: string) {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -360,7 +359,7 @@ export async function acceptEventInvitation(input: {
     throw new Error('Your account is not yet a member of this church. Ask an admin to add you to the church team first.');
   }
 
-  const { data: teamMember, error: teamMemberError } = await supabase
+  const { data: teamMember } = await supabase
     .from('team_members')
     .select('id')
     .eq('membership_id', existingMember.id)

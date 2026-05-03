@@ -71,7 +71,7 @@ export default function AcceptEventInvitationPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Invitation Accepted</CardTitle>
-          <CardDescription>You've been added to the event team</CardDescription>
+          <CardDescription>You&apos;ve been added to the event team</CardDescription>
         </CardHeader>
         <CardContent className="p-6">
           <p className="mb-4">{message}</p>

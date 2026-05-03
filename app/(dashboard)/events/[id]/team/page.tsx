@@ -1,10 +1,8 @@
 import { getChurchContext } from "@/lib/data";
-import { getEventTeam } from "@/lib/data-events";
 import { getEventAssignments } from "@/lib/data-event-assignments";
 import { requireEventPermission } from "@/lib/data-event-assignments";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EventInvitationModal } from "@/components/app/event-invitation-modal";
 import { Suspense } from "react";
@@ -33,7 +31,6 @@ export default async function EventTeamPage({
 }) {
   const { id } = await params;
   const context = await getChurchContext();
-  const team = await getEventTeam(context.churchId, id);
   const assignments = await getEventAssignments(id);
 
   const supabase = await createClient();
@@ -60,8 +57,8 @@ export default async function EventTeamPage({
     .eq('membership_id', membership?.id)
     .maybeSingle();
 
-  const appAdminRole = appAdmin?.role as any;
-  const teamRole = teamMember?.role as any;
+  const appAdminRole = appAdmin?.role as 'owner' | 'support_admin' | 'billing_admin' | null;
+  const teamRole = teamMember?.role as 'admin' | 'pastor' | 'elder' | 'bible_worker' | 'health_leader' | 'prayer_team' | 'youth_leader' | 'viewer' | null;
 
   try {
     await requireEventPermission({
@@ -71,7 +68,7 @@ export default async function EventTeamPage({
       teamRole: teamRole || 'viewer',
       permission: 'can_manage_event_team',
     });
-  } catch (error) {
+  } catch {
     return (
       <section className="space-y-4">
         <EventWorkspaceTabs eventId={id} />
