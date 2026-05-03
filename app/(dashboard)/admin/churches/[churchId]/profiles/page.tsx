@@ -72,7 +72,7 @@ export default async function OwnerChurchProfilesPage({
                     <td className="px-4 py-3">{profile.phone ?? "-"}</td>
                     <td className="px-4 py-3">{profile.role}</td>
                     <td className="px-4 py-3">
-                      <Badge variant={profile.status === "active" ? "success" : profile.status === "invited" ? "warning" : "danger"}>
+                      <Badge variant={profile.status === "active" ? "success" : profile.status === "invited" ? "warning" : "destructive"}>
                         {profile.status}
                       </Badge>
                     </td>

@@ -74,7 +74,7 @@ export default async function OwnerChurchContactsPage({
                     <td className="px-4 py-3">{contact.area ?? "-"}</td>
                     <td className="px-4 py-3">{contact.status}</td>
                     <td className="px-4 py-3">
-                      <Badge variant={contact.urgency === "high" ? "danger" : contact.urgency === "medium" ? "warning" : "default"}>
+                      <Badge variant={contact.urgency === "high" ? "destructive" : contact.urgency === "medium" ? "warning" : "default"}>
                         {contact.urgency}
                       </Badge>
                     </td>

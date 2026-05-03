@@ -219,7 +219,7 @@ function groupAccountsByChurch(accounts: OwnerAccountRow[]) {
 
 function statusVariant(status: OwnerAccountRow["status"]) {
   if (status === "active") return "success";
-  if (status === "disabled") return "danger";
+  if (status === "disabled") return "destructive";
   return "warning";
 }
 
@@ -227,5 +227,5 @@ function invitationStatusVariant(status: "pending" | "accepted" | "revoked" | "e
   if (status === "accepted") return "success";
   if (status === "pending") return "warning";
   if (status === "expired") return "muted";
-  return "danger";
+  return "destructive";
 }

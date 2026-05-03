@@ -76,7 +76,7 @@ export default async function OwnerChurchEventsPage({
                       {event.is_active ? (
                         <Badge variant="success">Active</Badge>
                       ) : event.archived_at ? (
-                        <Badge variant="danger">Archived</Badge>
+                        <Badge variant="destructive">Archived</Badge>
                       ) : (
                         <Badge variant="muted">Inactive</Badge>
                       )}

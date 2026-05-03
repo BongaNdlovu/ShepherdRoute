@@ -46,7 +46,7 @@ export function ContactClassificationPanel({ classification }: ContactClassifica
             <CardTitle>Suggested routing</CardTitle>
             <CardDescription className="text-amber-900/75">Rule-based classification for human follow-up.</CardDescription>
           </div>
-          <Badge variant={classification.urgency === "high" ? "danger" : classification.urgency === "medium" ? "warning" : "muted"}>
+          <Badge variant={classification.urgency === "high" ? "destructive" : classification.urgency === "medium" ? "warning" : "muted"}>
             {classification.urgency} urgency
           </Badge>
         </div>

@@ -56,8 +56,8 @@ export default async function OwnerChurchesPage({
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="font-bold">{church.church_name}</p>
-                    <Badge variant="info">{church.workspace_type === "ministry" ? "Ministry" : "Church"}</Badge>
-                    <Badge variant={church.workspace_status === "active" ? "success" : "danger"}>
+                    <Badge variant="accent">{church.workspace_type === "ministry" ? "Ministry" : "Church"}</Badge>
+                    <Badge variant={church.workspace_status === "active" ? "success" : "destructive"}>
                       {church.workspace_status === "active" ? "Active" : "Inactive"}
                     </Badge>
                   </div>
