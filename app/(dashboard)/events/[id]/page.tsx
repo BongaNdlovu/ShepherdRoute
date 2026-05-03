@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Archive, CalendarDays, Heart, Lock, MapPin, QrCode, Undo2, Unlock, UsersRound, BookOpen, Droplets } from "lucide-react";
-import { updateEventArchiveAction, updateEventStatusAction } from "@/app/(dashboard)/actions";
+import { Archive, CalendarDays, Heart, Lock, MapPin, QrCode, Undo2, Unlock, UsersRound, BookOpen, Droplets, Trash2 } from "lucide-react";
+import { deleteEventAction, updateEventArchiveAction, updateEventStatusAction } from "@/app/(dashboard)/actions";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { InterestPills } from "@/components/app/interest-pills";
 import { QrCard } from "@/components/app/qr-card";
@@ -65,6 +65,21 @@ export default async function EventDetailPage({
                 <Button type="submit" variant="outline">
                   {isArchived ? <Undo2 className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
                   {isArchived ? "Restore event" : "Archive event"}
+                </Button>
+              </form>
+              <form action={deleteEventAction} className="flex gap-2 items-center">
+                <input type="hidden" name="eventId" value={event.id} />
+                <input type="hidden" name="eventName" value={event.name} />
+                <input
+                  type="text"
+                  name="confirmation"
+                  placeholder="Type the event name to delete"
+                  className="h-9 w-40 rounded-md border border-input bg-background px-3 text-sm focus-ring"
+                  required
+                />
+                <Button type="submit" variant="destructive">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete event
                 </Button>
               </form>
               <Button asChild variant="outline">
