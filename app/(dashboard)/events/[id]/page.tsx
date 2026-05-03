@@ -68,7 +68,7 @@ export default async function EventDetailPage({
                 </Button>
               </form>
               <Button asChild variant="outline">
-                <Link href={`/events/${event.id}/report`}>View report</Link>
+                <Link href={`/events/${event.id}/reports`}>View report</Link>
               </Button>
               {event.is_active && !isArchived ? (
                 <Button asChild>

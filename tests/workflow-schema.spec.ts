@@ -427,7 +427,7 @@ test.describe("workflow helpers", () => {
 
   test("contacts export uses collect-first approach, event report export uses streaming", () => {
     const contactsExport = readFileSync("app/(dashboard)/contacts/export/route.ts", "utf8");
-    const eventExport = readFileSync("app/(dashboard)/events/[id]/report/export/route.ts", "utf8");
+    const eventExport = readFileSync("app/(dashboard)/events/[id]/reports/export/route.ts", "utf8");
     const csv = readFileSync("lib/csv.ts", "utf8");
     expect(csv).toContain("streamCsvResponse");
     expect(csv).toContain("ReadableStream");
