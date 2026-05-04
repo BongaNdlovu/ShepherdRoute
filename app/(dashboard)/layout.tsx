@@ -50,7 +50,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
             {context.memberships.length > 1 ? (
-              <form action={switchChurchAction} className="mt-3 grid gap-2 surface-panel rounded-2xl p-3">
+              <form action={switchChurchAction} className="mt-3 grid gap-2 p-3">
                 <label htmlFor="churchId" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Workspace
                 </label>
@@ -72,7 +72,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 </Button>
               </form>
             ) : (
-              <p className="mt-3 surface-panel rounded-2xl p-3 text-sm font-semibold text-slate-700">
+              <p className="mt-3 p-3 text-sm font-semibold text-slate-700">
                 {roleLabels[context.role as keyof typeof roleLabels] ?? context.role}
               </p>
             )}
