@@ -52,7 +52,7 @@ export async function submitRegistrationAction(formData: FormData) {
     p_preferred_contact_methods: parsed.data.preferred_contact_methods,
     p_consent_source: validation.data.classificationPayload.template_type,
     p_consent_given: true,
-    p_consent_text_snapshot: `Contact follow-up consent for ${parsed.data.slug}. Methods: ${parsed.data.preferred_contact_methods.join(", ")}.`,
+    p_consent_text_snapshot: validation.data.consentTextSnapshot,
     p_privacy_policy_version: parsed.data.privacyPolicyVersion ?? "contact-consent-v1",
     p_consent_status: "given",
     p_consent_recorded_by: null,

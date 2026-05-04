@@ -97,11 +97,22 @@ export async function getCurrentUserEventAssignment(params: {
 }): Promise<EventAssignmentRow | null> {
   const supabase = await createClient();
 
-  // Get membership_id from church_memberships
+  const { data: event, error: eventError } = await supabase
+    .from('events')
+    .select('church_id')
+    .eq('id', params.eventId)
+    .single();
+
+  if (eventError || !event) {
+    throw new Error(`Failed to load event: ${eventError?.message ?? 'Event not found.'}`);
+  }
+
   const { data: membership, error: membershipError } = await supabase
     .from('church_memberships')
     .select('id')
     .eq('user_id', params.userId)
+    .eq('church_id', event.church_id)
+    .eq('status', 'active')
     .maybeSingle();
 
   if (membershipError) {
@@ -110,11 +121,25 @@ export async function getCurrentUserEventAssignment(params: {
 
   if (!membership?.id) return null;
 
+  const { data: teamMember, error: teamMemberError } = await supabase
+    .from('team_members')
+    .select('id')
+    .eq('membership_id', membership.id)
+    .eq('church_id', event.church_id)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (teamMemberError) {
+    throw new Error(`Failed to load team member: ${teamMemberError.message}`);
+  }
+
+  if (!teamMember?.id) return null;
+
   const { data, error } = await supabase
     .from('event_assignments')
     .select('*')
     .eq('event_id', params.eventId)
-    .eq('team_member_id', membership.id)
+    .eq('team_member_id', teamMember.id)
     .maybeSingle();
 
   if (error) {

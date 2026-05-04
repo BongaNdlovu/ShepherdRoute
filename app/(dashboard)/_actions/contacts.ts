@@ -1,3 +1,2 @@
-export * from "./contact-guards";
-export * from "./contact-mutations";
-export * from "./follow-up-mutations";
+export { addQuickContactAction, updateContactAction, updateContactLifecycleAction } from './contact-mutations';
+export { addFollowUpNoteAction, markFollowUpContactedAction, markFollowUpWaitingAction } from './follow-up-mutations';

@@ -69,6 +69,8 @@ export type FormAnswer = {
 };
 
 export type ValidatedRegistrationData = {
+  eventName: string;
+  consentTextSnapshot: string;
   phone?: string | null;
   email?: string | null;
   finalArea: string | null | undefined;
@@ -195,6 +197,8 @@ export async function validatePublicEventRegistration(
 
   return {
     data: {
+      eventName: event.name,
+      consentTextSnapshot: `Contact follow-up consent for ${event.name}. Methods: ${parsedData.preferred_contact_methods.join(", ")}.`,
       phone,
       email,
       finalArea,

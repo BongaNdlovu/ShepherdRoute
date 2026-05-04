@@ -45,6 +45,9 @@ Open `http://localhost:3000`.
 2. Open SQL Editor.
 3. Paste the full contents of `supabase/schema.sql` into the editor. Do not type the file path.
 4. Click **Run**.
+
+When changing SQL, keep `supabase/schema.sql` and `docs/supabase-schema-copy-paste.sql` in sync. For table-returning RPC changes, follow `docs/sql-migration-discipline.md` so PostgreSQL does not reject return type changes with `42P13`.
+
 5. In Project Settings, copy the project URL and anon key.
 6. Create `.env.local`:
 

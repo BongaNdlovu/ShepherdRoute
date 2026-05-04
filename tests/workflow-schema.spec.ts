@@ -17,6 +17,9 @@ const contactMutations = readFileSync("app/(dashboard)/_actions/contact-mutation
 const followUpMutations = readFileSync("app/(dashboard)/_actions/follow-up-mutations.ts", "utf8");
 const publicValidation = readFileSync("lib/public-events/validation.ts", "utf8");
 const publicActions = readFileSync("app/e/[slug]/actions.ts", "utf8");
+const eventCustomizationAction = readFileSync("app/(dashboard)/_actions/event-customization.ts", "utf8");
+const eventCustomizationForm = readFileSync("lib/events/customization-form.ts", "utf8");
+const dataEventAssignments = readFileSync("lib/data-event-assignments.ts", "utf8");
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -292,6 +295,10 @@ test.describe("workflow helpers", () => {
     expect(schema).toContain("assigned_owner_id");
     expect(schema).toContain("suggested_message");
     expect(schema).toContain("purpose\n  )\n  values");
+    expect(publicValidation).toContain("consentTextSnapshot");
+    expect(publicValidation).toContain("Contact follow-up consent for ${event.name}");
+    expect(publicActions).toContain("p_consent_text_snapshot: validation.data.consentTextSnapshot");
+    expect(publicActions).not.toContain("Contact follow-up consent for ${parsed.data.slug}");
   });
 
   test("today's follow-ups query exists and returns suggested messages", () => {
@@ -546,5 +553,19 @@ test.describe("workflow helpers", () => {
     expect(followUpsPage).toContain("compactLists={preferences.compactLists}");
     expect(contactList).toContain("compactLists = false");
     expect(followUpsList).toContain("compactLists = false");
+  });
+
+  test("event customization action delegates parsing to shared customization form helper", () => {
+    expect(eventCustomizationForm).toContain("parseEventCustomizationFormData");
+    expect(eventCustomizationAction).toContain("parseEventCustomizationFormData");
+    expect(eventCustomizationAction).not.toContain("const eventCustomizationSchema = z.object");
+    expect(eventCustomizationAction).not.toContain("interestOptions.map");
+  });
+
+  test("event assignment permissions resolve through team member id, not membership id", () => {
+    expect(schema).toContain("team_member_id uuid references public.team_members(id)");
+    expect(dataEventAssignments).toContain(".from('team_members')");
+    expect(dataEventAssignments).toContain(".eq('team_member_id', teamMember.id)");
+    expect(dataEventAssignments).not.toContain(".eq('team_member_id', membership.id)");
   });
 });
