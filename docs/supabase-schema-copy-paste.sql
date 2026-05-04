@@ -471,6 +471,32 @@ create table if not exists public.contact_interests (
   unique (contact_id, interest)
 );
 
+-- Contact form answers table for multiple-choice questions
+create table if not exists public.contact_form_answers (
+  id uuid primary key default gen_random_uuid(),
+  church_id uuid not null references public.churches(id) on delete cascade,
+  contact_id uuid not null references public.contacts(id) on delete cascade,
+  event_id uuid references public.events(id) on delete set null,
+  question_name text not null,
+  question_label text not null,
+  question_type text not null,
+  answer_value jsonb not null default 'null'::jsonb,
+  answer_display jsonb not null default 'null'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists contact_form_answers_contact_idx
+on public.contact_form_answers(contact_id);
+
+create index if not exists contact_form_answers_church_contact_idx
+on public.contact_form_answers(church_id, contact_id);
+
+create index if not exists contact_form_answers_question_idx
+on public.contact_form_answers(church_id, question_name);
+
+create index if not exists contact_form_answers_event_question_idx
+on public.contact_form_answers(church_id, event_id, question_name);
+
 create table if not exists public.contact_journey_events (
   id uuid primary key default gen_random_uuid(),
   church_id uuid not null references public.churches(id) on delete cascade,
@@ -1270,6 +1296,7 @@ alter table public.event_assignments enable row level security;
 alter table public.people enable row level security;
 alter table public.contacts enable row level security;
 alter table public.contact_interests enable row level security;
+alter table public.contact_form_answers enable row level security;
 alter table public.contact_journey_events enable row level security;
 alter table public.follow_ups enable row level security;
 alter table public.prayer_requests enable row level security;
@@ -1614,6 +1641,17 @@ create policy "Members can update generated messages"
 on public.generated_messages for update
 using (private.is_church_member(church_id) or private.is_app_admin())
 with check (private.is_church_member(church_id) or private.is_app_admin());
+
+-- Contact form answers RLS policies
+drop policy if exists "Members can view contact form answers" on public.contact_form_answers;
+create policy "Members can view contact form answers"
+on public.contact_form_answers for select
+using (private.is_church_member(church_id) or private.is_app_admin());
+
+drop policy if exists "Members can create contact form answers" on public.contact_form_answers;
+create policy "Members can create contact form answers"
+on public.contact_form_answers for insert
+with check (private.is_church_member(church_id));
 
 drop function if exists public.is_church_member(uuid);
 drop function if exists public.is_app_admin();
