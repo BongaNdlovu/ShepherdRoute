@@ -44,8 +44,14 @@ export default async function EventTeamPage({
   }
 
   const [assignments, teamMembers] = await Promise.all([
-    getEventAssignments(context.churchId, id),
-    getTeamMembers(context.churchId),
+    getEventAssignments(context.churchId, id).catch((error) => {
+      console.error("Error fetching event assignments:", error);
+      return [];
+    }),
+    getTeamMembers(context.churchId).catch((error) => {
+      console.error("Error fetching team members:", error);
+      return [];
+    }),
   ]);
 
   return (

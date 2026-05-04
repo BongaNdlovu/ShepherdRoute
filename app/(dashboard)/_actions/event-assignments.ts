@@ -86,11 +86,12 @@ async function getCurrentTeamRoleForChurch(params: {
     return null;
   }
 
-  // Then get team_member using membership_id
+  // Then get team_member using membership_id and church_id
   const { data, error } = await supabase
     .from('team_members')
     .select('role')
     .eq('membership_id', membership.id)
+    .eq('church_id', params.churchId)
     .maybeSingle();
 
   if (error) {
@@ -215,7 +216,7 @@ export async function inviteToEventByEmail(input: {
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   const permissions = sanitizeEventPermissions(input.permissions);
 
-  const { error } = await supabase.from('event_assignments').upsert(
+  const { error, data: upserted } = await supabase.from('event_assignments').upsert(
     {
       church_id: churchId,
       event_id: input.eventId,
@@ -236,7 +237,17 @@ export async function inviteToEventByEmail(input: {
   );
 
   if (error) {
-    throw new Error(`Failed to create invitation: ${error.message}`);
+    console.error('Event invitation upsert error:', {
+      error,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      churchId,
+      eventId: input.eventId,
+      email
+    });
+    throw new Error(`Failed to create invitation: ${error.message} (Code: ${error.code})`);
   }
 
   // TODO: Connect the project's existing email provider here.

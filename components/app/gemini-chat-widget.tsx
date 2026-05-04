@@ -85,7 +85,7 @@ export function GeminiChatWidget() {
             </Button>
           </header>
 
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 sidebar-scroll">
             {!messages.length ? (
               <div className="rounded-2xl bg-muted p-4 text-sm text-muted-foreground">
                 {isReportAware

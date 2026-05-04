@@ -224,6 +224,90 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     ],
     questions: [
       {
+        name: "high_blood_pressure",
+        label: "Do you have high blood pressure?",
+        type: "radio",
+        required: false,
+        options: [
+          { value: "yes", label: "Yes" },
+          { value: "no", label: "No" },
+          { value: "not_sure", label: "Not sure" }
+        ]
+      },
+      {
+        name: "blood_pressure_value",
+        label: "If yes, what is your current blood pressure reading? (in mmHg)",
+        type: "select",
+        required: false,
+        options: [
+          { value: "below_120_80", label: "Below 120/80 mmHg" },
+          { value: "120_129_80_84", label: "120-129 / 80-84 mmHg" },
+          { value: "130_139_85_89", label: "130-139 / 85-89 mmHg" },
+          { value: "140_159_90_99", label: "140-159 / 90-99 mmHg" },
+          { value: "160_above_100_above", label: "160+ / 100+ mmHg" },
+          { value: "dont_know", label: "I don't know" }
+        ]
+      },
+      {
+        name: "glucose_level",
+        label: "What is your current blood glucose level?",
+        type: "select",
+        required: false,
+        options: [
+          { value: "normal_fasting", label: "Normal fasting (3.9-5.5 mmol/L or 70-99 mg/dL)" },
+          { value: "prediabetes_fasting", label: "Pre-diabetes fasting (5.6-6.9 mmol/L or 100-125 mg/dL)" },
+          { value: "diabetes_fasting", label: "Diabetes fasting (7.0+ mmol/L or 126+ mg/dL)" },
+          { value: "normal_random", label: "Normal random (below 11.1 mmol/L or below 200 mg/dL)" },
+          { value: "diabetes_random", label: "Diabetes random (11.1+ mmol/L or 200+ mg/dL)" },
+          { value: "dont_know", label: "I don't know" }
+        ]
+      },
+      {
+        name: "weight",
+        label: "What is your current weight?",
+        type: "select",
+        required: false,
+        options: [
+          { value: "below_50kg", label: "Below 50 kg / 110 lbs" },
+          { value: "50_60kg", label: "50-60 kg / 110-132 lbs" },
+          { value: "61_70kg", label: "61-70 kg / 134-154 lbs" },
+          { value: "71_80kg", label: "71-80 kg / 156-176 lbs" },
+          { value: "81_90kg", label: "81-90 kg / 178-198 lbs" },
+          { value: "91_100kg", label: "91-100 kg / 200-220 lbs" },
+          { value: "above_100kg", label: "Above 100 kg / 220 lbs" },
+          { value: "prefer_not_say", label: "Prefer not to say" }
+        ]
+      },
+      {
+        name: "fitness_level",
+        label: "What is your recovery heart rate? (beats per minute after 1 minute of rest following exercise)",
+        type: "select",
+        required: false,
+        options: [
+          { value: "excellent", label: "Excellent (below 12 bpm)" },
+          { value: "good", label: "Good (13-20 bpm)" },
+          { value: "average", label: "Average (21-30 bpm)" },
+          { value: "below_average", label: "Below average (31-40 bpm)" },
+          { value: "poor", label: "Poor (41+ bpm)" },
+          { value: "dont_know", label: "I don't know" }
+        ]
+      },
+      {
+        name: "bmi",
+        label: "What is your current BMI? (Body Mass Index)",
+        type: "select",
+        required: false,
+        options: [
+          { value: "underweight", label: "Underweight (below 18.5)" },
+          { value: "normal", label: "Normal (18.5-24.9)" },
+          { value: "overweight", label: "Overweight (25.0-29.9)" },
+          { value: "obese_class1", label: "Obese Class I (30.0-34.9)" },
+          { value: "obese_class2", label: "Obese Class II (35.0-39.9)" },
+          { value: "obese_class3", label: "Obese Class III (40.0+)" },
+          { value: "dont_know", label: "I don't know" }
+        ]
+      },
+      {
         name: "depression_seminar_interest",
         label: "Are you interested in a follow-up Depression and Recovery Seminar?",
         type: "radio",

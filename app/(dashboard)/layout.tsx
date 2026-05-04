@@ -50,7 +50,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             </div>
           </Link>
 
-          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1 sidebar-scroll">
             {context.memberships.length > 1 ? (
               <form action={switchChurchAction} className="mt-3 grid gap-2 p-3">
                 <label htmlFor="churchId" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
