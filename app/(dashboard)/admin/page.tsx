@@ -5,7 +5,6 @@ import { updateOwnerMembershipRoleAction, updateOwnerMembershipStatusAction } fr
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CinematicSection } from "@/components/ui/cinematic-section";
 import { StatCard } from "@/components/app/stat-card";
 import { roleLabels, roleOptions } from "@/lib/constants";
 import { getChurchContext, getOwnerAccountRows, getOwnerChurchSummaries, getOwnerInvitationRows, type OwnerAccountRow } from "@/lib/data";
@@ -40,13 +39,16 @@ export default async function OwnerAdminPage({
   const accountsByChurch = groupAccountsByChurch(accounts);
 
   return (
-    <section className="space-y-4">
-      <CinematicSection className="cinematic-fade-up">
-        <div className="flex items-start justify-between gap-4">
+    <section className="space-y-6">
+      <div className="cinematic-fade-up">
+        <div className="flex flex-col gap-4 rounded-3xl border border-white/60 bg-white/45 p-5 shadow-sm backdrop-blur md:flex-row md:items-start md:justify-between">
           <div>
             <h2 className="text-2xl font-black tracking-tight">ShepherdRoute owner admin</h2>
-            <p className="mt-1 text-sm text-muted-foreground">SaaS-level workspace and account controls without exposing prayer request contents.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              SaaS-level workspace and account controls without exposing prayer request contents.
+            </p>
           </div>
+
           <div className="flex flex-wrap gap-2">
             <Button asChild>
               <Link href="/admin/churches">Manage Churches</Link>
@@ -56,7 +58,7 @@ export default async function OwnerAdminPage({
             </Button>
           </div>
         </div>
-      </CinematicSection>
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard icon={Church} title="Churches" value={churches.length} note="Registered church workspaces." />
