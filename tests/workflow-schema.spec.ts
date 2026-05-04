@@ -163,6 +163,12 @@ test.describe("workflow helpers", () => {
     expect(eventDetailPage).not.toContain("absoluteUrl(`/e/");
   });
 
+  test("public event QR pages are available to anonymous visitors", () => {
+    expect(schema).toContain("create view public.public_events\nas");
+    expect(schema).toContain("grant select on public.public_events to anon, authenticated");
+    expect(schema).not.toContain("create view public.public_events\nwith (security_invoker = true)");
+  });
+
   test("best time options do not include channel-only preferences", () => {
     expect(publicEventPage).toContain("Best time to contact");
     expect(publicEventPage).not.toContain("WhatsApp first");

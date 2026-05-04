@@ -1721,7 +1721,7 @@ grant execute on function public.accept_team_invitation(text) to authenticated;
 
 drop view if exists public.public_events;
 create view public.public_events
-with (security_invoker = true) as
+as
 select
   events.id,
   events.name,
