@@ -37,6 +37,12 @@ export type EventReportSummary = {
   follow_up_count: number;
   status_counts: Record<string, number>;
   interest_counts: Record<string, number>;
+  topic_counts: Record<string, number>;
+  form_answer_counts: Array<{
+    question_name: string;
+    question_label: string;
+    count: number;
+  }>;
 };
 
 export type EventReportExportContact = {
@@ -103,7 +109,9 @@ const emptyEventSummary: EventReportSummary = {
   high_priority_count: 0,
   follow_up_count: 0,
   status_counts: {},
-  interest_counts: {}
+  interest_counts: {},
+  topic_counts: {},
+  form_answer_counts: []
 };
 
 function asNumberRecord(value: unknown): Record<string, number> {
@@ -149,7 +157,15 @@ function parseEventSummary(row: Partial<EventReportSummary> | null | undefined):
     high_priority_count: Number(row.high_priority_count) || 0,
     follow_up_count: Number(row.follow_up_count) || 0,
     status_counts: asNumberRecord(row.status_counts),
-    interest_counts: asNumberRecord(row.interest_counts)
+    interest_counts: asNumberRecord(row.interest_counts),
+    topic_counts: asNumberRecord(row.topic_counts),
+    form_answer_counts: Array.isArray(row.form_answer_counts)
+      ? row.form_answer_counts.map((item) => ({
+          question_name: String(item.question_name ?? ""),
+          question_label: String(item.question_label ?? ""),
+          count: Number(item.count) || 0
+        }))
+      : []
   };
 }
 

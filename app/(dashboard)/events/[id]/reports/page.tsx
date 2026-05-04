@@ -140,6 +140,46 @@ export default async function EventReportPage({
           </CardContent>
         </Card>
       </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {template.topicOptions && template.topicOptions.length > 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Topic breakdown</CardTitle>
+              <CardDescription>Seminar topics selected by visitors.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-2">
+              {Object.entries(summary.topic_counts).map(([topic, count]) => (
+                <div key={topic} className="flex items-center justify-between rounded-lg bg-muted p-3">
+                  <span className="font-semibold">{topic}</span>
+                  <span className="text-xl font-black">{count}</span>
+                </div>
+              ))}
+              {!Object.keys(summary.topic_counts).length ? <p className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">No topic data yet.</p> : null}
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {summary.form_answer_counts.length > 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Form answer breakdown</CardTitle>
+              <CardDescription>Responses to custom event questions.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-2">
+              {summary.form_answer_counts.map((answer) => (
+                <div key={answer.question_name} className="flex items-center justify-between rounded-lg bg-muted p-3">
+                  <div>
+                    <span className="font-semibold">{answer.question_label}</span>
+                    <p className="text-xs text-muted-foreground">{answer.question_name}</p>
+                  </div>
+                  <span className="text-xl font-black">{answer.count}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        ) : null}
+      </div>
     </section>
     </CinematicSection>
   );

@@ -448,6 +448,127 @@ export type Database = {
           },
         ]
       }
+      event_assignments: {
+        Row: {
+          accepted_at: string | null
+          can_assign_contacts: boolean
+          can_delete_event: boolean
+          can_edit_event_settings: boolean
+          can_export_reports: boolean
+          can_manage_event_team: boolean
+          can_view_contacts: boolean
+          can_view_prayer_requests: boolean
+          can_view_reports: boolean
+          church_id: string
+          created_at: string
+          event_id: string
+          id: string
+          invitation_expires_at: string | null
+          invitation_token_hash: string | null
+          invited_at: string
+          invited_by: string | null
+          invitee_email: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          status: Database["public"]["Enums"]["event_assignment_status"]
+          team_member_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          can_assign_contacts?: boolean
+          can_delete_event?: boolean
+          can_edit_event_settings?: boolean
+          can_export_reports?: boolean
+          can_manage_event_team?: boolean
+          can_view_contacts?: boolean
+          can_view_prayer_requests?: boolean
+          can_view_reports?: boolean
+          church_id: string
+          created_at?: string
+          event_id: string
+          id?: string
+          invitation_expires_at?: string | null
+          invitation_token_hash?: string | null
+          invited_at?: string
+          invited_by?: string | null
+          invitee_email?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          status?: Database["public"]["Enums"]["event_assignment_status"]
+          team_member_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          can_assign_contacts?: boolean
+          can_delete_event?: boolean
+          can_edit_event_settings?: boolean
+          can_export_reports?: boolean
+          can_manage_event_team?: boolean
+          can_view_contacts?: boolean
+          can_view_prayer_requests?: boolean
+          can_view_reports?: boolean
+          church_id?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+          invitation_expires_at?: string | null
+          invitation_token_hash?: string | null
+          invited_at?: string
+          invited_by?: string | null
+          invitee_email?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          status?: Database["public"]["Enums"]["event_assignment_status"]
+          team_member_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_assignments_church_id_fkey"
+            columns: ["church_id"]
+            isOneToOne: false
+            referencedRelation: "churches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_assignments_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_assignments_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "public_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_assignments_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_assignments_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_assignments_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           archived_at: string | null
@@ -989,9 +1110,56 @@ export type Database = {
     }
     Functions: {
       accept_team_invitation: { Args: { p_token: string }; Returns: string }
+      current_user_can_manage_event_assignments: {
+        Args: { target_event_id: string }
+        Returns: boolean
+      }
+      current_user_team_member_id_for_event: {
+        Args: { target_event_id: string }
+        Returns: string
+      }
       dismiss_onboarding_guide: {
         Args: { p_church_id: string }
         Returns: undefined
+      }
+      event_follow_up_counts: {
+        Args: { p_church_id: string; p_event_id: string }
+        Returns: {
+          completed_follow_ups: number
+          due_now_follow_ups: number
+          overdue_follow_ups: number
+          pending_follow_ups: number
+        }[]
+      }
+      event_follow_ups_page: {
+        Args: {
+          p_assigned_to?: string
+          p_church_id: string
+          p_event_id: string
+          p_limit?: number
+          p_offset?: number
+          p_status?: string
+          p_urgency?: Database["public"]["Enums"]["urgency_level"]
+        }
+        Returns: {
+          assigned_name: string
+          assigned_to: string
+          channel: Database["public"]["Enums"]["follow_up_channel"]
+          completed_at: string
+          contact_email: string
+          contact_id: string
+          contact_name: string
+          contact_phone: string
+          contact_status: Database["public"]["Enums"]["follow_up_status"]
+          contact_urgency: Database["public"]["Enums"]["urgency_level"]
+          contact_whatsapp: string
+          created_at: string
+          due_at: string
+          id: string
+          next_action: string
+          status: Database["public"]["Enums"]["follow_up_status"]
+          total_count: number
+        }[]
       }
       event_report_summary: {
         Args: { p_church_id: string; p_event_id: string }
@@ -1082,6 +1250,19 @@ export type Database = {
           team_member_id: string
           team_member_name: string
           user_id: string
+        }[]
+      }
+      owner_admin_overview: {
+        Args: never
+        Returns: {
+          active_account_count: number
+          church_count: number
+          contact_count: number
+          disabled_account_count: number
+          event_count: number
+          ministry_count: number
+          pending_invitation_count: number
+          team_member_count: number
         }[]
       }
       owner_church_events_page: {
@@ -1295,6 +1476,7 @@ export type Database = {
     }
     Enums: {
       app_admin_role: "owner" | "support_admin" | "billing_admin"
+      event_assignment_status: "pending" | "accepted" | "revoked" | "expired"
       event_type:
         | "church_service"
         | "health_expo"
@@ -1489,6 +1671,7 @@ export const Constants = {
   public: {
     Enums: {
       app_admin_role: ["owner", "support_admin", "billing_admin"],
+      event_assignment_status: ["pending", "accepted", "revoked", "expired"],
       event_type: [
         "church_service",
         "health_expo",

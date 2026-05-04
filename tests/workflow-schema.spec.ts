@@ -568,4 +568,63 @@ test.describe("workflow helpers", () => {
     expect(dataEventAssignments).toContain(".eq('team_member_id', teamMember.id)");
     expect(dataEventAssignments).not.toContain(".eq('team_member_id', membership.id)");
   });
+
+  test("schema includes index for event form-answer reporting performance", () => {
+    expect(schema).toContain("contact_form_answers_event_question_idx");
+    expect(schema).toContain("on public.contact_form_answers(church_id, event_id, question_name)");
+  });
+
+  test("event_report_summary RPC returns topic_counts and form_answer_counts", () => {
+    expect(schema).toContain("topic_counts jsonb");
+    expect(schema).toContain("form_answer_counts jsonb");
+    expect(schema).toContain("topic_rows as (");
+    expect(schema).toContain("form_answer_rows as (");
+    expect(schema).toContain("coalesce(nullif(classification_payload->>'selected_topic', ''), 'unspecified')");
+    expect(schema).toContain("select cfa.question_name, cfa.question_label, count(*)");
+  });
+
+  test("public form validation ignores interests when show_interests is false", () => {
+    expect(publicValidation).toContain("formConfig.show_interests");
+    expect(publicValidation).toContain("formData.getAll(\"interests\").map(String)");
+    expect(publicValidation).toContain(": []");
+  });
+
+  test("public form page includes area/suburb field controlled by formConfig.show_area", () => {
+    expect(publicEventPage).toContain("formConfig.show_area");
+    expect(publicEventPage).toContain("Area / suburb");
+    expect(publicEventPage).toContain('name="area"');
+    expect(publicEventPage).toContain('id="area"');
+  });
+
+  test("submit_event_registration RPC allows empty interests array", () => {
+    expect(schema).not.toContain("if array_length(p_interests, 1) is null");
+    expect(schema).not.toMatch(/raise exception 'Select at least one interest'/);
+    expect(schema).toContain("foreach selected_interest in array coalesce(p_interests, array[]::public.interest_tag[])");
+  });
+
+  test("reports page adapts headings based on workspace type", () => {
+    const reportsPage = readFileSync("app/(dashboard)/reports/page.tsx", "utf8");
+    expect(reportsPage).toContain("context.workspaceType");
+    expect(reportsPage).toContain("isMinistryWorkspace");
+    expect(reportsPage).toContain("Ministry reports");
+    expect(reportsPage).toContain("Church reports");
+  });
+
+  test("event reports page renders topic and form answer breakdowns", () => {
+    const eventReportsPage = readFileSync("app/(dashboard)/events/[id]/reports/page.tsx", "utf8");
+    expect(eventReportsPage).toContain("summary.topic_counts");
+    expect(eventReportsPage).toContain("summary.form_answer_counts");
+    expect(eventReportsPage).toContain("Topic breakdown");
+    expect(eventReportsPage).toContain("Form answer breakdown");
+  });
+
+  test("event CSV export includes dynamic columns for custom form answers", () => {
+    const eventExport = readFileSync("app/(dashboard)/events/[id]/reports/export/route.ts", "utf8");
+    expect(eventExport).toContain("contact_form_answers");
+    expect(eventExport).toContain("question_name, question_label");
+    expect(eventExport).toContain("answer_display");
+    expect(eventExport).toContain("uniqueQuestions");
+    expect(eventExport).toContain("dynamicHeaders");
+    expect(eventExport).toContain("dynamicValues");
+  });
 });

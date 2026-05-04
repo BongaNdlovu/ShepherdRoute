@@ -5,8 +5,6 @@ import { submitRegistrationAction } from "@/app/e/[slug]/actions";
 import { BrandLogo } from "@/components/app/brand-logo";
 import { ExternalBrandImage } from "@/components/app/external-brand-image";
 import { PendingSubmitButton } from "@/components/app/pending-submit-button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CinematicSection } from "@/components/ui/cinematic-section";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -127,18 +125,17 @@ export default async function PublicEventPage({
         } as CSSProperties
       }
     >
-      <CinematicSection>
-        <section className="mx-auto max-w-3xl">
-        <Card className="overflow-hidden rounded-2xl border-white/80 bg-white/95 shadow-card">
+      <section className="mx-auto max-w-3xl">
+        <div className="overflow-hidden rounded-2xl">
           {brandingConfig.cover_image_url ? (
             <ExternalBrandImage
               src={brandingConfig.cover_image_url}
               alt={`${event.name} cover`}
-              className="h-48 w-full object-cover"
+              className="h-48 w-full rounded-2xl object-cover"
               loading="eager"
             />
           ) : null}
-          <CardHeader className="text-center">
+          <header className="px-0 py-6 text-center">
             {publicInfo.show_logo && brandingConfig.logo_url ? (
               <ExternalBrandImage
                 src={brandingConfig.logo_url}
@@ -151,10 +148,10 @@ export default async function PublicEventPage({
             {publicInfo.show_church_name ? (
               <p className="mt-4 text-sm font-semibold uppercase tracking-[0.18em] text-accent">{event.church_name}</p>
             ) : null}
-            <CardTitle className="text-3xl">{publicInfo.heading}</CardTitle>
-            <CardDescription>
+            <h1 className="text-3xl font-semibold leading-tight tracking-tight text-foreground">{publicInfo.heading}</h1>
+            <p className="text-sm leading-6 text-muted-foreground">
               {publicInfo.description}
-            </CardDescription>
+            </p>
             {isHealthEvent && (
               <div className="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-3 flex gap-3 items-start">
                 <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
@@ -163,8 +160,8 @@ export default async function PublicEventPage({
                 </p>
               </div>
             )}
-          </CardHeader>
-          <CardContent>
+          </header>
+          <div className="pb-6">
             {query.submitted ? (
               <div className="rounded-2xl border border-success/20 bg-success/10 p-6 text-center text-success">
                 <CheckCircle2 className="mx-auto h-12 w-12" />
@@ -224,6 +221,17 @@ export default async function PublicEventPage({
                   <p className="text-xs text-muted-foreground">
                     If you prefer email only, you may leave Phone / WhatsApp blank and provide your email address.
                   </p>
+                ) : null}
+
+                {formConfig.show_area ? (
+                  <div className="grid gap-2">
+                    <Label htmlFor="area">Area / suburb</Label>
+                    <Input
+                      id="area"
+                      name="area"
+                      placeholder="Your area or suburb"
+                    />
+                  </div>
                 ) : null}
 
                 {formConfig.show_language ? (
@@ -371,15 +379,14 @@ export default async function PublicEventPage({
                 </PendingSubmitButton>
                 </form>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
         <footer className="mt-4 flex flex-col items-center justify-center gap-2 text-center text-xs text-muted-foreground sm:flex-row">
           <span>Copyright (c) {new Date().getFullYear()} ShepherdRoute.</span>
           <Link href="/privacy" className="font-semibold underline-offset-4 hover:underline">Privacy notice</Link>
           <Link href="/copyright" className="font-semibold underline-offset-4 hover:underline">Copyright notice</Link>
         </footer>
       </section>
-      </CinematicSection>
     </main>
   );
 }

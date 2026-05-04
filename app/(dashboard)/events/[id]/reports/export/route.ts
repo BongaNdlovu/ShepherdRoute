@@ -29,6 +29,22 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     return new Response("Event not found", { status: 404 });
   }
 
+  // Fetch all unique question names for this event
+  const { data: questionRows } = await supabase
+    .from("contact_form_answers")
+    .select("question_name, question_label")
+    .eq("church_id", context.churchId)
+    .eq("event_id", id);
+
+  const uniqueQuestions = Array.from(
+    new Map(
+      (questionRows ?? []).map((row) => [row.question_name, row.question_label])
+    ).entries()
+  );
+
+  const dynamicHeaders = uniqueQuestions.map(([name, label]) => label || name);
+  const headers = [...EVENT_EXPORT_HEADERS, ...dynamicHeaders];
+
   // Audit log before export
   await supabase
     .from("audit_logs")
@@ -41,11 +57,12 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       metadata: { event_name: event.name }
     });
 
-  return streamCsvResponse(`${slugify(event.name)}-${new Date().toISOString().split("T")[0]}-contacts.csv`, EVENT_EXPORT_HEADERS, eventRows(context.churchId, id));
+  return streamCsvResponse(`${slugify(event.name)}-${new Date().toISOString().split("T")[0]}-contacts.csv`, headers, eventRows(context.churchId, id, uniqueQuestions));
 }
 
-async function* eventRows(churchId: string, eventId: string) {
+async function* eventRows(churchId: string, eventId: string, uniqueQuestions: Array<[string, string]>) {
   let offset = 0;
+  const supabase = await createClient();
 
   while (true) {
     const contacts = await getEventReportContactsPage(churchId, eventId, offset, EXPORT_BATCH_SIZE);
@@ -55,6 +72,23 @@ async function* eventRows(churchId: string, eventId: string) {
         .map((item: { interest: Interest }) => interestLabels[item.interest])
         .join("; ");
 
+      // Fetch form answers for this contact
+      const { data: answers } = await supabase
+        .from("contact_form_answers")
+        .select("question_name, answer_display")
+        .eq("church_id", churchId)
+        .eq("contact_id", contact.id);
+
+      const answerMap = new Map(
+        (answers ?? []).map((a) => {
+          const displayValue = a.answer_display;
+          const formatted = Array.isArray(displayValue) ? displayValue.join(", ") : String(displayValue ?? "");
+          return [a.question_name, formatted];
+        })
+      );
+
+      const dynamicValues = uniqueQuestions.map(([name]) => answerMap.get(name) ?? "");
+
       yield [
         contact.full_name,
         contact.phone,
@@ -62,7 +96,8 @@ async function* eventRows(churchId: string, eventId: string) {
         interests,
         statusLabels[contact.status as FollowUpStatus],
         contact.urgency,
-        contact.created_at
+        contact.created_at,
+        ...dynamicValues
       ];
     }
 

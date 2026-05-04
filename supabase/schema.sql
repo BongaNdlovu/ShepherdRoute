@@ -514,6 +514,9 @@ on public.contact_form_answers(church_id, contact_id);
 create index if not exists contact_form_answers_question_idx
 on public.contact_form_answers(church_id, question_name);
 
+create index if not exists contact_form_answers_event_question_idx
+on public.contact_form_answers(church_id, event_id, question_name);
+
 -- Data requests table for privacy compliance tracking
 create table if not exists public.data_requests (
   id uuid primary key default gen_random_uuid(),
@@ -3048,7 +3051,9 @@ returns table (
   high_priority_count bigint,
   follow_up_count bigint,
   status_counts jsonb,
-  interest_counts jsonb
+  interest_counts jsonb,
+  topic_counts jsonb,
+  form_answer_counts jsonb
 )
 language sql
 security invoker
@@ -3060,6 +3065,19 @@ as $$
     where contacts.church_id = p_church_id
       and contacts.event_id = p_event_id
       and contacts.deleted_at is null
+  ),
+  topic_rows as (
+    select coalesce(nullif(classification_payload->>'selected_topic', ''), 'unspecified') as topic, count(*) as count
+    from event_contacts
+    group by topic
+  ),
+  form_answer_rows as (
+    select cfa.question_name, cfa.question_label, count(*) as count
+    from public.contact_form_answers cfa
+    join event_contacts ec on ec.id = cfa.contact_id
+    where cfa.church_id = p_church_id
+      and cfa.event_id = p_event_id
+    group by cfa.question_name, cfa.question_label
   )
   select
     (select count(*) from event_contacts) as total_contacts,
@@ -3115,7 +3133,24 @@ as $$
         ) interest_rows
       ),
       '{}'::jsonb
-    ) as interest_counts;
+    ) as interest_counts,
+    coalesce(
+      (select jsonb_object_agg(topic, count) from topic_rows),
+      '{}'::jsonb
+    ) as topic_counts,
+    coalesce(
+      (
+        select jsonb_agg(
+          jsonb_build_object(
+            'question_name', question_name,
+            'question_label', question_label,
+            'count', count
+          )
+        )
+        from form_answer_rows
+      ),
+      '[]'::jsonb
+    ) as form_answer_counts;
 $$;
 
 revoke all on function public.event_report_summary(uuid, uuid) from public, anon, authenticated;
@@ -3422,10 +3457,6 @@ begin
     raise exception 'Consent is required before follow-up can be requested.';
   end if;
 
-  if array_length(p_interests, 1) is null then
-    raise exception 'Select at least one interest.';
-  end if;
-
   select * into target_event
   from public.events
   where slug = p_slug
@@ -3536,7 +3567,7 @@ begin
   )
   returning id into new_contact_id;
 
-  foreach selected_interest in array p_interests loop
+  foreach selected_interest in array coalesce(p_interests, array[]::public.interest_tag[]) loop
     insert into public.contact_interests (church_id, contact_id, interest)
     values (target_event.church_id, new_contact_id, selected_interest)
     on conflict (contact_id, interest) do nothing;

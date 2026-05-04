@@ -121,7 +121,9 @@ export async function validatePublicEventRegistration(
     return { error: "Please add either a phone number or an email address." };
   }
 
-  const submittedInterests = formData.getAll("interests").map(String);
+  const submittedInterests = formConfig.show_interests
+    ? formData.getAll("interests").map(String)
+    : [];
   const allowedInterests = new Set(formConfig.interest_options.map((option) => option.value));
   const selectedInterests = submittedInterests.filter((interest) => allowedInterests.has(interest));
 
