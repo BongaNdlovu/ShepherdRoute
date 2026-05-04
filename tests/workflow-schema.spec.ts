@@ -9,10 +9,14 @@ const dashboardLayout = readFileSync("app/(dashboard)/layout.tsx", "utf8");
 const dashboardPage = readFileSync("app/(dashboard)/dashboard/page.tsx", "utf8");
 const eventsPage = readFileSync("app/(dashboard)/events/page.tsx", "utf8");
 const eventDetailPage = readFileSync("app/(dashboard)/events/[id]/page.tsx", "utf8");
-const eventActions = readFileSync("app/(dashboard)/_actions/events.ts", "utf8");
+const eventCrud = readFileSync("app/(dashboard)/_actions/event-crud.ts", "utf8");
 const teamActions = readFileSync("app/(dashboard)/_actions/team.ts", "utf8");
 const publicEventPage = readFileSync("app/e/[slug]/page.tsx", "utf8");
 const authActions = readFileSync("app/(auth)/actions.ts", "utf8");
+const contactMutations = readFileSync("app/(dashboard)/_actions/contact-mutations.ts", "utf8");
+const followUpMutations = readFileSync("app/(dashboard)/_actions/follow-up-mutations.ts", "utf8");
+const publicValidation = readFileSync("lib/public-events/validation.ts", "utf8");
+const publicActions = readFileSync("app/e/[slug]/actions.ts", "utf8");
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -137,10 +141,10 @@ test.describe("workflow helpers", () => {
   });
 
   test("event lifecycle actions expose close, archive, restore, and delete workflows", () => {
-    expect(eventActions).toContain("updateEventStatusAction");
-    expect(eventActions).toContain("updateEventArchiveAction");
-    expect(eventActions).toContain("deleteEventAction");
-    expect(eventActions).toContain(".delete()");
+    expect(eventCrud).toContain("updateEventStatusAction");
+    expect(eventCrud).toContain("updateEventArchiveAction");
+    expect(eventCrud).toContain("deleteEventAction");
+    expect(eventCrud).toContain(".delete()");
     expect(eventDetailPage).toContain("Archive event");
     expect(eventDetailPage).toContain("Restore event");
     expect(eventDetailPage).toContain("Delete event");
@@ -270,20 +274,21 @@ test.describe("workflow helpers", () => {
   });
 
   test("manual contact creation assigns owner and saves suggested WhatsApp with generator", () => {
-    const contactsActions = readFileSync("app/(dashboard)/_actions/contacts.ts", "utf8");
-    expect(contactsActions).toContain("chooseWorkflowOwner");
-    expect(contactsActions).toContain("saveSuggestedWhatsappMessage");
-    expect(contactsActions).toContain("assigned_to: assignedTo");
-    expect(contactsActions).toContain("status: assignedTo ? \"assigned\" : \"new\"");
-    expect(contactsActions).toContain("generatedBy: context.userId");
+    expect(contactMutations).toContain("chooseWorkflowOwner");
+    expect(contactMutations).toContain("saveSuggestedWhatsappMessage");
+    expect(contactMutations).toContain("assigned_to: assignedTo");
+    expect(contactMutations).toContain("status: assignedTo ? \"assigned\" : \"new\"");
+    expect(contactMutations).toContain("generatedBy: context.userId");
   });
 
   test("public registration delegates owner assignment and suggested WhatsApp persistence to RPC", () => {
-    const publicActions = readFileSync("app/e/[slug]/actions.ts", "utf8");
     expect(publicActions).toContain("submit_event_registration");
     expect(publicActions).not.toContain("chooseWorkflowOwner");
     expect(publicActions).not.toContain("saveSuggestedWhatsappMessage");
     expect(publicActions).not.toContain(".from(\"contacts\")");
+    expect(publicValidation).toContain("validatePublicEventRegistration");
+    expect(publicValidation).toContain("registrationSchema");
+    expect(publicActions).toContain("validatePublicEventRegistration");
     expect(schema).toContain("assigned_owner_id");
     expect(schema).toContain("suggested_message");
     expect(schema).toContain("purpose\n  )\n  values");
@@ -318,11 +323,10 @@ test.describe("workflow helpers", () => {
   });
 
   test("mark contacted action validates open follow-up before updating contact", () => {
-    const contactsActions = readFileSync("app/(dashboard)/_actions/contacts.ts", "utf8");
-    expect(contactsActions).toContain("markFollowUpContactedAction");
-    expect(contactsActions).toContain("Open%20follow-up%20task%20not%20found");
-    expect(contactsActions).toContain("status: \"contacted\"");
-    expect(contactsActions).toContain("completed_at: now");
+    expect(followUpMutations).toContain("markFollowUpContactedAction");
+    expect(followUpMutations).toContain("Open%20follow-up%20task%20not%20found");
+    expect(followUpMutations).toContain("status: \"contacted\"");
+    expect(followUpMutations).toContain("completed_at: now");
   });
 
   test("follow-up WhatsApp buttons do not present opening WhatsApp as approval", () => {
@@ -369,22 +373,20 @@ test.describe("workflow helpers", () => {
   });
 
   test("mark contacted returns to the calling queue instead of dashboard", () => {
-    const contactsActions = readFileSync("app/(dashboard)/_actions/contacts.ts", "utf8");
     const confirmForm = readFileSync("components/app/mark-contacted-confirm-form.tsx", "utf8");
 
-    expect(contactsActions).toContain("returnTo");
-    expect(contactsActions).toContain("redirect(returnTo)");
-    expect(contactsActions).not.toContain("redirect(\"/dashboard\")");
+    expect(followUpMutations).toContain("returnTo");
+    expect(followUpMutations).toContain("redirect(returnTo)");
+    expect(followUpMutations).not.toContain("redirect(\"/dashboard\")");
     expect(confirmForm).toContain('name="returnTo"');
   });
 
   test("conversation ongoing sets waiting without completing the follow-up", () => {
-    const contactsActions = readFileSync("app/(dashboard)/_actions/contacts.ts", "utf8");
     const queueList = readFileSync("components/app/follow-ups-queue-list.tsx", "utf8");
 
-    expect(contactsActions).toContain("markFollowUpWaitingAction");
-    expect(contactsActions).toContain("status: \"waiting\"");
-    expect(contactsActions).not.toMatch(/markFollowUpWaitingAction[\s\S]*completed_at: now/);
+    expect(followUpMutations).toContain("markFollowUpWaitingAction");
+    expect(followUpMutations).toContain("status: \"waiting\"");
+    expect(followUpMutations).not.toMatch(/markFollowUpWaitingAction[\s\S]*completed_at: now/);
     expect(queueList).toContain("ConversationOngoingConfirmForm");
   });
 

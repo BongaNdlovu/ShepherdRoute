@@ -1,39 +1,19 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { Building2, Church, ClipboardList, KeyRound, Mail, UserRoundX, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { OwnerAdminMainTabs } from "@/components/app/owner-admin-main-tabs";
 import { StatCard } from "@/components/app/stat-card";
-import { getChurchContext, getOwnerAccountRows, getOwnerChurchSummaries, getOwnerInvitationRows } from "@/lib/data";
+import { getOwnerAdminOverview } from "@/lib/data";
+import { requireOwnerAdmin } from "@/lib/owner-admin";
 
 export const metadata = {
   title: "Owner Admin"
 };
 
-export default async function OwnerAdminPage({
-  searchParams
-}: {
-  searchParams: Promise<{ error?: string; updated?: string }>;
-}) {
-  const params = await searchParams;
-  const context = await getChurchContext();
-
-  if (!context.isAppAdmin) {
-    notFound();
-  }
-
-  const [churches, accounts, invitations] = await Promise.all([
-    getOwnerChurchSummaries(),
-    getOwnerAccountRows(),
-    getOwnerInvitationRows()
-  ]);
-  const totalEvents = churches.reduce((sum, church) => sum + Number(church.event_count), 0);
-  const totalContacts = churches.reduce((sum, church) => sum + Number(church.contact_count), 0);
-  const totalTeam = churches.reduce((sum, church) => sum + Number(church.team_count), 0);
-  const activeAccounts = accounts.filter((account) => account.status === "active").length;
-  const disabledAccounts = accounts.filter((account) => account.status === "disabled").length;
-  const pendingInvitations = invitations.filter((invitation) => invitation.status === "pending").length;
+export default async function OwnerAdminPage() {
+  await requireOwnerAdmin();
+  const overview = await getOwnerAdminOverview();
 
   return (
     <section className="space-y-6">
@@ -60,17 +40,17 @@ export default async function OwnerAdminPage({
       <OwnerAdminMainTabs active="overview" />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={Church} title="Churches" value={churches.length} note="Registered church workspaces." />
-        <StatCard icon={UsersRound} title="Active accounts" value={activeAccounts} note="Users with dashboard access." />
-        <StatCard icon={UserRoundX} title="Disabled accounts" value={disabledAccounts} note="Users blocked at membership level." />
-        <StatCard icon={Building2} title="Team members" value={totalTeam} note="Assignable ministry workers." />
+        <StatCard icon={Church} title="Churches" value={overview.churchCount} note="Registered church workspaces." />
+        <StatCard icon={UsersRound} title="Active accounts" value={overview.activeAccountCount} note="Users with dashboard access." />
+        <StatCard icon={UserRoundX} title="Disabled accounts" value={overview.disabledAccountCount} note="Users blocked at membership level." />
+        <StatCard icon={Building2} title="Team members" value={overview.teamMemberCount} note="Assignable ministry workers." />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={ClipboardList} title="Events" value={totalEvents} note="Events created across all churches." />
-        <StatCard icon={UsersRound} title="Contacts" value={totalContacts} note="Aggregate visitor registrations." />
-        <StatCard icon={KeyRound} title="Memberships" value={accounts.length} note="Signed-up user access rows." />
-        <StatCard icon={Mail} title="Pending invites" value={pendingInvitations} note="Team account invitations awaiting acceptance." />
+        <StatCard icon={ClipboardList} title="Events" value={overview.eventCount} note="Events created across all churches." />
+        <StatCard icon={UsersRound} title="Contacts" value={overview.contactCount} note="Aggregate visitor registrations." />
+        <StatCard icon={KeyRound} title="Memberships" value={overview.activeAccountCount + overview.disabledAccountCount} note="Signed-up user access rows." />
+        <StatCard icon={Mail} title="Pending invites" value={overview.pendingInvitationCount} note="Team account invitations awaiting acceptance." />
       </div>
 
       <Card>

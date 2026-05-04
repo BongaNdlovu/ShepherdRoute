@@ -1768,6 +1768,47 @@ $$;
 revoke all on function public.owner_church_summaries() from public;
 grant execute on function public.owner_church_summaries() to authenticated;
 
+drop function if exists public.owner_admin_overview();
+
+create or replace function public.owner_admin_overview()
+returns table (
+  church_count bigint,
+  ministry_count bigint,
+  active_account_count bigint,
+  disabled_account_count bigint,
+  pending_invitation_count bigint,
+  team_member_count bigint,
+  event_count bigint,
+  contact_count bigint
+)
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+begin
+  perform private.require_app_admin();
+
+  return query
+  select
+    (select count(*) from public.churches where workspace_type = 'church') as church_count,
+    (select count(*) from public.churches where workspace_type = 'ministry') as ministry_count,
+    (select count(*) from public.church_memberships where status = 'active') as active_account_count,
+    (select count(*) from public.church_memberships where status = 'disabled') as disabled_account_count,
+    (
+      select count(*)
+      from public.team_invitations
+      where status = 'pending'
+        and expires_at > now()
+    ) as pending_invitation_count,
+    (select count(*) from public.team_members) as team_member_count,
+    (select count(*) from public.events) as event_count,
+    (select count(*) from public.contacts where deleted_at is null) as contact_count;
+end;
+$$;
+
+revoke all on function public.owner_admin_overview() from public, anon, authenticated;
+grant execute on function public.owner_admin_overview() to authenticated;
+
 drop function if exists public.owner_account_rows();
 
 create or replace function public.owner_account_rows()

@@ -45,4 +45,12 @@ test.describe("owner admin account controls", () => {
     expect(schema).toContain("create or replace function private.is_app_owner()");
     expect(schema).toContain("is_protected_owner = true");
   });
+
+  test("schema exposes lightweight owner admin overview", () => {
+    expect(schema).toContain("create or replace function public.owner_admin_overview()");
+    expect(schema).toContain("perform private.require_app_admin()");
+    expect(schema).toContain("church_count bigint");
+    expect(schema).toContain("pending_invitation_count bigint");
+    expect(schema).toContain("grant execute on function public.owner_admin_overview() to authenticated");
+  });
 });
