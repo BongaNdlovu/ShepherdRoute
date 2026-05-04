@@ -129,7 +129,7 @@ export function GeminiChatWidget() {
           </form>
         </section>
       ) : (
-        <Button type="button" className="h-14 w-14 rounded-full shadow-2xl" size="icon" onClick={() => setIsOpen(true)}>
+        <Button type="button" className="h-14 w-14 rounded-full shadow-2xl opacity-50 cursor-not-allowed" size="icon" disabled onClick={() => setIsOpen(true)}>
           <MessageCircle className="h-6 w-6" />
         </Button>
       )}
