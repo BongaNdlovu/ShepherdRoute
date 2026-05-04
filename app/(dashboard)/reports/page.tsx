@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AlertTriangle, BarChart3, CalendarClock, ClipboardList, Droplets, Heart, HeartPulse, UserCheck, UserX, UsersRound } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CinematicSection } from "@/components/ui/cinematic-section";
@@ -79,13 +80,20 @@ export default async function ReportsPage() {
             <CardContent>
               <div className="divide-y divide-border/70 rounded-2xl border border-border/70">
                 {summary.events.map((event) => (
-                  <div key={event.id} className="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-accent/5">
+                  <Link
+                    key={event.id}
+                    href={`/reports/events/${event.id}`}
+                    className="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-accent/5"
+                  >
                     <div>
                       <p className="font-semibold text-foreground">{event.name}</p>
                       <p className="text-sm text-muted-foreground">{event.event_type}</p>
                     </div>
-                    <p className="text-2xl font-semibold tracking-tight text-foreground">{event.contact_count}</p>
-                  </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-semibold tracking-tight text-foreground">{event.contact_count}</p>
+                      <p className="text-xs font-semibold text-muted-foreground">View detailed report</p>
+                    </div>
+                  </Link>
                 ))}
                 {!summary.events.length ? (
                   <p className="p-4 text-sm text-muted-foreground">No events have been recorded yet.</p>

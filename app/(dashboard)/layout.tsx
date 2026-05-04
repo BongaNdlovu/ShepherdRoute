@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, Church, ClipboardList, LogOut, QrCode, Settings2, ShieldCheck, UserCog, UserRound, UsersRound } from "lucide-react";
+import { BarChart3, Church, ClipboardList, Home, LogOut, QrCode, Settings2, ShieldCheck, UserCog, UserRound, UsersRound } from "lucide-react";
 import { logoutAction } from "@/app/(auth)/actions";
 import { switchChurchAction } from "@/app/(dashboard)/actions";
 import { BrandLogo } from "@/components/app/brand-logo";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { NavigationHistoryControls } from "@/components/app/navigation-history-controls";
 import { InactiveWorkspaceNotice } from "@/components/app/inactive-workspace-notice";
 import { MobileBottomNav } from "@/components/app/mobile-bottom-nav";
+import { GeminiChatWidget } from "@/components/app/gemini-chat-widget";
 import { roleLabels } from "@/lib/constants";
 import { getChurchContext } from "@/lib/data";
 
@@ -19,7 +20,8 @@ const navItems: Array<{ href: string; label: string; description: string; icon: 
   { href: "/profile", label: "My profile", description: "Personal settings", icon: UserRound },
   { href: "/settings", label: "Workspace settings", description: "Configure your church or ministry", icon: Settings2 },
   { href: "/settings/team", label: "Team members", description: "Manage roles and invites", icon: UserCog },
-  { href: "/settings/health", label: "Health setup", description: "Configure health ministry", icon: Settings2 }
+  { href: "/settings/health", label: "Health setup", description: "Configure health ministry", icon: Settings2 },
+  { href: "/", label: "Product intro", description: "View the public landing page", icon: Home }
 ];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -134,6 +136,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </footer>
         </main>
         <MobileBottomNav />
+        <GeminiChatWidget />
       </div>
     </div>
   );

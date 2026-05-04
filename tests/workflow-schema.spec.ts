@@ -627,4 +627,52 @@ test.describe("workflow helpers", () => {
     expect(eventExport).toContain("dynamicHeaders");
     expect(eventExport).toContain("dynamicValues");
   });
+
+  test("reports section exposes detailed event report pages", () => {
+    const reportsPage = readFileSync("app/(dashboard)/reports/page.tsx", "utf8");
+    const detailedReportPage = readFileSync("app/(dashboard)/reports/events/[id]/page.tsx", "utf8");
+
+    expect(reportsPage).toContain("/reports/events/${event.id}");
+    expect(detailedReportPage).toContain("getEventReportSummary");
+    expect(detailedReportPage).toContain("can_view_reports");
+    expect(detailedReportPage).toContain("Download Word report");
+  });
+
+  test("detailed reports export as Word-compatible documents", () => {
+    const exportRoute = readFileSync("app/(dashboard)/reports/events/[id]/export/route.ts", "utf8");
+    const reportDocument = readFileSync("lib/report-document.ts", "utf8");
+
+    expect(exportRoute).toContain("can_export_reports");
+    expect(exportRoute).toContain("event_report_word_export");
+    expect(reportDocument).toContain("application/msword");
+    expect(reportDocument).toContain("buildEventReportDocument");
+    expect(reportDocument).toContain("escapeHtml");
+  });
+
+  test("landing page is cinematic and links auth routes", () => {
+    const landingPage = readFileSync("app/page.tsx", "utf8");
+
+    expect(landingPage).toContain("cinematic-shell");
+    expect(landingPage).toContain("/login");
+    expect(landingPage).toContain("/signup");
+    expect(landingPage).toContain("QR-powered event forms");
+    expect(landingPage).toContain("AI report interpretation");
+  });
+
+  test("Gemini chatbot is server-side configured and dashboard-mounted", () => {
+    const chatRoute = readFileSync("app/api/chat/route.ts", "utf8");
+    const chatWidget = readFileSync("components/app/gemini-chat-widget.tsx", "utf8");
+    const dashboardLayout = readFileSync("app/(dashboard)/layout.tsx", "utf8");
+    const envExample = readFileSync(".env.example", "utf8");
+
+    expect(chatRoute).toContain("@google/generative-ai");
+    expect(chatRoute).toContain("process.env.GEMINI_API_KEY");
+    expect(chatRoute).toContain("gemini-1.5-flash");
+    expect(chatRoute).toContain("can_view_reports");
+    expect(chatWidget).toContain("/api/chat");
+    expect(chatWidget).toContain("/reports/events/");
+    expect(dashboardLayout).toContain("GeminiChatWidget");
+    expect(envExample).toContain("GEMINI_API_KEY=");
+    expect(chatRoute).not.toContain("AIzaSy");
+  });
 });
