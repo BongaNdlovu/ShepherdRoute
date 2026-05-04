@@ -17,6 +17,32 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
+async function generateGeminiReply(apiKey: string, prompt: string) {
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const modelNames = Array.from(
+    new Set([
+      process.env.GEMINI_MODEL?.trim(),
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-1.5-flash"
+    ].filter(Boolean))
+  ) as string[];
+  let lastError: unknown;
+
+  for (const modelName of modelNames) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(prompt);
+      return result.response.text();
+    } catch (error) {
+      lastError = error;
+      console.error(`Gemini API error (${modelName}):`, errorMessage(error));
+    }
+  }
+
+  throw new Error(`Gemini failed for all configured models. Last error: ${errorMessage(lastError)}`);
+}
+
 export async function POST(request: Request) {
   let body: unknown;
 
@@ -43,14 +69,11 @@ export async function POST(request: Request) {
     return safeJson({ error: `Message must be ${MAX_MESSAGE_LENGTH} characters or fewer.` }, 400);
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
 
   if (!apiKey) {
     return safeJson({ error: "Gemini is not configured." }, 503);
   }
-
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   try {
     let prompt = `You are the ShepherdRoute assistant. Help users understand the ShepherdRoute app, church follow-up workflows, event reporting, visitor care, and ministry accountability. Keep answers practical, concise, and action-oriented. User question: ${message}`;
@@ -81,12 +104,11 @@ Respond with:
 3. Any risks or gaps the team should address.`;
     }
 
-    let result;
-
     try {
-      result = await model.generateContent(prompt);
+      const reply = await generateGeminiReply(apiKey, prompt);
+      return safeJson({ reply });
     } catch (error) {
-      console.error("Gemini API error:", error);
+      console.error("Gemini API error:", errorMessage(error));
       return safeJson(
         {
           error:
@@ -95,10 +117,6 @@ Respond with:
         502
       );
     }
-
-    const reply = result.response.text();
-
-    return safeJson({ reply });
   } catch (error) {
     console.error("Chat API error:", errorMessage(error));
     return safeJson({ error: "Unable to generate a response right now." }, 500);
