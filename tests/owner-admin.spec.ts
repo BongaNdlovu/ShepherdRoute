@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 
 const schema = readFileSync("supabase/schema.sql", "utf8");
 const adminActions = readFileSync("app/(dashboard)/_actions/admin.ts", "utf8");
-const adminPage = readFileSync("app/(dashboard)/admin/page.tsx", "utf8");
+const adminUsersPage = readFileSync("app/(dashboard)/admin/users/page.tsx", "utf8");
 
 test.describe("owner admin account controls", () => {
   test("schema exposes owner-only account rows", () => {
@@ -36,8 +36,8 @@ test.describe("owner admin account controls", () => {
     expect(schema).toContain("membership.role_changed");
     expect(adminActions).toContain("updateOwnerMembershipRoleAction");
     expect(adminActions).toContain("owner_update_membership_role");
-    expect(adminPage).toContain("updateOwnerMembershipRoleAction");
-    expect(adminPage).toContain("roleOptions.map");
+    expect(adminUsersPage).toContain("updateOwnerMembershipRoleAction");
+    expect(adminUsersPage).toContain("roleOptions.map");
   });
 
   test("schema protects platform owner records", () => {
