@@ -65,6 +65,20 @@ export const getChurchContext = cache(async function getChurchContext(): Promise
   ]);
 
   if (error || !memberships?.length || !profile) {
+    if (error) {
+      console.error("[getChurchContext] church_memberships query error:", {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+    }
+    if (!profile) {
+      console.error("[getChurchContext] profile not found for user");
+    }
+    if (!memberships?.length) {
+      console.error("[getChurchContext] no active church memberships found");
+    }
     redirect("/login?error=Your%20church%20profile%20is%20not%20ready%20yet.");
   }
 
@@ -87,13 +101,22 @@ export const getChurchContext = cache(async function getChurchContext(): Promise
     };
   });
 
-  const { data: currentTeamMember } = await supabase
+  const { data: currentTeamMember, error: teamMemberError } = await supabase
     .from("team_members")
     .select("id, app_role")
     .eq("church_id", selectedMembership.church_id)
     .eq("membership_id", selectedMembershipId)
     .eq("is_active", true)
     .maybeSingle();
+
+  if (teamMemberError) {
+    console.error("[getChurchContext] team_members query error:", {
+      code: teamMemberError.code,
+      message: teamMemberError.message,
+      details: teamMemberError.details,
+      hint: teamMemberError.hint
+    });
+  }
 
   return {
     userId: user.id,

@@ -37,7 +37,7 @@ export async function addTeamMemberAction(formData: FormData) {
     .from("team_members")
     .select("app_role")
     .eq("church_id", context.churchId)
-    .eq("membership_id", context.userId)
+    .eq("membership_id", context.membershipId)
     .maybeSingle();
 
   if (!canManageTeam(context.role as TeamRole, currentUserTeamMember?.app_role as AppRole | null)) {
@@ -143,7 +143,7 @@ export async function revokeTeamInvitationAction(formData: FormData) {
     .from("team_members")
     .select("app_role")
     .eq("church_id", context.churchId)
-    .eq("membership_id", context.userId)
+    .eq("membership_id", context.membershipId)
     .maybeSingle();
 
   if (!canManageTeam(context.role as TeamRole, currentUserTeamMember?.app_role as AppRole | null)) {
