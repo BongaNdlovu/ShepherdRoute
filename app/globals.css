@@ -170,26 +170,10 @@
 
   .cinematic-dark-panel {
     position: relative;
-    border: 1px solid rgba(148, 163, 184, 0.22);
-    background:
-      radial-gradient(circle at top left, rgba(59, 130, 246, 0.24), transparent 28rem),
-      radial-gradient(circle at bottom right, rgba(245, 158, 11, 0.10), transparent 24rem),
-      linear-gradient(135deg, #0f172a, #111827 58%, #020617);
+    background: transparent;
     color: #f8fafc;
-    box-shadow: 0 28px 90px rgba(15, 23, 42, 0.24);
   }
 
-  .cinematic-dark-panel::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background-image:
-      linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-    background-size: 44px 44px;
-    mask-image: linear-gradient(to bottom, black, transparent 80%);
-  }
 
   .cinematic-lift {
     transition:
