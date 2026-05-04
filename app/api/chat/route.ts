@@ -81,7 +81,8 @@ Respond with:
     const reply = result.response.text();
 
     return safeJson({ reply });
-  } catch {
+  } catch (error) {
+    console.error("Chat API error:", error);
     return safeJson({ error: "Unable to generate a response right now." }, 500);
   }
 }
