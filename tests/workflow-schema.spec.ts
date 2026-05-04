@@ -649,7 +649,7 @@ test.describe("workflow helpers", () => {
     expect(reportDocument).toContain("escapeHtml");
   });
 
-  test("landing page is cinematic and links auth routes", () => {
+  test("landing page is cinematic, branded ShepherdRoute, and links auth routes", () => {
     const landingPage = readFileSync("app/page.tsx", "utf8");
 
     expect(landingPage).toContain("cinematic-shell");
@@ -657,6 +657,8 @@ test.describe("workflow helpers", () => {
     expect(landingPage).toContain("/signup");
     expect(landingPage).toContain("QR-powered event forms");
     expect(landingPage).toContain("AI report interpretation");
+    expect(landingPage).toContain("ShepherdRoute");
+    expect(landingPage).not.toContain("Guestloop");
   });
 
   test("Gemini chatbot is server-side configured and dashboard-mounted", () => {
@@ -693,5 +695,15 @@ test.describe("workflow helpers", () => {
     expect(loginPage).toContain('href="/"');
     expect(signupPage).toContain("Back to landing page");
     expect(signupPage).toContain('href="/"');
+  });
+
+  test("no source files contain the old Guestloop brand name", () => {
+    const appPage = readFileSync("app/page.tsx", "utf8");
+    const chatRoute = readFileSync("app/api/chat/route.ts", "utf8");
+
+    expect(appPage).not.toContain("Guestloop");
+    expect(appPage).not.toContain("guestloop");
+    expect(chatRoute).not.toContain("Guestloop");
+    expect(chatRoute).not.toContain("guestloop");
   });
 });

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the SQL migration discipline for the Guestloop/ShepardRoute project to ensure safe schema changes, especially for table-returning RPC functions.
+This document describes the SQL migration discipline for the ShepherdRoute project to ensure safe schema changes, especially for table-returning RPC functions.
 
 ## Table-Returning RPC Functions
 

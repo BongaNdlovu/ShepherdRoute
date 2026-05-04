@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   try {
-    let prompt = `You are the ShepherdRoute assistant. Help users understand the Guestloop/ShepherdRoute app, church follow-up workflows, event reporting, visitor care, and ministry accountability. Keep answers practical, concise, and action-oriented. User question: ${message}`;
+    let prompt = `You are the ShepherdRoute assistant. Help users understand the ShepherdRoute app, church follow-up workflows, event reporting, visitor care, and ministry accountability. Keep answers practical, concise, and action-oriented. User question: ${message}`;
 
     if (isReportEventPath(pathname, eventId)) {
       const context = await getChurchContext();

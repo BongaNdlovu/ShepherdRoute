@@ -2,11 +2,9 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { loginAction } from "@/app/(auth)/actions";
 import { BrandLogo } from "@/components/app/brand-logo";
-import { CinematicSection } from "@/components/ui/cinematic-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CardTitle, CardDescription } from "@/components/ui/card";
 
 export const metadata = {
   title: "Login"
@@ -21,8 +19,8 @@ export default async function LoginPage({
   const inviteQuery = params.invite ? `?invite=${encodeURIComponent(params.invite)}` : "";
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <CinematicSection className="w-full max-w-md">
+    <main className="cinematic-shell flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="w-full max-w-md">
         <div className="mb-4">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/">
@@ -33,10 +31,10 @@ export default async function LoginPage({
         </div>
         <div className="text-center">
           <BrandLogo className="mx-auto mb-3 h-20 w-auto object-contain" priority />
-          <CardTitle className="text-2xl">{params.invite ? "Login to accept invite" : "Welcome back to ShepherdRoute"}</CardTitle>
-          <CardDescription>
+          <h1 className="text-2xl font-black">{params.invite ? "Login to accept invite" : "Welcome back to ShepherdRoute"}</h1>
+          <p className="text-muted-foreground">
             {params.invite ? "Use the invited email address so the workspace can be linked safely." : "The follow-up pathway for churches that care."}
-          </CardDescription>
+          </p>
         </div>
         <div className="mt-4">
           {params.error ? (
@@ -63,7 +61,7 @@ export default async function LoginPage({
             </Link>
           </p>
         </div>
-      </CinematicSection>
+      </div>
     </main>
   );
 }
