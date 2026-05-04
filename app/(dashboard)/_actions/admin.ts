@@ -10,12 +10,14 @@ import { createClient } from "@/lib/supabase/server";
 
 const membershipStatusSchema = z.object({
   membershipId: z.string().uuid(),
-  status: z.enum(["active", "invited", "disabled"])
+  status: z.enum(["active", "invited", "disabled"]),
+  returnTo: z.string().optional()
 });
 
 const membershipRoleSchema = z.object({
   membershipId: z.string().uuid(),
-  role: z.enum(roleOptions)
+  role: z.enum(roleOptions),
+  returnTo: z.string().optional()
 });
 
 const ownerWorkspaceStatusSchema = z.object({
@@ -47,7 +49,8 @@ export async function updateOwnerMembershipStatusAction(formData: FormData) {
 
   const parsed = membershipStatusSchema.safeParse({
     membershipId: formData.get("membershipId"),
-    status: formData.get("status")
+    status: formData.get("status"),
+    returnTo: formData.get("returnTo") || undefined
   });
 
   if (!parsed.success) {
@@ -61,11 +64,12 @@ export async function updateOwnerMembershipStatusAction(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+    redirect(`${safeOwnerReturnTo(parsed.data?.returnTo)}?error=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath("/admin");
-  redirect("/admin?updated=true");
+  revalidatePath("/admin/users");
+  redirect(`${safeOwnerReturnTo(parsed.data?.returnTo)}?updated=true`);
 }
 
 export async function updateOwnerMembershipRoleAction(formData: FormData) {
@@ -77,7 +81,8 @@ export async function updateOwnerMembershipRoleAction(formData: FormData) {
 
   const parsed = membershipRoleSchema.safeParse({
     membershipId: formData.get("membershipId"),
-    role: formData.get("role")
+    role: formData.get("role"),
+    returnTo: formData.get("returnTo") || undefined
   });
 
   if (!parsed.success) {
@@ -91,11 +96,12 @@ export async function updateOwnerMembershipRoleAction(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+    redirect(`${safeOwnerReturnTo(parsed.data?.returnTo)}?error=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath("/admin");
-  redirect("/admin?updated=true");
+  revalidatePath("/admin/users");
+  redirect(`${safeOwnerReturnTo(parsed.data?.returnTo)}?updated=true`);
 }
 
 export async function updateOwnerWorkspaceStatusAction(formData: FormData) {

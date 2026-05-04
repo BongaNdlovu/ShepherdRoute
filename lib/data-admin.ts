@@ -186,6 +186,40 @@ export async function getOwnerInvitationRows() {
   return (data ?? []) as OwnerInvitationRow[];
 }
 
+export async function getOwnerInvitationsPage(
+  params: OwnerPaginationParams = {}
+): Promise<OwnerPaginatedResult<OwnerInvitationRow>> {
+  const page = normalizePage(params.page);
+  const pageSize = normalizePageSize(params.pageSize);
+  const q = params.q?.trim().toLowerCase();
+
+  const rows = await getOwnerInvitationRows();
+
+  const filtered = q
+    ? rows.filter((invitation) => {
+        const haystack = [
+          invitation.church_name,
+          invitation.display_name,
+          invitation.email,
+          invitation.role,
+          invitation.status,
+          invitation.invited_by_name,
+          invitation.accepted_by_name,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        return haystack.includes(q);
+      })
+    : rows;
+
+  const start = (page - 1) * pageSize;
+  const items = filtered.slice(start, start + pageSize);
+
+  return pageResult(items, filtered.length, page, pageSize);
+}
+
 export async function getOwnerAccountRows() {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("owner_account_rows");
@@ -195,6 +229,41 @@ export async function getOwnerAccountRows() {
   }
 
   return (data ?? []) as OwnerAccountRow[];
+}
+
+export async function getOwnerAccountsPage(
+  params: OwnerPaginationParams = {}
+): Promise<OwnerPaginatedResult<OwnerAccountRow>> {
+  const page = normalizePage(params.page);
+  const pageSize = normalizePageSize(params.pageSize);
+  const q = params.q?.trim().toLowerCase();
+
+  const rows = await getOwnerAccountRows();
+
+  const filtered = q
+    ? rows.filter((account) => {
+        const haystack = [
+          account.church_name,
+          account.full_name,
+          account.email,
+          account.user_id,
+          account.role,
+          account.status,
+          account.team_member_name,
+          account.app_admin_role,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        return haystack.includes(q);
+      })
+    : rows;
+
+  const start = (page - 1) * pageSize;
+  const items = filtered.slice(start, start + pageSize);
+
+  return pageResult(items, filtered.length, page, pageSize);
 }
 
 async function getOwnerWorkspacesPage(params: OwnerPaginationParams = {}, workspaceType: OwnerWorkspaceType): Promise<OwnerPaginatedResult<OwnerChurchListItem>> {
