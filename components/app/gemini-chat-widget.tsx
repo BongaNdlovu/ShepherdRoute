@@ -13,9 +13,12 @@ type ChatMessage = {
   content: string;
 };
 
+const REPORT_EVENT_PATH_PREFIX = "/reports/events/";
+
 function eventIdFromPathname(pathname: string) {
-  const match = pathname.match(/^\/reports\/events\/([^/]+)/);
-  return match?.[1];
+  if (!pathname.startsWith(REPORT_EVENT_PATH_PREFIX)) return undefined;
+
+  return pathname.slice(REPORT_EVENT_PATH_PREFIX.length).split("/")[0] || undefined;
 }
 
 export function GeminiChatWidget() {
