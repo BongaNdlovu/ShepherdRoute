@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getChurchContext, getTeamMembers } from "@/lib/data";
 import { getEventContactsPage, type EventContactsParams } from "@/lib/data-events";
 import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
-import { statusOptions, urgencyOptions } from "@/lib/constants";
+import { EventContactsFilters } from "@/components/app/event-contacts-filters";
 import { CinematicSection } from "@/components/ui/cinematic-section";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { InterestPills } from "@/components/app/interest-pills";
@@ -66,65 +66,15 @@ export default async function EventContactsPage({
             <span className="text-sm font-normal text-muted-foreground">{totalCount} total</span>
           </CardTitle>
           <CardDescription>
-            <div className="flex flex-wrap gap-4 mt-2">
-              <select
-                name="status"
-                defaultValue={query.status || "all"}
-                onChange={(e) => {
-                  const url = new URL(window.location.href);
-                  if (e.target.value === "all") {
-                    url.searchParams.delete("status");
-                  } else {
-                    url.searchParams.set("status", e.target.value);
-                  }
-                  window.location.href = url.toString();
-                }}
-                className="h-8 rounded-md border border-input bg-background px-3 text-sm"
-              >
-                <option value="all">All Status</option>
-                {statusOptions.map((status) => (
-                  <option key={status} value={status}>{status.replace(/_/g, " ")}</option>
-                ))}
-              </select>
-              <select
-                name="urgency"
-                defaultValue={query.urgency || "all"}
-                onChange={(e) => {
-                  const url = new URL(window.location.href);
-                  if (e.target.value === "all") {
-                    url.searchParams.delete("urgency");
-                  } else {
-                    url.searchParams.set("urgency", e.target.value);
-                  }
-                  window.location.href = url.toString();
-                }}
-                className="h-8 rounded-md border border-input bg-background px-3 text-sm"
-              >
-                <option value="all">All Urgency</option>
-                {urgencyOptions.map((urgency) => (
-                  <option key={urgency} value={urgency}>{urgency.charAt(0).toUpperCase() + urgency.slice(1)}</option>
-                ))}
-              </select>
-              <select
-                name="assignedTo"
-                defaultValue={query.assignedTo || "all"}
-                onChange={(e) => {
-                  const url = new URL(window.location.href);
-                  if (e.target.value === "all") {
-                    url.searchParams.delete("assignedTo");
-                  } else {
-                    url.searchParams.set("assignedTo", e.target.value);
-                  }
-                  window.location.href = url.toString();
-                }}
-                className="h-8 rounded-md border border-input bg-background px-3 text-sm"
-              >
-                <option value="all">All Assignments</option>
-                {team.map((member) => (
-                  <option key={member.id} value={member.id}>{member.display_name}</option>
-                ))}
-              </select>
-            </div>
+            <EventContactsFilters
+              team={team.map((member) => ({
+                id: member.id,
+                display_name: member.display_name,
+              }))}
+              status={query.status}
+              urgency={query.urgency}
+              assignedTo={query.assignedTo}
+            />
           </CardDescription>
         </CardHeader>
         <CardContent>

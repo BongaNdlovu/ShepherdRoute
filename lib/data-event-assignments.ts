@@ -71,12 +71,16 @@ export function permissionsFromAssignment(row: EventAssignmentRow): EventAssignm
   };
 }
 
-export async function getEventAssignments(eventId: string): Promise<EventAssignmentRow[]> {
+export async function getEventAssignments(
+  churchId: string,
+  eventId: string
+): Promise<EventAssignmentRow[]> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('event_assignments')
     .select('*')
+    .eq('church_id', churchId)
     .eq('event_id', eventId)
     .order('created_at', { ascending: false });
 

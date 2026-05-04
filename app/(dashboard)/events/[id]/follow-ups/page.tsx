@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getChurchContext, getTeamMembers } from "@/lib/data";
 import { getEventFollowUpsPage, type EventFollowUpsParams } from "@/lib/data-events";
+import { EventFollowUpFilters } from "@/components/app/event-follow-up-filters";
 import { CinematicSection } from "@/components/ui/cinematic-section";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
@@ -38,47 +39,14 @@ export default async function EventFollowUpsPage({
             <span className="text-sm font-normal text-muted-foreground">{totalCount} total</span>
           </CardTitle>
           <CardDescription>
-            <div className="flex flex-wrap gap-4 mt-2">
-              <select
-                name="status"
-                defaultValue={query.status || "all"}
-                onChange={(e) => {
-                  const url = new URL(window.location.href);
-                  if (e.target.value === "all") {
-                    url.searchParams.delete("status");
-                  } else {
-                    url.searchParams.set("status", e.target.value);
-                  }
-                  window.location.href = url.toString();
-                }}
-                className="h-8 rounded-md border border-input bg-background px-3 text-sm"
-              >
-                <option value="all">All Status</option>
-                <option value="overdue">Overdue</option>
-                <option value="today">Due Today</option>
-                <option value="upcoming">Upcoming</option>
-                <option value="completed">Completed</option>
-              </select>
-              <select
-                name="assignedTo"
-                defaultValue={query.assignedTo || "all"}
-                onChange={(e) => {
-                  const url = new URL(window.location.href);
-                  if (e.target.value === "all") {
-                    url.searchParams.delete("assignedTo");
-                  } else {
-                    url.searchParams.set("assignedTo", e.target.value);
-                  }
-                  window.location.href = url.toString();
-                }}
-                className="h-8 rounded-md border border-input bg-background px-3 text-sm"
-              >
-                <option value="all">All Assignments</option>
-                {team.map((member) => (
-                  <option key={member.id} value={member.id}>{member.display_name}</option>
-                ))}
-              </select>
-            </div>
+            <EventFollowUpFilters
+              team={team.map((member) => ({
+                id: member.id,
+                display_name: member.display_name,
+              }))}
+              status={query.status}
+              assignedTo={query.assignedTo}
+            />
           </CardDescription>
         </CardHeader>
         <CardContent>

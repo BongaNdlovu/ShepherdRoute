@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { EVENT_PERMISSION_PRESETS } from '@/lib/event-permission-presets';
 import { EventPermissionSelector } from '@/components/app/event-permission-selector';
 import { assignTeamMemberToEvent, inviteToEventByEmail } from '@/app/(dashboard)/_actions/event-assignments';
@@ -10,14 +11,22 @@ import { Label } from '@/components/ui/label';
 
 type Tab = 'email' | 'assign';
 
+type TeamOption = {
+  id: string;
+  display_name: string;
+  role: string | null;
+};
+
 export function EventInvitationModal({
   eventId,
+  teamMembers = [],
   onSuccess,
   onClose,
 }: {
   eventId: string;
-  onSuccess: () => void;
-  onClose: () => void;
+  teamMembers?: TeamOption[];
+  onSuccess?: () => void;
+  onClose?: () => void;
 }) {
   const [tab, setTab] = useState<Tab>('email');
   const [email, setEmail] = useState('');
@@ -27,6 +36,7 @@ export function EventInvitationModal({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -47,8 +57,9 @@ export function EventInvitationModal({
           permissions,
         });
       }
-      onSuccess();
-      onClose();
+      router.refresh();
+      onSuccess?.();
+      onClose?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to process invitation');
     } finally {
@@ -102,7 +113,12 @@ export function EventInvitationModal({
               required
             >
               <option value="">Select a team member</option>
-              {/* TODO: Load team members from the church */}
+              {teamMembers.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.display_name}
+                  {member.role ? ` — ${member.role.replace(/_/g, " ")}` : ""}
+                </option>
+              ))}
             </select>
           </div>
         )}

@@ -1,4 +1,4 @@
-import { getChurchContext } from "@/lib/data";
+import { getChurchContext, getTeamMembers } from "@/lib/data";
 import { getEventAssignments } from "@/lib/data-event-assignments";
 import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 import { CinematicSection } from "@/components/ui/cinematic-section";
@@ -6,23 +6,10 @@ import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EventInvitationModal } from "@/components/app/event-invitation-modal";
-import { Suspense } from "react";
 
 export const metadata = {
   title: "Event Team"
 };
-
-function TeamAssignmentManager({ eventId }: { eventId: string }) {
-  return (
-    <div className="flex justify-end mb-4">
-      <EventInvitationModal
-        eventId={eventId}
-        onSuccess={() => window.location.reload()}
-        onClose={() => {}}
-      />
-    </div>
-  );
-}
 
 export default async function EventTeamPage({
   params
@@ -31,7 +18,6 @@ export default async function EventTeamPage({
 }) {
   const { id } = await params;
   const context = await getChurchContext();
-  const assignments = await getEventAssignments(id);
 
   try {
     await requireCurrentUserEventPermission({
@@ -57,14 +43,26 @@ export default async function EventTeamPage({
     );
   }
 
+  const [assignments, teamMembers] = await Promise.all([
+    getEventAssignments(context.churchId, id),
+    getTeamMembers(context.churchId),
+  ]);
+
   return (
     <CinematicSection className="cinematic-fade-up">
       <section className="space-y-4">
         <EventWorkspaceTabs eventId={id} />
 
-        <Suspense fallback={<div>Loading...</div>}>
-          <TeamAssignmentManager eventId={id} />
-        </Suspense>
+        <div className="mb-4 flex justify-end">
+          <EventInvitationModal
+            eventId={id}
+            teamMembers={teamMembers.map((member) => ({
+              id: member.id,
+              display_name: member.display_name,
+              role: member.role,
+            }))}
+          />
+        </div>
 
         <Card>
           <CardHeader>
