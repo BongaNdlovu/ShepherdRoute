@@ -7,6 +7,7 @@ import { EventPermissionSelector } from '@/components/app/event-permission-selec
 import { assignTeamMemberToEvent, inviteToEventByEmail } from '@/app/(dashboard)/_actions/event-assignments';
 import type { EventAssignmentPermissions } from '@/lib/event-permission-presets';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 type Tab = 'email' | 'assign';
@@ -36,6 +37,7 @@ export function EventInvitationModal({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
@@ -45,21 +47,24 @@ export function EventInvitationModal({
 
     try {
       if (tab === 'email') {
-        await inviteToEventByEmail({
+        const result = await inviteToEventByEmail({
           eventId,
           email,
           permissions,
         });
+        if (result.token) {
+          setInviteUrl(`${window.location.origin}/event-invitations/accept?token=${result.token}`);
+        }
       } else {
         await assignTeamMemberToEvent({
           eventId,
           teamMemberId,
           permissions,
         });
+        router.refresh();
+        onSuccess?.();
+        onClose?.();
       }
-      router.refresh();
-      onSuccess?.();
-      onClose?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to process invitation');
     } finally {
@@ -74,20 +79,38 @@ export function EventInvitationModal({
       <div className="flex gap-2 mb-4">
         <button
           type="button"
-          onClick={() => setTab('email')}
+          onClick={() => { setTab('email'); setInviteUrl(null); }}
           className={`px-4 py-2 rounded-lg ${tab === 'email' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
         >
           Invite by Email
         </button>
         <button
           type="button"
-          onClick={() => setTab('assign')}
+          onClick={() => { setTab('assign'); setInviteUrl(null); }}
           className={`px-4 py-2 rounded-lg ${tab === 'assign' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
         >
           Assign Team Member
         </button>
       </div>
 
+      {inviteUrl ? (
+        <div className="space-y-4">
+          <div className="grid gap-2 rounded-xl border border-success/20 bg-success/10 p-3">
+            <p className="text-sm font-semibold text-success">Invite link ready</p>
+            <Input readOnly value={inviteUrl} className="bg-background font-mono text-xs" />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setInviteUrl(null);
+              setEmail('');
+            }}
+          >
+            Invite someone else
+          </Button>
+        </div>
+      ) : (
       <form onSubmit={handleSubmit} className="space-y-4">
         {tab === 'email' ? (
           <div>
@@ -143,6 +166,7 @@ export function EventInvitationModal({
           </Button>
         </div>
       </form>
+      )}
     </div>
   );
 }

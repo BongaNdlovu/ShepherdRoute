@@ -256,7 +256,7 @@ export async function inviteToEventByEmail(input: {
 
   revalidatePath(`/events/${input.eventId}/team`);
 
-  return { ok: true };
+  return { ok: true, token: rawToken };
 }
 
 export async function updateEventAssignmentPermissions(input: {
