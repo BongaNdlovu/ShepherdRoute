@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { Bot, Loader2, MessageCircle, Send, X } from "lucide-react";
+import { Loader2, MessageCircle, Send, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { BrandLogo } from "@/components/app/brand-logo";
 import { Button } from "@/components/ui/button";

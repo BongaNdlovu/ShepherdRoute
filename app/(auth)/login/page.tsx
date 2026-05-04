@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { loginAction } from "@/app/(auth)/actions";
 import { BrandLogo } from "@/components/app/brand-logo";
 import { CinematicSection } from "@/components/ui/cinematic-section";
@@ -22,6 +23,14 @@ export default async function LoginPage({
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <CinematicSection className="w-full max-w-md">
+        <div className="mb-4">
+          <Button asChild variant="ghost" className="px-0">
+            <Link href="/">
+              <ArrowLeft className="h-4 w-4" />
+              Back to landing page
+            </Link>
+          </Button>
+        </div>
         <div className="text-center">
           <BrandLogo className="mx-auto mb-3 h-20 w-auto object-contain" priority />
           <CardTitle className="text-2xl">{params.invite ? "Login to accept invite" : "Welcome back to ShepherdRoute"}</CardTitle>

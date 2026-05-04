@@ -675,4 +675,23 @@ test.describe("workflow helpers", () => {
     expect(envExample).toContain("GEMINI_API_KEY=");
     expect(chatRoute).not.toContain("AIzaSy");
   });
+
+  test("root route shows landing page to visitors and dashboard to signed-in users", () => {
+    const supabaseMiddleware = readFileSync("lib/supabase/middleware.ts", "utf8");
+    const rootMiddleware = supabaseMiddleware.match(/if \(pathname === "\/"\) \{[\s\S]*?\n  \}/)?.[0] ?? "";
+
+    expect(rootMiddleware).toContain('return NextResponse.redirect(sameOriginUrl(request, "/dashboard"))');
+    expect(rootMiddleware).toContain("return response;");
+    expect(rootMiddleware).not.toContain('user ? "/dashboard" : "/login"');
+  });
+
+  test("auth pages link back to the public landing page", () => {
+    const loginPage = readFileSync("app/(auth)/login/page.tsx", "utf8");
+    const signupPage = readFileSync("app/(auth)/signup/page.tsx", "utf8");
+
+    expect(loginPage).toContain("Back to landing page");
+    expect(loginPage).toContain('href="/"');
+    expect(signupPage).toContain("Back to landing page");
+    expect(signupPage).toContain('href="/"');
+  });
 });
