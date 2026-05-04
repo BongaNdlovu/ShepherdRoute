@@ -22,6 +22,7 @@ async function generateGeminiReply(apiKey: string, prompt: string) {
   const modelNames = Array.from(
     new Set([
       process.env.GEMINI_MODEL?.trim(),
+      "gemini-3.1-flash-lite",
       "gemini-2.5-flash",
       "gemini-2.0-flash",
       "gemini-1.5-flash"
