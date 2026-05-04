@@ -2999,6 +2999,13 @@ as $$
       and contacts.event_id = p_event_id
       and contacts.deleted_at is null
   ),
+  event_form_config as (
+    select form_config
+    from public.events
+    where id = p_event_id
+      and church_id = p_church_id
+    limit 1
+  ),
   topic_rows as (
     select coalesce(nullif(classification_payload->>'selected_topic', ''), 'unspecified') as topic, count(*) as count
     from event_contacts
@@ -3008,8 +3015,28 @@ as $$
     select cfa.question_name, cfa.question_label, count(*) as count
     from public.contact_form_answers cfa
     join event_contacts ec on ec.id = cfa.contact_id
+    cross join event_form_config efc
     where cfa.church_id = p_church_id
       and cfa.event_id = p_event_id
+      and (
+        -- Standard fields: only include if enabled in form_config
+        (cfa.question_name = 'phone' and (efc.form_config->>'show_phone')::boolean = true)
+        or (cfa.question_name = 'email' and (efc.form_config->>'show_email')::boolean = true)
+        or (cfa.question_name = 'area' and (efc.form_config->>'show_area')::boolean = true)
+        or (cfa.question_name = 'language' and (efc.form_config->>'show_language')::boolean = true)
+        or (cfa.question_name = 'best_time' and (efc.form_config->>'show_best_time')::boolean = true)
+        or (cfa.question_name = 'message' and (efc.form_config->>'show_message')::boolean = true)
+        or (cfa.question_name = 'prayer_visibility' and (efc.form_config->>'show_prayer_visibility')::boolean = true)
+        -- Custom questions: only include if they exist in the questions array
+        or (
+          cfa.question_name not in ('phone', 'email', 'area', 'language', 'best_time', 'message', 'prayer_visibility')
+          and exists (
+            select 1
+            from jsonb_array_elements(efc.form_config->'questions') as q
+            where q->>'name' = cfa.question_name
+          )
+        )
+      )
     group by cfa.question_name, cfa.question_label
   )
   select
@@ -3020,21 +3047,45 @@ as $$
       from event_contacts
       join public.contact_interests on contact_interests.contact_id = event_contacts.id
         and contact_interests.church_id = event_contacts.church_id
+      cross join event_form_config efc
       where contact_interests.interest = 'bible_study'
+        and (efc.form_config->>'show_interests')::boolean = true
+        and exists (
+          select 1
+          from jsonb_array_elements(efc.form_config->'interest_options') as opt
+          where opt->>'value' = 'bible_study'
+            and (opt->>'enabled')::boolean = true
+        )
     ) as bible_study_count,
     (
       select count(distinct event_contacts.id)
       from event_contacts
       join public.contact_interests on contact_interests.contact_id = event_contacts.id
         and contact_interests.church_id = event_contacts.church_id
+      cross join event_form_config efc
       where contact_interests.interest = 'prayer'
+        and (efc.form_config->>'show_interests')::boolean = true
+        and exists (
+          select 1
+          from jsonb_array_elements(efc.form_config->'interest_options') as opt
+          where opt->>'value' = 'prayer'
+            and (opt->>'enabled')::boolean = true
+        )
     ) as prayer_count,
     (
       select count(distinct event_contacts.id)
       from event_contacts
       join public.contact_interests on contact_interests.contact_id = event_contacts.id
         and contact_interests.church_id = event_contacts.church_id
+      cross join event_form_config efc
       where contact_interests.interest = 'baptism'
+        and (efc.form_config->>'show_interests')::boolean = true
+        and exists (
+          select 1
+          from jsonb_array_elements(efc.form_config->'interest_options') as opt
+          where opt->>'value' = 'baptism'
+            and (opt->>'enabled')::boolean = true
+        )
     ) as baptism_count,
     (select count(*) from event_contacts where urgency = 'high') as high_priority_count,
     (

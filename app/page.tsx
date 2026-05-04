@@ -110,13 +110,9 @@ export default function HomePage() {
               <p className="text-xs text-muted-foreground">The follow-up pathway for churches</p>
             </div>
           </Link>
-          <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" className="hidden sm:inline-flex">
-              <Link href="/login">Log in</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/signup">Get started</Link>
-            </Button>
+          <div className="hidden md:flex items-center gap-2 rounded-full border border-amber-200/80 bg-amber-50/80 px-4 py-2 backdrop-blur-sm">
+            <Shield className="h-4 w-4 text-amber-600" />
+            <p className="text-sm font-bold text-amber-950">Privacy-first visitor care</p>
           </div>
         </nav>
 
