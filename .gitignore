@@ -3,6 +3,8 @@ node_modules
 .vercel
 .env*.local
 .env
+.env.txt
+Chatbot.env.txt
 dist
 coverage
 test-results

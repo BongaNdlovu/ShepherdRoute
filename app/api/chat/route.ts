@@ -13,6 +13,10 @@ function safeJson(data: unknown, status = 200) {
   return NextResponse.json(data, { status });
 }
 
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export async function POST(request: Request) {
   let body: unknown;
 
@@ -77,12 +81,26 @@ Respond with:
 3. Any risks or gaps the team should address.`;
     }
 
-    const result = await model.generateContent(prompt);
+    let result;
+
+    try {
+      result = await model.generateContent(prompt);
+    } catch (error) {
+      console.error("Gemini API error:", error);
+      return safeJson(
+        {
+          error:
+            "Gemini could not generate a response. Check that GEMINI_API_KEY is valid, enabled for Gemini, and configured in this environment."
+        },
+        502
+      );
+    }
+
     const reply = result.response.text();
 
     return safeJson({ reply });
   } catch (error) {
-    console.error("Chat API error:", error);
+    console.error("Chat API error:", errorMessage(error));
     return safeJson({ error: "Unable to generate a response right now." }, 500);
   }
 }
