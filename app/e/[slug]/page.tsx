@@ -117,7 +117,7 @@ export default async function PublicEventPage({
 
   return (
     <main
-      className="min-h-screen px-4 py-6 md:py-10 bg-[radial-gradient(circle_at_top_left,var(--event-primary,#fde68a)_0,var(--event-accent,#f7f3eb)_34%,#f8fafc_100%)]"
+      className="min-h-screen py-6 md:py-10 bg-[radial-gradient(circle_at_top_left,var(--event-primary,#fde68a)_0,var(--event-accent,#f7f3eb)_34%,#f8fafc_100%)]"
       style={
         {
           "--event-primary": brandingConfig.primary_color,
@@ -125,7 +125,7 @@ export default async function PublicEventPage({
         } as CSSProperties
       }
     >
-      <section className="mx-auto max-w-3xl">
+      <section className="mx-auto max-w-3xl px-5 sm:px-8">
         <div className="overflow-hidden rounded-2xl">
           {brandingConfig.cover_image_url ? (
             <ExternalBrandImage
@@ -135,7 +135,7 @@ export default async function PublicEventPage({
               loading="eager"
             />
           ) : null}
-          <header className="px-0 py-6 text-center">
+          <header className="py-6 text-center">
             {publicInfo.show_logo && brandingConfig.logo_url ? (
               <ExternalBrandImage
                 src={brandingConfig.logo_url}
@@ -148,7 +148,7 @@ export default async function PublicEventPage({
             {publicInfo.show_church_name ? (
               <p className="mt-4 text-sm font-semibold uppercase tracking-[0.18em] text-accent">{event.church_name}</p>
             ) : null}
-            <h1 className="text-3xl font-semibold leading-tight tracking-tight text-foreground">{publicInfo.heading}</h1>
+            <h1 className="text-2xl sm:text-3xl font-semibold leading-tight tracking-tight text-foreground">{publicInfo.heading}</h1>
             <p className="text-sm leading-6 text-muted-foreground">
               {publicInfo.description}
             </p>
@@ -163,7 +163,7 @@ export default async function PublicEventPage({
           </header>
           <div className="pb-6">
             {query.submitted ? (
-              <div className="rounded-2xl border border-success/20 bg-success/10 p-6 text-center text-success">
+              <div className="rounded-2xl border border-success/20 bg-success/10 p-5 sm:p-6 text-center text-success">
                 <CheckCircle2 className="mx-auto h-12 w-12" />
                 <h2 className="mt-4 text-2xl font-semibold">{publicInfo.thank_you_heading}</h2>
                 <p className="mx-auto mt-2 max-w-xl text-sm leading-6">

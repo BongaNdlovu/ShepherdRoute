@@ -73,10 +73,10 @@ export function EventInvitationModal({
   }
 
   return (
-    <div className="rounded-lg border bg-white p-6 shadow-lg">
+    <div className="rounded-lg border bg-white p-4 sm:p-6 shadow-lg w-full">
       <h2 className="text-lg font-semibold mb-4">Add to Event Team</h2>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-4">
         <button
           type="button"
           onClick={() => { setTab('email'); setInviteUrl(null); }}
