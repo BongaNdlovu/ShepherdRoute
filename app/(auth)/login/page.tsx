@@ -13,10 +13,11 @@ export const metadata = {
 export default async function LoginPage({
   searchParams
 }: {
-  searchParams: Promise<{ error?: string; invite?: string }>;
+  searchParams: Promise<{ error?: string; invite?: string; next?: string }>;
 }) {
   const params = await searchParams;
   const inviteQuery = params.invite ? `?invite=${encodeURIComponent(params.invite)}` : "";
+  const safeNext = params.next?.startsWith("/") && !params.next.startsWith("//") ? params.next : "";
 
   return (
     <main className="cinematic-shell flex min-h-screen items-center justify-center px-4 py-10">
@@ -44,6 +45,7 @@ export default async function LoginPage({
           ) : null}
           <form action={loginAction} className="grid gap-4">
             {params.invite ? <input type="hidden" name="inviteToken" value={params.invite} /> : null}
+            {safeNext ? <input type="hidden" name="next" value={safeNext} /> : null}
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" name="email" type="email" autoComplete="email" required />

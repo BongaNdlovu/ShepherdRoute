@@ -18,14 +18,20 @@ function sameOriginUrl(request: NextRequest, pathname: string) {
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup");
-  const isDashboard =
-    pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/contacts") ||
-    pathname.startsWith("/events") ||
-    pathname.startsWith("/reports") ||
-    pathname.startsWith("/team") ||
-    pathname.startsWith("/settings") ||
-    pathname.startsWith("/admin");
+  const protectedPrefixes = [
+    "/dashboard",
+    "/contacts",
+    "/events",
+    "/follow-ups",
+    "/profile",
+    "/privacy-requests",
+    "/reports",
+    "/team",
+    "/settings",
+    "/admin"
+  ];
+
+  const isDashboard = protectedPrefixes.some((prefix) => pathname.startsWith(prefix));
   const needsSession = pathname === "/" || isAuthPage || isDashboard;
 
   if (!needsSession) {

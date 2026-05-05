@@ -23,7 +23,8 @@ const optionalSignupCodeSchema = z.preprocess(
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  inviteToken: optionalInviteTokenSchema
+  inviteToken: optionalInviteTokenSchema,
+  next: z.string().optional()
 });
 
 const signupSchema = loginSchema.extend({
@@ -61,7 +62,8 @@ export async function loginAction(formData: FormData) {
   const parsed = loginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
-    inviteToken: rawInviteToken
+    inviteToken: rawInviteToken,
+    next: safeNextPath(formData.get("next"))
   });
 
   if (!parsed.success) {
@@ -90,7 +92,7 @@ export async function loginAction(formData: FormData) {
     await setSelectedChurchCookie(churchId);
   }
 
-  redirect(await getPreferredDashboardPathForUser(data.user?.id));
+  redirect(parsed.data.next ?? await getPreferredDashboardPathForUser(data.user?.id));
 }
 
 export async function signupAction(formData: FormData) {
@@ -173,6 +175,35 @@ function withInvite(path: string, inviteToken: string | undefined) {
   if (!inviteToken) return path;
   const separator = path.includes("?") ? "&" : "?";
   return `${path}${separator}invite=${encodeURIComponent(inviteToken)}`;
+}
+
+function safeNextPath(value: FormDataEntryValue | null | undefined) {
+  if (typeof value !== "string") return null;
+  if (!value.startsWith("/")) return null;
+  if (value.startsWith("//")) return null;
+
+  try {
+    const url = new URL(value, "http://localhost");
+    const allowedPrefixes = [
+      "/dashboard",
+      "/contacts",
+      "/events",
+      "/event-invitations/accept",
+      "/follow-ups",
+      "/profile",
+      "/privacy-requests",
+      "/reports",
+      "/team",
+      "/settings",
+      "/admin"
+    ];
+
+    return allowedPrefixes.some((prefix) => url.pathname.startsWith(prefix))
+      ? `${url.pathname}${url.search}${url.hash}`
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 async function setSelectedChurchCookie(churchId: string) {

@@ -136,7 +136,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </footer>
         </main>
         <MobileBottomNav />
-        <GeminiChatWidget />
+        {process.env.GEMINI_API_KEY ? <GeminiChatWidget /> : null}
       </div>
     </div>
   );

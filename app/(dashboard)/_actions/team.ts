@@ -28,6 +28,16 @@ const teamMemberSchema = z.object({
   inviteLogin: z.boolean()
 });
 
+function deriveAppRole(teamRole: TeamRole, requestedAppRole: AppRole | ""): AppRole | null {
+  if (requestedAppRole) {
+    return requestedAppRole;
+  }
+
+  if (teamRole === "admin") return "admin";
+  if (teamRole === "pastor" || teamRole === "elder") return "coordinator";
+  return "viewer";
+}
+
 export async function addTeamMemberAction(formData: FormData) {
   const context = await getChurchContext();
   const supabase = await createClient();
@@ -65,7 +75,7 @@ export async function addTeamMemberAction(formData: FormData) {
     redirect("/settings/team?error=You%20cannot%20assign%20that%20role.");
   }
 
-  const appRole = parsed.data.appRole === "" ? null : parsed.data.role === "admin" ? "admin" : parsed.data.role === "pastor" || parsed.data.role === "elder" ? "coordinator" : "viewer";
+  const appRole = deriveAppRole(parsed.data.role, parsed.data.appRole);
 
   const { data: teamMember, error } = await supabase
     .from("team_members")

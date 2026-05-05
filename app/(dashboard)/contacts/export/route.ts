@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 const EXPORT_BATCH_SIZE = 100;
+const FORM_ANSWER_LOOKUP_CHUNK_SIZE = 500;
+
 const BASE_CONTACT_HEADERS = [
   "Name",
   "Phone",
@@ -23,6 +25,16 @@ const BASE_CONTACT_HEADERS = [
   "Best Time",
   "Created At"
 ];
+
+function chunkArray<T>(items: T[], size: number) {
+  const chunks: T[][] = [];
+
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+
+  return chunks;
+}
 
 type ContactExportFilters = {
   q?: string;
@@ -94,7 +106,7 @@ export async function GET(request: Request) {
   const csv = toCsv(headers, rows);
   const fileName = createContactExportFileName();
 
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.SHEPHERDROUTE_DEBUG_EXPORTS === "true") {
     console.log("CSV export rows", {
       churchId: context.churchId,
       filters,
@@ -161,13 +173,23 @@ async function collectContactRows(
     page += 1;
   }
 
-  // Fetch form answers for all contacts
+  // Fetch form answers for all contacts in chunks
   const supabase = await createClient();
-  const { data: formAnswers } = await supabase
-    .from("contact_form_answers")
-    .select("contact_id, question_name, question_label, answer_display")
-    .eq("church_id", churchId)
-    .in("contact_id", contactIds);
+  const formAnswers = [];
+
+  for (const chunk of chunkArray(contactIds, FORM_ANSWER_LOOKUP_CHUNK_SIZE)) {
+    const { data, error } = await supabase
+      .from("contact_form_answers")
+      .select("contact_id, question_name, question_label, answer_display")
+      .eq("church_id", churchId)
+      .in("contact_id", chunk);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    formAnswers.push(...(data ?? []));
+  }
 
   // Build a map of contact_id to answers and collect all unique question names in order
   const answersMap = new Map<string, Map<string, unknown>>();

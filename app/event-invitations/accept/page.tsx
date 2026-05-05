@@ -30,13 +30,21 @@ function AcceptEventInvitationContent() {
         setEventId(result.eventId);
         setMessage('You have been successfully added to the event team!');
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to accept invitation.';
+
+        if (errorMessage.toLowerCase().includes('signed in')) {
+          const next = `/event-invitations/accept?token=${encodeURIComponent(token)}`;
+          router.push(`/login?next=${encodeURIComponent(next)}`);
+          return;
+        }
+
         setStatus('error');
-        setMessage(error instanceof Error ? error.message : 'Failed to accept invitation.');
+        setMessage(errorMessage);
       }
     }
 
     acceptInvitation();
-  }, [searchParams]);
+  }, [router, searchParams]);
 
   if (status === 'loading') {
     return (

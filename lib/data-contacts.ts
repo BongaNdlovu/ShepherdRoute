@@ -7,6 +7,8 @@ const CONTACT_DETAIL_FOLLOW_UP_LIMIT = 25;
 const CONTACT_DETAIL_PRAYER_LIMIT = 10;
 const CONTACT_DETAIL_MESSAGE_LIMIT = 3;
 
+const CONTACT_DIAGNOSTICS_ENABLED = process.env.SHEPHERDROUTE_DEBUG_CONTACTS === "true";
+
 export type ContactListItem = {
   id: string;
   person_id: string | null;
@@ -223,7 +225,7 @@ export async function getContact(churchId: string, id: string): Promise<ContactD
   ]);
 
   // Development logging for diagnostics
-  if (process.env.NODE_ENV !== "production") {
+  if (CONTACT_DIAGNOSTICS_ENABLED) {
     console.log("[getContact diagnostics]", {
       requestedContactId: id,
       selectedChurchId: churchId,

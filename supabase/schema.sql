@@ -613,6 +613,13 @@ create index if not exists event_assignments_team_member_idx on public.event_ass
 create index if not exists event_assignments_church_event_idx on public.event_assignments(church_id, event_id);
 create index if not exists event_assignments_invitee_email_idx on public.event_assignments(invitee_email);
 create index if not exists event_assignments_active_idx on public.event_assignments(event_id, team_member_id) where status = 'accepted' and revoked_at is null;
+
+create index if not exists event_assignments_status_idx
+on public.event_assignments(status);
+
+create index if not exists event_assignments_token_hash_idx
+on public.event_assignments(invitation_token_hash)
+where invitation_token_hash is not null;
 create index if not exists audit_logs_church_created_idx on public.audit_logs(church_id, created_at desc);
 create index if not exists audit_logs_target_idx on public.audit_logs(target_type, target_id, created_at desc);
 create index if not exists events_church_idx on public.events(church_id, starts_on desc);
@@ -1656,6 +1663,24 @@ create policy "Members can view church events"
 on public.events for select
 using (private.is_church_member(church_id) or private.is_app_admin());
 
+drop policy if exists "Leaders can manage church events" on public.events;
+create policy "Leaders can manage church events"
+on public.events for all
+using (
+  private.has_church_role(
+    church_id,
+    array['admin','pastor','elder','health_leader','youth_leader']::public.team_role[]
+  )
+  or private.is_app_admin()
+)
+with check (
+  private.has_church_role(
+    church_id,
+    array['admin','pastor','elder','health_leader','youth_leader']::public.team_role[]
+  )
+  or private.is_app_admin()
+);
+
 drop policy if exists "event assignments select safely" on public.event_assignments;
 create policy "event assignments select safely"
 on public.event_assignments
@@ -1846,20 +1871,20 @@ drop policy if exists "Admins can create data requests" on public.data_requests;
 create policy "Admins can create data requests"
 on public.data_requests for insert
 with check (
-  private.is_church_member(church_id)
-  and private.has_church_role(church_id, array['admin','pastor']::public.team_role[])
+  private.has_church_role(church_id, array['admin','pastor']::public.team_role[])
+  or private.is_app_admin()
 );
 
 drop policy if exists "Admins can update data requests" on public.data_requests;
 create policy "Admins can update data requests"
 on public.data_requests for update
 using (
-  private.is_church_member(church_id)
-  and private.has_church_role(church_id, array['admin','pastor']::public.team_role[])
+  private.has_church_role(church_id, array['admin','pastor']::public.team_role[])
+  or private.is_app_admin()
 )
 with check (
-  private.is_church_member(church_id)
-  and private.has_church_role(church_id, array['admin','pastor']::public.team_role[])
+  private.has_church_role(church_id, array['admin','pastor']::public.team_role[])
+  or private.is_app_admin()
 );
 
 drop function if exists public.is_church_member(uuid);

@@ -534,7 +534,7 @@ test.describe("workflow helpers", () => {
   test("login redirects to the saved default working area", () => {
     expect(authActions).toContain("getPreferredDashboardPathForUser");
     expect(authActions).toContain("data.user?.id");
-    expect(authActions).toContain("redirect(await getPreferredDashboardPathForUser");
+    expect(authActions).toContain("redirect(parsed.data.next ?? await getPreferredDashboardPathForUser");
   });
 
   test("preference helper constrains dashboard routes and defaults safely", () => {
@@ -711,5 +711,81 @@ test.describe("workflow helpers", () => {
     expect(appPage).not.toContain("guestloop");
     expect(chatRoute).not.toContain("Guestloop");
     expect(chatRoute).not.toContain("guestloop");
+  });
+
+  test("middleware protected prefixes include /follow-ups, /profile, /privacy-requests", () => {
+    const supabaseMiddleware = readFileSync("lib/supabase/middleware.ts", "utf8");
+    expect(supabaseMiddleware).toContain("/follow-ups");
+    expect(supabaseMiddleware).toContain("/profile");
+    expect(supabaseMiddleware).toContain("/privacy-requests");
+    expect(supabaseMiddleware).toContain("protectedPrefixes");
+  });
+
+  test("login page accepts and validates next parameter", () => {
+    const loginPage = readFileSync("app/(auth)/login/page.tsx", "utf8");
+    const authActions = readFileSync("app/(auth)/actions.ts", "utf8");
+    expect(loginPage).toContain("next?: string");
+    expect(loginPage).toContain("safeNext");
+    expect(loginPage).toContain('name="next"');
+    expect(authActions).toContain("next: z.string().optional()");
+    expect(authActions).toContain("safeNextPath");
+    expect(authActions).toContain("parsed.data.next");
+  });
+
+  test("event invitation accept redirects to login when unauthenticated", () => {
+    const eventInvitationAccept = readFileSync("app/event-invitations/accept/page.tsx", "utf8");
+    expect(eventInvitationAccept).toContain("signed in");
+    expect(eventInvitationAccept).toContain("router.push");
+    expect(eventInvitationAccept).toContain("/login?next=");
+    expect(eventInvitationAccept).toContain("/event-invitations/accept?token=");
+  });
+
+  test("team actions use deriveAppRole helper", () => {
+    const teamActions = readFileSync("app/(dashboard)/_actions/team.ts", "utf8");
+    expect(teamActions).toContain("function deriveAppRole");
+    expect(teamActions).toContain("deriveAppRole(parsed.data.role, parsed.data.appRole)");
+    expect(teamActions).toContain("if (requestedAppRole)");
+  });
+
+  test("contact-method consent component accepts availableMethods prop", () => {
+    const contactMethodConsent = readFileSync("components/forms/contact-method-consent.tsx", "utf8");
+    expect(contactMethodConsent).toContain("availableMethods");
+    expect(contactMethodConsent).toContain("ContactMethod[]");
+    expect(contactMethodConsent).toContain("filter((method)");
+    expect(contactMethodConsent).toContain("availableMethods.includes(method)");
+  });
+
+  test("public event page passes availableContactMethods", () => {
+    const publicEventPage = readFileSync("app/e/[slug]/page.tsx", "utf8");
+    expect(publicEventPage).toContain("availableContactMethods");
+    expect(publicEventPage).toContain("formConfig.show_phone");
+    expect(publicEventPage).toContain("formConfig.show_email");
+    expect(publicEventPage).toContain("ContactMethod");
+    expect(publicEventPage).toContain("availableMethods={availableContactMethods}");
+  });
+
+  test("validation respects available contact methods", () => {
+    const publicValidation = readFileSync("lib/public-events/validation.ts", "utf8");
+    expect(publicValidation).toContain("allowedContactMethods");
+    expect(publicValidation).toContain("preferredContactMethods");
+    expect(publicValidation).toContain("preferredContactMethods.length === 0");
+    expect(publicValidation).toContain("Please choose at least one available contact method");
+    expect(publicValidation).toContain("ContactMethod");
+  });
+
+  test("Gemini widget is conditionally mounted based on GEMINI_API_KEY", () => {
+    const dashboardLayout = readFileSync("app/(dashboard)/layout.tsx", "utf8");
+    expect(dashboardLayout).toContain("process.env.GEMINI_API_KEY");
+    expect(dashboardLayout).toContain("? <GeminiChatWidget /> : null");
+  });
+
+  test("diagnostic logs are gated behind server env flags", () => {
+    const dataContacts = readFileSync("lib/data-contacts.ts", "utf8");
+    const contactsExport = readFileSync("app/(dashboard)/contacts/export/route.ts", "utf8");
+    expect(dataContacts).toContain("CONTACT_DIAGNOSTICS_ENABLED");
+    expect(dataContacts).toContain("SHEPHERDROUTE_DEBUG_CONTACTS");
+    expect(dataContacts).toContain("if (CONTACT_DIAGNOSTICS_ENABLED)");
+    expect(contactsExport).toContain("SHEPHERDROUTE_DEBUG_EXPORTS");
+    expect(contactsExport).toContain('process.env.SHEPHERDROUTE_DEBUG_EXPORTS === "true"');
   });
 });

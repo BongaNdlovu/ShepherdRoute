@@ -30,6 +30,11 @@ exception when duplicate_object then null;
 end $$;
 
 do $$ begin
+  create type public.event_assignment_status as enum ('pending', 'accepted', 'revoked', 'expired');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
   create type public.app_admin_role as enum ('owner', 'support_admin', 'billing_admin');
 exception when duplicate_object then null;
 end $$;
@@ -74,11 +79,6 @@ do $$ begin
     'youth',
     'cooking_class'
   );
-exception when duplicate_object then null;
-end $$;
-
-do $$ begin
-  create type public.event_assignment_status as enum ('pending', 'accepted', 'revoked', 'expired');
 exception when duplicate_object then null;
 end $$;
 
@@ -134,6 +134,16 @@ alter type public.prayer_visibility add value if not exists 'sensitive';
 alter type public.prayer_visibility add value if not exists 'health_related';
 alter type public.prayer_visibility add value if not exists 'pastoral_prayer';
 alter type public.prayer_visibility add value if not exists 'pastors_only';
+
+do $$ begin
+  create type public.data_request_type as enum ('correction', 'deletion', 'export', 'restriction');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type public.data_request_status as enum ('open', 'in_review', 'completed', 'declined');
+exception when duplicate_object then null;
+end $$;
 
 create table if not exists public.churches (
   id uuid primary key default gen_random_uuid(),
@@ -370,16 +380,8 @@ create table if not exists public.event_assignments (
   constraint event_assignments_email_lowercase check (invitee_email is null or invitee_email = lower(invitee_email))
 );
 
-create index if not exists event_assignments_event_idx on public.event_assignments(event_id);
-create unique index if not exists event_assignments_church_event_team_member
-on public.event_assignments (church_id, event_id, team_member_id);
-create unique index if not exists event_assignments_church_event_invitee_email
-on public.event_assignments (church_id, event_id, invitee_email);
-create index if not exists event_assignments_team_member_idx on public.event_assignments(team_member_id) where team_member_id is not null;
-create index if not exists event_assignments_invitee_email_idx on public.event_assignments(invitee_email) where invitee_email is not null;
-create index if not exists event_assignments_church_idx on public.event_assignments(church_id);
-create index if not exists event_assignments_status_idx on public.event_assignments(status);
-create index if not exists event_assignments_token_hash_idx on public.event_assignments(invitation_token_hash) where invitation_token_hash is not null;
+create unique index if not exists event_assignments_church_event_team_member on public.event_assignments (church_id, event_id, team_member_id);
+create unique index if not exists event_assignments_church_event_invitee_email on public.event_assignments (church_id, event_id, invitee_email);
 
 create table if not exists public.people (
   id uuid primary key default gen_random_uuid(),
@@ -465,6 +467,7 @@ alter table if exists public.contacts
   add column if not exists duplicate_match_confidence numeric(4,3),
   add column if not exists duplicate_match_reason text;
 
+-- Consent tracking enhancements
 alter table if exists public.contacts
   add column if not exists consent_text_snapshot text,
   add column if not exists privacy_policy_version text not null default 'v1.0',
@@ -514,6 +517,26 @@ on public.contact_form_answers(church_id, question_name);
 create index if not exists contact_form_answers_event_question_idx
 on public.contact_form_answers(church_id, event_id, question_name);
 
+-- Data requests table for privacy compliance tracking
+create table if not exists public.data_requests (
+  id uuid primary key default gen_random_uuid(),
+  church_id uuid not null references public.churches(id) on delete cascade,
+  related_contact_id uuid references public.contacts(id) on delete set null,
+  request_type public.data_request_type not null,
+  requester_name text not null,
+  requester_contact text,
+  status public.data_request_status not null default 'open',
+  notes text,
+  created_by uuid references auth.users(id) on delete set null,
+  resolved_by uuid references auth.users(id) on delete set null,
+  resolved_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists data_requests_church_status_idx
+on public.data_requests(church_id, status, created_at desc);
+
 create table if not exists public.contact_journey_events (
   id uuid primary key default gen_random_uuid(),
   church_id uuid not null references public.churches(id) on delete cascade,
@@ -528,25 +551,6 @@ create table if not exists public.contact_journey_events (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-
-create table if not exists public.data_requests (
-  id uuid primary key default gen_random_uuid(),
-  church_id uuid not null references public.churches(id) on delete cascade,
-  related_contact_id uuid references public.contacts(id) on delete set null,
-  request_type text not null,
-  requester_name text not null,
-  requester_contact text,
-  status text not null default 'open',
-  notes text,
-  created_by uuid references auth.users(id) on delete set null,
-  resolved_by uuid references auth.users(id) on delete set null,
-  resolved_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create index if not exists data_requests_church_status_idx
-on public.data_requests(church_id, status, created_at desc);
 
 create table if not exists public.follow_ups (
   id uuid primary key default gen_random_uuid(),
@@ -603,6 +607,19 @@ create index if not exists team_members_church_active_idx on public.team_members
 create index if not exists team_invitations_church_status_idx on public.team_invitations(church_id, status, created_at desc);
 create index if not exists team_invitations_email_status_idx on public.team_invitations(normalized_email, status);
 create index if not exists team_invitations_team_member_idx on public.team_invitations(team_member_id);
+create index if not exists event_assignments_church_idx on public.event_assignments(church_id);
+create index if not exists event_assignments_event_idx on public.event_assignments(event_id);
+create index if not exists event_assignments_team_member_idx on public.event_assignments(team_member_id);
+create index if not exists event_assignments_church_event_idx on public.event_assignments(church_id, event_id);
+create index if not exists event_assignments_invitee_email_idx on public.event_assignments(invitee_email);
+create index if not exists event_assignments_active_idx on public.event_assignments(event_id, team_member_id) where status = 'accepted' and revoked_at is null;
+
+create index if not exists event_assignments_status_idx
+on public.event_assignments(status);
+
+create index if not exists event_assignments_token_hash_idx
+on public.event_assignments(invitation_token_hash)
+where invitation_token_hash is not null;
 create index if not exists audit_logs_church_created_idx on public.audit_logs(church_id, created_at desc);
 create index if not exists audit_logs_target_idx on public.audit_logs(target_type, target_id, created_at desc);
 create index if not exists events_church_idx on public.events(church_id, starts_on desc);
@@ -1474,12 +1491,12 @@ alter table public.event_assignments enable row level security;
 alter table public.people enable row level security;
 alter table public.contacts enable row level security;
 alter table public.contact_interests enable row level security;
-alter table public.contact_form_answers enable row level security;
 alter table public.contact_journey_events enable row level security;
-alter table public.data_requests enable row level security;
 alter table public.follow_ups enable row level security;
 alter table public.prayer_requests enable row level security;
 alter table public.generated_messages enable row level security;
+alter table public.contact_form_answers enable row level security;
+alter table public.data_requests enable row level security;
 
 revoke insert, update, delete on table public.church_memberships from anon, authenticated;
 revoke update, delete on table public.team_members from anon, authenticated;
@@ -1649,8 +1666,20 @@ using (private.is_church_member(church_id) or private.is_app_admin());
 drop policy if exists "Leaders can manage church events" on public.events;
 create policy "Leaders can manage church events"
 on public.events for all
-using (private.has_church_role(church_id, array['admin','pastor','elder','health_leader','youth_leader']::public.team_role[]))
-with check (private.has_church_role(church_id, array['admin','pastor','elder','health_leader','youth_leader']::public.team_role[]));
+using (
+  private.has_church_role(
+    church_id,
+    array['admin','pastor','elder','health_leader','youth_leader']::public.team_role[]
+  )
+  or private.is_app_admin()
+)
+with check (
+  private.has_church_role(
+    church_id,
+    array['admin','pastor','elder','health_leader','youth_leader']::public.team_role[]
+  )
+  or private.is_app_admin()
+);
 
 drop policy if exists "event assignments select safely" on public.event_assignments;
 create policy "event assignments select safely"
@@ -1832,6 +1861,7 @@ create policy "Members can create contact form answers"
 on public.contact_form_answers for insert
 with check (private.is_church_member(church_id));
 
+-- Data requests RLS policies
 drop policy if exists "Members can view data requests" on public.data_requests;
 create policy "Members can view data requests"
 on public.data_requests for select
@@ -4281,6 +4311,64 @@ grant execute on function public.submit_event_registration(
   text
 ) to anon, authenticated;
 
+-- Prayer privacy RPC with role-based visibility filtering
+create or replace function public.get_contact_prayer_requests(
+  p_church_id uuid,
+  p_contact_id uuid
+)
+returns table (
+  request_text text,
+  visibility text,
+  created_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return query
+  select
+    pr.request_text,
+    pr.visibility::text,
+    pr.created_at
+  from public.prayer_requests pr
+  where pr.church_id = p_church_id
+    and pr.contact_id = p_contact_id
+    and (
+      -- App admins can see all
+      private.is_app_admin()
+      -- Admin and pastor can see all
+      or private.has_church_role(p_church_id, array['admin','pastor']::public.team_role[])
+      -- Prayer team can see general_prayer visibility
+      or (
+        pr.visibility::text in ('pastoral_prayer','general_prayer')
+        and private.has_church_role(p_church_id, array['prayer_team']::public.team_role[])
+      )
+      -- Health leader can see health_related
+      or (
+        pr.visibility::text = 'health_related'
+        and private.has_church_role(p_church_id, array['health_leader']::public.team_role[])
+      )
+      -- Assigned team member can see requests for their assigned contacts
+      or exists (
+        select 1
+        from public.contacts c
+        where c.id = p_contact_id
+          and c.church_id = p_church_id
+          and c.assigned_to in (
+            select tm.id
+            from public.team_members tm
+            where tm.user_id = auth.uid()
+              and tm.church_id = p_church_id
+              and tm.is_active = true
+          )
+      )
+    );
+end;
+$$;
+
+grant execute on function public.get_contact_prayer_requests(uuid, uuid) to authenticated;
+
 drop function if exists public.owner_church_profiles_page(uuid, text, integer, integer);
 
 create or replace function public.owner_church_profiles_page(
@@ -4552,9 +4640,6 @@ alter table if exists public.follow_ups
 create index if not exists follow_ups_church_handling_role_idx
 on public.follow_ups(church_id, assigned_handling_role, due_at)
 where completed_at is null;
-
-create index if not exists contact_form_answers_event_question_idx
-on public.contact_form_answers(church_id, event_id, question_name);
 
 -- Backfill contacts with recommended roles
 update public.contacts

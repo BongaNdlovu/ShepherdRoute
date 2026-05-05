@@ -20,6 +20,7 @@ import {
 import { prayerVisibilityLabels, prayerVisibilityOptions } from "@/lib/followUp";
 import { isHealthRelatedEvent } from "@/lib/workspace-type";
 import type { CSSProperties } from "react";
+import type { ContactMethod } from "@/lib/constants";
 
 function getSafeHttpsUrl(value?: string | null) {
   if (!value) return null;
@@ -108,6 +109,12 @@ export default async function PublicEventPage({
   const brandingConfig = getEffectiveBrandingConfig(event);
   const formConfig = getEffectiveFormConfig(event, template);
   const isHealthEvent = isHealthRelatedEvent(event.event_type);
+
+  const availableContactMethods = [
+    formConfig.show_phone ? "whatsapp" : null,
+    formConfig.show_phone ? "phone" : null,
+    formConfig.show_email ? "email" : null
+  ].filter(Boolean) as ContactMethod[];
 
   const shouldShowTopic = Boolean(template.topicOptions?.length) && formConfig.show_topic;
 
@@ -373,7 +380,7 @@ export default async function PublicEventPage({
 
                 <input type="hidden" name="consentTextSnapshot" value={consentText} />
                 <input type="hidden" name="privacyPolicyVersion" value="contact-consent-v1" />
-                <ContactMethodConsent />
+                <ContactMethodConsent availableMethods={availableContactMethods} />
                 <PendingSubmitButton size="lg" pendingText="Submitting...">
                   Submit visitor form
                 </PendingSubmitButton>

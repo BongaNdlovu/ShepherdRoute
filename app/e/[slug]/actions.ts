@@ -49,7 +49,7 @@ export async function submitRegistrationAction(formData: FormData) {
     p_classification_payload: validation.data.classificationPayload,
     p_prayer_visibility: validation.data.finalPrayerVisibility,
     p_consent_scope: ["follow_up"],
-    p_preferred_contact_methods: parsed.data.preferred_contact_methods,
+    p_preferred_contact_methods: validation.data.preferredContactMethods,
     p_consent_source: validation.data.classificationPayload.template_type,
     p_consent_given: true,
     p_consent_text_snapshot: validation.data.consentTextSnapshot,

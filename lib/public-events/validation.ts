@@ -2,7 +2,7 @@ import { z } from "zod";
 import { classifyContact, type VisitorType } from "@/lib/classifyContact";
 import { eventTemplateTypes } from "@/lib/eventTemplates";
 import { prayerVisibilityOptions } from "@/lib/followUp";
-import { contactMethodOptions } from "@/lib/constants";
+import { contactMethodOptions, type ContactMethod } from "@/lib/constants";
 import { getPublicEvent } from "@/lib/data";
 import { getEventTemplate } from "@/lib/eventTemplates";
 import { getEffectiveFormConfig } from "@/lib/eventCustomization";
@@ -33,13 +33,15 @@ export const registrationSchema = z.object({
   templateType: z.enum(visitorTypeOptions).default("general"),
   topic: z.string().max(120).optional(),
   prayerVisibility: z.enum(prayerVisibilityOptions).optional(),
-  preferred_contact_methods: z.array(ContactMethodEnum).min(1, "Please choose at least one contact method."),
+  preferred_contact_methods: z.array(ContactMethodEnum),
   consentTextSnapshot: z.string().max(1000).optional(),
   privacyPolicyVersion: z.string().max(50).optional()
 }).superRefine((data, ctx) => {
   const needsPhone =
     data.preferred_contact_methods.includes("whatsapp") ||
     data.preferred_contact_methods.includes("phone");
+
+  const needsEmail = data.preferred_contact_methods.includes("email");
 
   if (needsPhone && !data.phone?.trim()) {
     ctx.addIssue({
@@ -49,7 +51,7 @@ export const registrationSchema = z.object({
     });
   }
 
-  if (data.preferred_contact_methods.includes("email") && !data.email?.trim()) {
+  if (needsEmail && !data.email?.trim()) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["email"],
@@ -79,6 +81,7 @@ export type ValidatedRegistrationData = {
   finalMessage: string | null | undefined;
   finalPrayerVisibility: string;
   selectedInterests: string[];
+  preferredContactMethods: ContactMethod[];
   formAnswers: FormAnswer[];
   classification: ReturnType<typeof classifyContact>;
   classificationPayload: {
@@ -108,6 +111,27 @@ export async function validatePublicEventRegistration(
 
   const phone = formConfig.show_phone ? parsedData.phone?.trim() : undefined;
   const email = formConfig.show_email ? parsedData.email?.trim() : undefined;
+
+  const allowedContactMethods = new Set<ContactMethod>([
+    ...(formConfig.show_phone ? (["whatsapp", "phone"] as ContactMethod[]) : []),
+    ...(formConfig.show_email ? (["email"] as ContactMethod[]) : [])
+  ]);
+
+  const preferredContactMethods = parsedData.preferred_contact_methods.filter((method) =>
+    allowedContactMethods.has(method)
+  );
+
+  if (preferredContactMethods.length === 0) {
+    return { error: "Please choose at least one available contact method." };
+  }
+
+  if ((preferredContactMethods.includes("whatsapp") || preferredContactMethods.includes("phone")) && !phone) {
+    return { error: "Please provide a phone number for WhatsApp or phone follow-up." };
+  }
+
+  if (preferredContactMethods.includes("email") && !email) {
+    return { error: "Please provide an email address for email follow-up." };
+  }
 
   if (formConfig.require_phone && !phone) {
     return { error: "Please add your phone or WhatsApp number." };
@@ -200,7 +224,7 @@ export async function validatePublicEventRegistration(
   return {
     data: {
       eventName: event.name,
-      consentTextSnapshot: `Contact follow-up consent for ${event.name}. Methods: ${parsedData.preferred_contact_methods.join(", ")}.`,
+      consentTextSnapshot: `Contact follow-up consent for ${event.name}. Methods: ${preferredContactMethods.join(", ")}.`,
       phone,
       email,
       finalArea,
@@ -209,6 +233,7 @@ export async function validatePublicEventRegistration(
       finalMessage,
       finalPrayerVisibility,
       selectedInterests,
+      preferredContactMethods,
       formAnswers,
       classification,
       classificationPayload

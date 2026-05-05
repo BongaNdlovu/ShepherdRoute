@@ -67,26 +67,37 @@ async function* eventRows(churchId: string, eventId: string, uniqueQuestions: Ar
   while (true) {
     const contacts = await getEventReportContactsPage(churchId, eventId, offset, EXPORT_BATCH_SIZE);
 
+    if (contacts.length === 0) {
+      break;
+    }
+
+    const contactIds = contacts.map((contact) => contact.id);
+
+    const { data: answers } = contactIds.length
+      ? await supabase
+          .from("contact_form_answers")
+          .select("contact_id, question_name, answer_display")
+          .eq("church_id", churchId)
+          .eq("event_id", eventId)
+          .in("contact_id", contactIds)
+      : { data: [] };
+
+    const answersByContact = new Map<string, Map<string, string>>();
+
+    for (const answer of answers ?? []) {
+      const answerMap = answersByContact.get(answer.contact_id) ?? new Map<string, string>();
+      const displayValue = answer.answer_display;
+      const formatted = Array.isArray(displayValue) ? displayValue.join(", ") : String(displayValue ?? "");
+      answerMap.set(answer.question_name, formatted);
+      answersByContact.set(answer.contact_id, answerMap);
+    }
+
     for (const contact of contacts) {
       const interests = (contact.contact_interests ?? [])
         .map((item: { interest: Interest }) => interestLabels[item.interest])
         .join("; ");
 
-      // Fetch form answers for this contact
-      const { data: answers } = await supabase
-        .from("contact_form_answers")
-        .select("question_name, answer_display")
-        .eq("church_id", churchId)
-        .eq("contact_id", contact.id);
-
-      const answerMap = new Map(
-        (answers ?? []).map((a) => {
-          const displayValue = a.answer_display;
-          const formatted = Array.isArray(displayValue) ? displayValue.join(", ") : String(displayValue ?? "");
-          return [a.question_name, formatted];
-        })
-      );
-
+      const answerMap = answersByContact.get(contact.id) ?? new Map<string, string>();
       const dynamicValues = uniqueQuestions.map(([name]) => answerMap.get(name) ?? "");
 
       yield [
