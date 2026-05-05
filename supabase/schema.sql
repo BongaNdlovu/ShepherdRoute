@@ -823,6 +823,144 @@ begin
 end;
 $$;
 
+create or replace function private.accept_event_invitation_for_user(
+  p_token text,
+  p_user_id uuid,
+  p_email text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_assignment public.event_assignments%rowtype;
+  target_membership_id uuid;
+  target_membership_role public.team_role;
+  target_team_member_id uuid;
+  normalized_email text := nullif(lower(trim(coalesce(p_email, ''))), '');
+  profile_name text;
+begin
+  if p_user_id is null then
+    raise exception 'Login is required before accepting this invitation.';
+  end if;
+
+  select *
+  into target_assignment
+  from public.event_assignments
+  where invitation_token_hash = private.hash_invite_token(p_token)
+    and status = 'pending'
+  limit 1;
+
+  if target_assignment.id is null then
+    raise exception 'Invitation not found or already used.';
+  end if;
+
+  if target_assignment.revoked_at is not null then
+    raise exception 'This invitation has been revoked.';
+  end if;
+
+  if target_assignment.invitation_expires_at <= now() then
+    update public.event_assignments
+    set status = 'expired',
+        updated_at = now()
+    where id = target_assignment.id;
+
+    raise exception 'This invitation has expired.';
+  end if;
+
+  if normalized_email is null or normalized_email <> target_assignment.invitee_email then
+    raise exception 'This invitation was sent to a different email address.';
+  end if;
+
+  select coalesce(raw_user_meta_data->>'full_name', p_email, 'Event team member')
+  into profile_name
+  from auth.users
+  where id = p_user_id;
+
+  insert into public.profiles (id, full_name, email)
+  values (p_user_id, coalesce(profile_name, p_email, 'Event team member'), p_email)
+  on conflict (id) do update
+  set full_name = coalesce(nullif(public.profiles.full_name, ''), excluded.full_name),
+      email = coalesce(public.profiles.email, excluded.email),
+      updated_at = now();
+
+  insert into public.church_memberships (church_id, user_id, role, status)
+  values (target_assignment.church_id, p_user_id, 'viewer', 'active')
+  on conflict (church_id, user_id) do update
+  set status = 'active',
+      updated_at = now()
+  returning id, role into target_membership_id, target_membership_role;
+
+  select id
+  into target_team_member_id
+  from public.team_members
+  where church_id = target_assignment.church_id
+    and membership_id = target_membership_id
+  order by updated_at desc
+  limit 1;
+
+  if target_team_member_id is null then
+    insert into public.team_members (
+      church_id,
+      membership_id,
+      display_name,
+      role,
+      email,
+      is_active
+    )
+    values (
+      target_assignment.church_id,
+      target_membership_id,
+      coalesce(profile_name, p_email, 'Event team member'),
+      target_membership_role,
+      p_email,
+      true
+    )
+    returning id into target_team_member_id;
+  else
+    update public.team_members
+    set display_name = coalesce(nullif(display_name, ''), coalesce(profile_name, p_email, 'Event team member')),
+        role = target_membership_role,
+        email = coalesce(email, p_email),
+        is_active = true,
+        updated_at = now()
+    where id = target_team_member_id;
+  end if;
+
+  update public.event_assignments
+  set team_member_id = target_team_member_id,
+      status = 'accepted',
+      accepted_at = now(),
+      invitation_token_hash = null,
+      updated_at = now()
+  where id = target_assignment.id;
+
+  insert into public.audit_logs (
+    church_id,
+    actor_user_id,
+    target_type,
+    target_id,
+    action,
+    metadata
+  )
+  values (
+    target_assignment.church_id,
+    p_user_id,
+    'event_assignment',
+    target_assignment.id,
+    'event_invitation.accepted',
+    jsonb_build_object(
+      'eventId', target_assignment.event_id,
+      'email', target_assignment.invitee_email,
+      'teamMemberId', target_team_member_id
+    )
+  );
+
+  return target_assignment.event_id;
+end;
+$$;
+
 create or replace function private.prepare_contact_identity()
 returns trigger
 language plpgsql
@@ -1010,6 +1148,9 @@ create trigger people_touch_updated_at before update on public.people for each r
 
 drop trigger if exists contact_journey_events_touch_updated_at on public.contact_journey_events;
 create trigger contact_journey_events_touch_updated_at before update on public.contact_journey_events for each row execute function public.touch_updated_at();
+
+drop trigger if exists data_requests_touch_updated_at on public.data_requests;
+create trigger data_requests_touch_updated_at before update on public.data_requests for each row execute function public.touch_updated_at();
 
 drop trigger if exists follow_ups_touch_updated_at on public.follow_ups;
 create trigger follow_ups_touch_updated_at before update on public.follow_ups for each row execute function public.touch_updated_at();
@@ -1319,6 +1460,7 @@ revoke all on function public.current_user_can_manage_event_assignments(uuid) fr
 revoke all on function public.current_user_team_member_id_for_event(uuid) from public, anon, authenticated;
 revoke all on function private.hash_invite_token(text) from public, anon, authenticated;
 revoke all on function private.accept_team_invitation_for_user(text, uuid, text) from public, anon, authenticated;
+revoke all on function private.accept_event_invitation_for_user(text, uuid, text) from public, anon, authenticated;
 revoke all on function private.require_app_admin(public.app_admin_role[]) from public;
 revoke all on function private.require_protected_owner() from public;
 grant execute on function private.is_church_member(uuid) to anon, authenticated;
@@ -1786,6 +1928,33 @@ $$;
 revoke all on function public.accept_team_invitation(text) from public, anon, authenticated;
 grant execute on function public.accept_team_invitation(text) to authenticated;
 
+drop function if exists public.accept_event_invitation(text);
+
+create or replace function public.accept_event_invitation(p_token text)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_email text;
+begin
+  if auth.uid() is null then
+    raise exception 'Login is required before accepting this invitation.';
+  end if;
+
+  select email
+  into current_email
+  from auth.users
+  where id = auth.uid();
+
+  return private.accept_event_invitation_for_user(p_token, auth.uid(), current_email);
+end;
+$$;
+
+revoke all on function public.accept_event_invitation(text) from public, anon, authenticated;
+grant execute on function public.accept_event_invitation(text) to authenticated;
+
 drop view if exists public.public_events;
 create view public.public_events
 as
@@ -1872,6 +2041,94 @@ $$;
 
 revoke all on function public.owner_church_summaries() from public;
 grant execute on function public.owner_church_summaries() to authenticated;
+
+drop function if exists public.owner_workspace_rows_page(text, text, integer, integer);
+
+create or replace function public.owner_workspace_rows_page(
+  p_workspace_type text,
+  p_search text default null,
+  p_limit integer default 25,
+  p_offset integer default 0
+)
+returns table (
+  church_id uuid,
+  church_name text,
+  created_at timestamptz,
+  team_count bigint,
+  profile_count bigint,
+  event_count bigint,
+  contact_count bigint,
+  new_contact_count bigint,
+  workspace_type text,
+  workspace_status text,
+  status_changed_at timestamptz,
+  status_change_reason text,
+  total_count bigint
+)
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+begin
+  perform private.require_app_admin();
+
+  return query
+  with filtered as (
+    select
+      churches.id as church_id,
+      churches.name as church_name,
+      churches.created_at,
+      (
+        select count(*)
+        from public.team_members
+        where team_members.church_id = churches.id
+      ) as team_count,
+      (
+        select count(*)
+        from public.church_memberships
+        where church_memberships.church_id = churches.id
+      ) as profile_count,
+      (
+        select count(*)
+        from public.events
+        where events.church_id = churches.id
+      ) as event_count,
+      (
+        select count(*)
+        from public.contacts
+        where contacts.church_id = churches.id
+          and contacts.deleted_at is null
+      ) as contact_count,
+      (
+        select count(*)
+        from public.contacts
+        where contacts.church_id = churches.id
+          and contacts.deleted_at is null
+          and contacts.status = 'new'
+      ) as new_contact_count,
+      churches.workspace_type,
+      churches.workspace_status,
+      churches.status_changed_at,
+      churches.status_change_reason
+    from public.churches
+    where churches.workspace_type = p_workspace_type
+      and (
+        nullif(trim(coalesce(p_search, '')), '') is null
+        or churches.name ilike ('%' || trim(p_search) || '%')
+      )
+  )
+  select
+    filtered.*,
+    count(*) over() as total_count
+  from filtered
+  order by created_at desc
+  limit greatest(1, least(coalesce(p_limit, 25), 100))
+  offset greatest(0, coalesce(p_offset, 0));
+end;
+$$;
+
+revoke all on function public.owner_workspace_rows_page(text, text, integer, integer) from public;
+grant execute on function public.owner_workspace_rows_page(text, text, integer, integer) to authenticated;
 
 drop function if exists public.owner_admin_overview();
 
@@ -1991,6 +2248,101 @@ $$;
 
 revoke all on function public.owner_account_rows() from public, anon, authenticated;
 grant execute on function public.owner_account_rows() to authenticated;
+
+drop function if exists public.owner_account_rows_page(text, integer, integer);
+
+create or replace function public.owner_account_rows_page(
+  p_search text default null,
+  p_limit integer default 25,
+  p_offset integer default 0
+)
+returns table (
+  church_id uuid,
+  church_name text,
+  church_created_at timestamptz,
+  membership_id uuid,
+  user_id uuid,
+  full_name text,
+  email text,
+  role public.team_role,
+  status public.membership_status,
+  membership_created_at timestamptz,
+  team_member_id uuid,
+  team_member_name text,
+  team_member_active boolean,
+  app_admin_role public.app_admin_role,
+  is_protected_owner boolean,
+  event_count bigint,
+  contact_count bigint,
+  total_count bigint
+)
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+begin
+  perform private.require_app_admin();
+
+  return query
+  with account_rows as (
+    select
+      churches.id as church_id,
+      churches.name as church_name,
+      churches.created_at as church_created_at,
+      church_memberships.id as membership_id,
+      church_memberships.user_id,
+      profiles.full_name,
+      profiles.email,
+      church_memberships.role,
+      church_memberships.status,
+      church_memberships.created_at as membership_created_at,
+      team_members.id as team_member_id,
+      team_members.display_name as team_member_name,
+      coalesce(team_members.is_active, false) as team_member_active,
+      app_admins.role as app_admin_role,
+      coalesce(app_admins.is_protected_owner, false) as is_protected_owner,
+      (
+        select count(*)
+        from public.events
+        where events.church_id = churches.id
+      ) as event_count,
+      (
+        select count(*)
+        from public.contacts
+        where contacts.church_id = churches.id
+          and contacts.deleted_at is null
+      ) as contact_count
+    from public.churches
+    join public.church_memberships on church_memberships.church_id = churches.id
+    left join public.profiles on profiles.id = church_memberships.user_id
+    left join public.team_members on team_members.membership_id = church_memberships.id
+    left join public.app_admins on app_admins.user_id = church_memberships.user_id
+  ),
+  filtered as (
+    select *
+    from account_rows ar
+    where nullif(trim(coalesce(p_search, '')), '') is null
+      or ar.church_name ilike ('%' || trim(p_search) || '%')
+      or ar.full_name ilike ('%' || trim(p_search) || '%')
+      or ar.email ilike ('%' || trim(p_search) || '%')
+      or ar.user_id::text ilike ('%' || trim(p_search) || '%')
+      or ar.role::text ilike ('%' || trim(p_search) || '%')
+      or ar.status::text ilike ('%' || trim(p_search) || '%')
+      or ar.team_member_name ilike ('%' || trim(p_search) || '%')
+      or ar.app_admin_role::text ilike ('%' || trim(p_search) || '%')
+  )
+  select
+    filtered.*,
+    count(*) over() as total_count
+  from filtered
+  order by filtered.church_created_at desc, filtered.membership_created_at asc
+  limit greatest(1, least(coalesce(p_limit, 25), 100))
+  offset greatest(0, coalesce(p_offset, 0));
+end;
+$$;
+
+revoke all on function public.owner_account_rows_page(text, integer, integer) from public, anon, authenticated;
+grant execute on function public.owner_account_rows_page(text, integer, integer) to authenticated;
 
 drop function if exists public.owner_invitation_rows();
 
@@ -2627,6 +2979,63 @@ $$;
 
 revoke all on function public.event_follow_up_counts(uuid, uuid) from public;
 grant execute on function public.event_follow_up_counts(uuid, uuid) to authenticated;
+
+drop function if exists public.event_workspace_interest_counts(uuid, uuid);
+
+create or replace function public.event_workspace_interest_counts(
+  p_church_id uuid,
+  p_event_id uuid
+)
+returns table (
+  prayer_request_count bigint,
+  bible_study_interest_count bigint,
+  baptism_interest_count bigint,
+  health_interest_count bigint
+)
+language sql
+security definer
+set search_path = public
+as $$
+  with event_contacts as (
+    select id
+    from public.contacts
+    where church_id = p_church_id
+      and event_id = p_event_id
+      and deleted_at is null
+      and archived_at is null
+  )
+  select
+    (
+      select count(*)
+      from public.prayer_requests pr
+      join event_contacts ec on ec.id = pr.contact_id
+      where pr.church_id = p_church_id
+    ) as prayer_request_count,
+    (
+      select count(*)
+      from public.contact_interests ci
+      join event_contacts ec on ec.id = ci.contact_id
+      where ci.church_id = p_church_id
+        and ci.interest = 'bible_study'
+    ) as bible_study_interest_count,
+    (
+      select count(*)
+      from public.contact_interests ci
+      join event_contacts ec on ec.id = ci.contact_id
+      where ci.church_id = p_church_id
+        and ci.interest = 'baptism'
+    ) as baptism_interest_count,
+    (
+      select count(*)
+      from public.contact_interests ci
+      join event_contacts ec on ec.id = ci.contact_id
+      where ci.church_id = p_church_id
+        and ci.interest in ('health', 'cooking_class')
+    ) as health_interest_count;
+$$;
+
+revoke all on function public.event_workspace_interest_counts(uuid, uuid) from public;
+grant execute on function public.event_workspace_interest_counts(uuid, uuid) to authenticated;
 
 drop function if exists public.event_follow_ups_page(uuid, uuid, text, uuid, public.urgency_level, integer, integer);
 
@@ -4063,7 +4472,7 @@ begin
     filtered.*,
     count(*) over() as total_count
   from filtered
-  order by created_at desc
+  order by filtered.created_at desc
   limit greatest(1, least(p_limit, 100))
   offset greatest(0, p_offset);
 end;

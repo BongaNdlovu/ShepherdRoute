@@ -9,8 +9,7 @@ test.describe("event templates", () => {
     const labels = template.interestOptions.map((option) => option.label);
 
     expect(template.formHeading).toContain("health expo");
-    expect(labels).toContain("Health Tips");
-    expect(labels).toContain("7-Day Health Challenge");
+    expect(labels).toContain("Health Tips / 7-Day Health Challenge");
     expect(labels).toContain("Cooking Class");
   });
 
@@ -19,8 +18,7 @@ test.describe("event templates", () => {
     const labels = template.interestOptions.map((option) => option.label);
 
     expect(template.formHeading).toContain("Bible presentation");
-    expect(labels).toContain("Study Notes");
-    expect(labels).toContain("Next Meeting Updates");
+    expect(labels).toContain("Study Notes / Bible Study / Next Meeting Updates");
     expect(labels).toContain("Baptism Preparation");
   });
 
@@ -29,7 +27,7 @@ test.describe("event templates", () => {
     const labels = template.interestOptions.map((option) => option.label);
 
     expect(template.formHeading).toContain("worshipped");
-    expect(labels).toContain("Church Updates");
+    expect(labels).toContain("Church Updates / Pastoral Visit");
     expect(labels).toContain("Bible Study");
     expect(labels).toContain("Youth Info");
   });

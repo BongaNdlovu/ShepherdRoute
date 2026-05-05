@@ -114,7 +114,7 @@ export type EventWorkspaceSummary = {
 export async function getEventWorkspaceSummary(churchId: string, eventId: string): Promise<EventWorkspaceSummary> {
   const supabase = await createClient();
 
-  const [{ data: event }, totalContacts, newContacts, assignedContacts, followUpCounts, highUrgencyContacts, eventContactIds, recentContacts, dueFollowUps, teamSnapshot] = await Promise.all([
+  const [{ data: event }, totalContacts, newContacts, assignedContacts, followUpCounts, workspaceInterestCounts, highUrgencyContacts, recentContacts, dueFollowUps, teamSnapshot] = await Promise.all([
     supabase
       .from("events")
       .select("*")
@@ -153,6 +153,11 @@ export async function getEventWorkspaceSummary(churchId: string, eventId: string
       p_event_id: eventId
     }),
 
+    supabase.rpc("event_workspace_interest_counts", {
+      p_church_id: churchId,
+      p_event_id: eventId
+    }),
+
     supabase
       .from("contacts")
       .select("id", { count: "exact", head: true })
@@ -161,13 +166,6 @@ export async function getEventWorkspaceSummary(churchId: string, eventId: string
       .eq("urgency", "high")
       .is("deleted_at", null)
       .is("archived_at", null),
-
-    supabase
-      .from("contacts")
-      .select("id")
-      .eq("church_id", churchId)
-      .eq("event_id", eventId)
-      .is("deleted_at", null),
 
     supabase
       .from("contacts")
@@ -210,42 +208,7 @@ export async function getEventWorkspaceSummary(churchId: string, eventId: string
   }
 
   const counts = Array.isArray(followUpCounts) ? followUpCounts[0] : followUpCounts;
-
-  const contactIds = (eventContactIds.data ?? []).map((c: { id: string }) => c.id);
-
-  const [prayerRequests, bibleStudyInterests, baptismInterests, healthInterests] = await Promise.all([
-    contactIds.length > 0
-      ? supabase
-          .from("prayer_requests")
-          .select("id", { count: "exact", head: true })
-          .eq("church_id", churchId)
-          .in("contact_id", contactIds)
-      : { count: 0 },
-
-    contactIds.length > 0
-      ? supabase
-          .from("contact_interests")
-          .select("id", { count: "exact", head: true })
-          .eq("interest", "bible_study")
-          .in("contact_id", contactIds)
-      : { count: 0 },
-
-    contactIds.length > 0
-      ? supabase
-          .from("contact_interests")
-          .select("id", { count: "exact", head: true })
-          .eq("interest", "baptism")
-          .in("contact_id", contactIds)
-      : { count: 0 },
-
-    contactIds.length > 0
-      ? supabase
-          .from("contact_interests")
-          .select("id", { count: "exact", head: true })
-          .eq("interest", "health")
-          .in("contact_id", contactIds)
-      : { count: 0 }
-  ]);
+  const interestCounts = Array.isArray(workspaceInterestCounts) ? workspaceInterestCounts[0] : workspaceInterestCounts;
 
   const teamMap = new Map<string, { displayName: string; role: string | null; count: number }>();
   (teamSnapshot.data ?? []).forEach((row: { assigned_to: string; team_members: { display_name: string; role: string | null }[] }) => {
@@ -281,10 +244,10 @@ export async function getEventWorkspaceSummary(churchId: string, eventId: string
       completedFollowUps: Number(counts?.completed_follow_ups ?? 0),
       overdueFollowUps: Number(counts?.overdue_follow_ups ?? 0),
       highUrgencyContacts: highUrgencyContacts.count ?? 0,
-      prayerRequests: prayerRequests.count ?? 0,
-      bibleStudyInterests: bibleStudyInterests.count ?? 0,
-      baptismInterests: baptismInterests.count ?? 0,
-      healthInterests: healthInterests.count ?? 0
+      prayerRequests: Number(interestCounts?.prayer_request_count ?? 0),
+      bibleStudyInterests: Number(interestCounts?.bible_study_interest_count ?? 0),
+      baptismInterests: Number(interestCounts?.baptism_interest_count ?? 0),
+      healthInterests: Number(interestCounts?.health_interest_count ?? 0)
     },
     recentContacts: (recentContacts.data ?? []) as unknown as EventContactListItem[],
     dueFollowUps: (dueFollowUps.data ?? []).map((row: { id: string; contact_id: string; contacts: { full_name: string; phone: string }[]; team_members: { display_name: string }[]; due_at: string; status: FollowUpStatus }) => ({

@@ -139,10 +139,9 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     formDescription: "Share how the team can stay in touch after your Sabbath visit.",
     interestOptions: [
       { value: "prayer", label: "Prayer" },
-      { value: "pastoral_visit", label: "Church Updates" },
+      { value: "pastoral_visit", label: "Church Updates / Pastoral Visit" },
       { value: "bible_study", label: "Bible Study" },
       { value: "youth", label: "Youth Info" },
-      { value: "pastoral_visit", label: "Pastoral Visit" },
       { value: "baptism", label: "Baptismal Request" }
     ],
     defaultStatuses: ["first_time_visitor", "thank_you_sent", "invited_again", "prayer_requested", "bible_study_requested", "attended_again", "connected", "closed"],
@@ -195,8 +194,7 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     formHeading: "Thank you for attending our health expo",
     formDescription: "Choose the follow-up you would like from the health and ministry team.",
     interestOptions: [
-      { value: "health", label: "Health Tips" },
-      { value: "health", label: "7-Day Health Challenge" },
+      { value: "health", label: "Health Tips / 7-Day Health Challenge" },
       { value: "cooking_class", label: "Cooking Class" },
       { value: "prayer", label: "Prayer" },
       { value: "bible_study", label: "Bible Study" },
@@ -351,12 +349,10 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     formHeading: "Thank you for attending tonight's Bible presentation",
     formDescription: "Select the follow-up that would be most helpful after tonight's meeting.",
     interestOptions: [
-      { value: "bible_study", label: "Study Notes" },
+      { value: "bible_study", label: "Study Notes / Bible Study / Next Meeting Updates" },
       { value: "prayer", label: "Prayer" },
-      { value: "bible_study", label: "Bible Study" },
       { value: "pastoral_visit", label: "Pastoral Visit" },
-      { value: "baptism", label: "Baptism Preparation" },
-      { value: "bible_study", label: "Next Meeting Updates" }
+      { value: "baptism", label: "Baptism Preparation" }
     ],
     defaultStatuses: ["new_attendee", "notes_sent", "invited_next_meeting", "bible_study_requested", "pastoral_visit_needed", "baptism_interest", "decision_follow_up", "closed"],
     defaultRoles: ["pastor", "elder", "bible_worker", "prayer_team"],
@@ -398,12 +394,10 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     formDescription: "Choose your topic and the follow-up you would like from the seminar team.",
     topicOptions: ["Daniel 2", "Daniel 7", "Revelation 13", "Revelation 14", "Sabbath", "Second Coming", "State of the Dead", "Three Angels' Messages"],
     interestOptions: [
-      { value: "bible_study", label: "Study Notes" },
+      { value: "bible_study", label: "Study Notes / Bible Study / Next Seminar Reminder" },
       { value: "prayer", label: "Prayer" },
-      { value: "bible_study", label: "Bible Study" },
       { value: "pastoral_visit", label: "Ask a Question" },
-      { value: "baptism", label: "Baptism Preparation" },
-      { value: "bible_study", label: "Next Seminar Reminder" }
+      { value: "baptism", label: "Baptism Preparation" }
     ],
     defaultStatuses: ["new_attendee", "notes_sent", "question_received", "bible_study_requested", "baptism_interest", "invited_next_session", "closed"],
     defaultRoles: ["bible_worker", "pastor", "elder", "prayer_team"],
@@ -429,13 +423,11 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     formHeading: "Thank you for attending our cooking class",
     formDescription: "Select what you would like us to send after the class.",
     interestOptions: [
-      { value: "cooking_class", label: "Recipes" },
-      { value: "health", label: "7-Day Health Challenge" },
-      { value: "cooking_class", label: "Next Cooking Class" },
+      { value: "cooking_class", label: "Recipes / Next Cooking Class" },
+      { value: "health", label: "7-Day Health Challenge / Health Talk" },
       { value: "prayer", label: "Prayer" },
       { value: "bible_study", label: "Bible Study" },
-      { value: "baptism", label: "Baptismal Request" },
-      { value: "health", label: "Health Talk" }
+      { value: "baptism", label: "Baptismal Request" }
     ],
     defaultStatuses: ["new", "recipes_sent", "health_challenge_invited", "invited_next_class", "prayer_follow_up", "bible_study_requested", "closed"],
     defaultRoles: ["health_leader", "prayer_team", "bible_worker"],

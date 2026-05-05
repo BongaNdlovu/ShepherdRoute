@@ -6,6 +6,8 @@ import { z } from "zod";
 import { getChurchContext } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 
+const PRIVACY_REQUESTS_PATH = "/privacy-requests";
+
 const createDataRequestSchema = z.object({
   relatedContactId: z.string().uuid().optional(),
   requestType: z.enum(["correction", "deletion", "export", "restriction"]),
@@ -35,7 +37,7 @@ export async function createDataRequestAction(formData: FormData) {
   const context = await getChurchContext();
 
   if (!(await canManagePrivacy(context))) {
-    redirect("/privacy?error=Only%20admins%20and%20pastors%20can%20create%20data%20requests.");
+    redirect(`${PRIVACY_REQUESTS_PATH}?error=Only%20admins%20and%20pastors%20can%20create%20data%20requests.`);
   }
 
   const parsed = createDataRequestSchema.safeParse({
@@ -47,7 +49,7 @@ export async function createDataRequestAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    redirect("/privacy?error=Invalid%20input.");
+    redirect(`${PRIVACY_REQUESTS_PATH}?error=Invalid%20input.`);
   }
 
   const supabase = await createClient();
@@ -63,7 +65,7 @@ export async function createDataRequestAction(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/privacy?error=${encodeURIComponent(error.message)}`);
+    redirect(`${PRIVACY_REQUESTS_PATH}?error=${encodeURIComponent(error.message)}`);
   }
 
   // Audit log
@@ -79,15 +81,15 @@ export async function createDataRequestAction(formData: FormData) {
     }
   });
 
-  revalidatePath("/privacy");
-  redirect("/privacy?success=true");
+  revalidatePath(PRIVACY_REQUESTS_PATH);
+  redirect(`${PRIVACY_REQUESTS_PATH}?success=true`);
 }
 
 export async function updateDataRequestStatusAction(formData: FormData) {
   const context = await getChurchContext();
 
   if (!(await canManagePrivacy(context))) {
-    redirect("/privacy?error=Only%20admins%20and%20pastors%20can%20update%20data%20requests.");
+    redirect(`${PRIVACY_REQUESTS_PATH}?error=Only%20admins%20and%20pastors%20can%20update%20data%20requests.`);
   }
 
   const parsed = updateDataRequestStatusSchema.safeParse({
@@ -97,7 +99,7 @@ export async function updateDataRequestStatusAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    redirect("/privacy?error=Invalid%20input.");
+    redirect(`${PRIVACY_REQUESTS_PATH}?error=Invalid%20input.`);
   }
 
   const supabase = await createClient();
@@ -114,7 +116,7 @@ export async function updateDataRequestStatusAction(formData: FormData) {
     .eq("id", parsed.data.requestId);
 
   if (error) {
-    redirect(`/privacy?error=${encodeURIComponent(error.message)}`);
+    redirect(`${PRIVACY_REQUESTS_PATH}?error=${encodeURIComponent(error.message)}`);
   }
 
   // Audit log
@@ -129,6 +131,6 @@ export async function updateDataRequestStatusAction(formData: FormData) {
     }
   });
 
-  revalidatePath("/privacy");
-  redirect("/privacy?success=true");
+  revalidatePath(PRIVACY_REQUESTS_PATH);
+  redirect(`${PRIVACY_REQUESTS_PATH}?success=true`);
 }

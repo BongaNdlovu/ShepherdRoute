@@ -162,7 +162,7 @@ export function EventInvitationModal({
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Processing...' : tab === 'email' ? 'Send Invitation' : 'Assign'}
+            {isSubmitting ? 'Processing...' : tab === 'email' ? 'Create Invite Link' : 'Assign'}
           </Button>
         </div>
       </form>

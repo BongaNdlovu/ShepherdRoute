@@ -248,7 +248,7 @@ export async function inviteToEventByEmail(input: {
 
   const { data: existingAssignments, error: existingError } = await supabase
     .from('event_assignments')
-    .select('id')
+    .select('id, status, team_member_id')
     .eq('church_id', churchId)
     .eq('event_id', input.eventId)
     .eq('invitee_email', email)
@@ -259,6 +259,10 @@ export async function inviteToEventByEmail(input: {
   }
 
   const existingAssignmentId = existingAssignments?.[0]?.id;
+  if (existingAssignments?.[0]?.status === 'accepted' && existingAssignments[0].team_member_id) {
+    throw new Error('That email address is already on this event team.');
+  }
+
   const { error } = existingAssignmentId
     ? await supabase
         .from('event_assignments')
@@ -280,9 +284,8 @@ export async function inviteToEventByEmail(input: {
     throw new Error(`Failed to create invitation: ${error.message} (Code: ${error.code})`);
   }
 
-  // TODO: Connect the project's existing email provider here.
-  // Send invite URL: `${process.env.NEXT_PUBLIC_APP_URL}/event-invitations/accept?token=${rawToken}`
-  // Never store rawToken in the database.
+  // Email delivery is intentionally manual for now; return the raw token once so
+  // the UI can show a shareable invite URL without storing it.
 
   revalidatePath(`/events/${input.eventId}/team`);
 
@@ -351,84 +354,25 @@ export async function revokeEventAssignment(input: {
 export async function acceptEventInvitation(input: {
   token: string;
 }) {
-  const { supabase, user } = await getCurrentUserContext();
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  const tokenHash = hashToken(input.token);
-
-  const { data: assignment, error } = await supabase
-    .from('event_assignments')
-    .select('*')
-    .eq('invitation_token_hash', tokenHash)
-    .eq('status', 'pending')
-    .maybeSingle();
-
-  if (error || !assignment) {
-    throw new Error('Invitation not found or already used.');
+  if (userError || !user) {
+    throw new Error('You must be signed in.');
   }
 
-  if (assignment.revoked_at) {
-    throw new Error('This invitation has been revoked.');
+  const { data: eventId, error } = await supabase.rpc('accept_event_invitation', {
+    p_token: input.token,
+  });
+
+  if (error || !eventId) {
+    throw new Error(error?.message ?? 'Failed to accept invitation.');
   }
 
-  if (assignment.invitation_expires_at && new Date(assignment.invitation_expires_at).getTime() < Date.now()) {
-    await supabase
-      .from('event_assignments')
-      .update({ status: 'expired' })
-      .eq('id', assignment.id);
+  revalidatePath(`/events/${eventId}/team`);
 
-    throw new Error('This invitation has expired.');
-  }
-
-  const userEmail = normalizeEmail(user.email ?? '');
-
-  if (!assignment.invitee_email || normalizeEmail(assignment.invitee_email) !== userEmail) {
-    throw new Error('This invitation was sent to a different email address.');
-  }
-
-  const { data: existingMember, error: memberError } = await supabase
-    .from('church_memberships')
-    .select('id, church_id')
-    .eq('user_id', user.id)
-    .eq('church_id', assignment.church_id)
-    .maybeSingle();
-
-  if (memberError) {
-    throw new Error(`Could not check church membership: ${memberError.message}`);
-  }
-
-  if (!existingMember) {
-    throw new Error('Your account is not yet a member of this church. Ask an admin to add you to the church team first.');
-  }
-
-  const { data: teamMember, error: teamMemberError } = await supabase
-    .from('team_members')
-    .select('id')
-    .eq('membership_id', existingMember.id)
-    .maybeSingle();
-
-  if (teamMemberError) {
-    throw new Error(`Could not load team member record: ${teamMemberError.message}`);
-  }
-
-  if (!teamMember) {
-    throw new Error('No team member record found. Ask an admin to create a team member record for you.');
-  }
-
-  const { error: updateError } = await supabase
-    .from('event_assignments')
-    .update({
-      team_member_id: teamMember.id,
-      status: 'accepted',
-      accepted_at: new Date().toISOString(),
-      invitation_token_hash: null,
-    })
-    .eq('id', assignment.id);
-
-  if (updateError) {
-    throw new Error(`Failed to accept invitation: ${updateError.message}`);
-  }
-
-  revalidatePath(`/events/${assignment.event_id}/team`);
-
-  return { ok: true, eventId: assignment.event_id };
+  return { ok: true, eventId };
 }

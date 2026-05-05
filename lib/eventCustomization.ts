@@ -89,8 +89,16 @@ export function getEffectiveFormConfig(event: PublicEvent, template: EventTempla
     ? customInterests
     : template.interestOptions.map((opt) => ({ ...opt, enabled: true }));
 
-  // Filter to only enabled options
-  const visibleInterestOptions = effectiveInterestOptions.filter((option) => option.enabled !== false);
+  // Filter to only enabled options and avoid rendering two checkboxes that
+  // persist to the same enum value.
+  const seenInterestValues = new Set<string>();
+  const visibleInterestOptions = effectiveInterestOptions.filter((option) => {
+    if (option.enabled === false || seenInterestValues.has(option.value)) {
+      return false;
+    }
+    seenInterestValues.add(option.value);
+    return true;
+  });
 
   // Use custom questions if provided, otherwise use template questions
   const customQuestions = (formConfig.questions as TemplateQuestionField[] | undefined) || [];

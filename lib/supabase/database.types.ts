@@ -296,8 +296,11 @@ export type Database = {
           classification_payload: Json
           consent_at: string | null
           consent_given: boolean
+          consent_recorded_by: string | null
           consent_scope: string[]
           consent_source: string | null
+          consent_status: string
+          consent_text_snapshot: string | null
           created_at: string
           deleted_at: string | null
           do_not_contact: boolean
@@ -318,6 +321,7 @@ export type Database = {
           person_id: string | null
           phone: string
           preferred_contact_methods: string[]
+          privacy_policy_version: string
           recommended_assigned_role: string | null
           source: string
           status: Database["public"]["Enums"]["follow_up_status"]
@@ -335,8 +339,11 @@ export type Database = {
           classification_payload?: Json
           consent_at?: string | null
           consent_given?: boolean
+          consent_recorded_by?: string | null
           consent_scope?: string[]
           consent_source?: string | null
+          consent_status?: string
+          consent_text_snapshot?: string | null
           created_at?: string
           deleted_at?: string | null
           do_not_contact?: boolean
@@ -357,6 +364,7 @@ export type Database = {
           person_id?: string | null
           phone: string
           preferred_contact_methods?: string[]
+          privacy_policy_version?: string
           recommended_assigned_role?: string | null
           source?: string
           status?: Database["public"]["Enums"]["follow_up_status"]
@@ -374,8 +382,11 @@ export type Database = {
           classification_payload?: Json
           consent_at?: string | null
           consent_given?: boolean
+          consent_recorded_by?: string | null
           consent_scope?: string[]
           consent_source?: string | null
+          consent_status?: string
+          consent_text_snapshot?: string | null
           created_at?: string
           deleted_at?: string | null
           do_not_contact?: boolean
@@ -396,6 +407,7 @@ export type Database = {
           person_id?: string | null
           phone?: string
           preferred_contact_methods?: string[]
+          privacy_policy_version?: string
           recommended_assigned_role?: string | null
           source?: string
           status?: Database["public"]["Enums"]["follow_up_status"]
@@ -444,6 +456,69 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_requests: {
+        Row: {
+          church_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          related_contact_id: string | null
+          request_type: string
+          requester_contact: string | null
+          requester_name: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          church_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          related_contact_id?: string | null
+          request_type: string
+          requester_contact?: string | null
+          requester_name: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          church_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          related_contact_id?: string | null
+          request_type?: string
+          requester_contact?: string | null
+          requester_name?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_requests_church_id_fkey"
+            columns: ["church_id"]
+            isOneToOne: false
+            referencedRelation: "churches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_requests_related_contact_id_fkey"
+            columns: ["related_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
         ]
@@ -1109,6 +1184,7 @@ export type Database = {
       }
     }
     Functions: {
+      accept_event_invitation: { Args: { p_token: string }; Returns: string }
       accept_team_invitation: { Args: { p_token: string }; Returns: string }
       current_user_can_manage_event_assignments: {
         Args: { target_event_id: string }
@@ -1159,6 +1235,15 @@ export type Database = {
           next_action: string
           status: Database["public"]["Enums"]["follow_up_status"]
           total_count: number
+        }[]
+      }
+      event_workspace_interest_counts: {
+        Args: { p_church_id: string; p_event_id: string }
+        Returns: {
+          baptism_interest_count: number
+          bible_study_interest_count: number
+          health_interest_count: number
+          prayer_request_count: number
         }[]
       }
       event_report_summary: {
@@ -1249,6 +1334,29 @@ export type Database = {
           team_member_active: boolean
           team_member_id: string
           team_member_name: string
+          user_id: string
+        }[]
+      }
+      owner_account_rows_page: {
+        Args: { p_limit?: number; p_offset?: number; p_search?: string }
+        Returns: {
+          app_admin_role: Database["public"]["Enums"]["app_admin_role"]
+          church_created_at: string
+          church_id: string
+          church_name: string
+          contact_count: number
+          email: string
+          event_count: number
+          full_name: string
+          is_protected_owner: boolean
+          membership_created_at: string
+          membership_id: string
+          role: Database["public"]["Enums"]["team_role"]
+          status: Database["public"]["Enums"]["membership_status"]
+          team_member_active: boolean
+          team_member_id: string
+          team_member_name: string
+          total_count: number
           user_id: string
         }[]
       }
@@ -1350,6 +1458,29 @@ export type Database = {
           p_status: Database["public"]["Enums"]["membership_status"]
         }
         Returns: undefined
+      }
+      owner_workspace_rows_page: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_workspace_type: string
+        }
+        Returns: {
+          church_id: string
+          church_name: string
+          contact_count: number
+          created_at: string
+          event_count: number
+          new_contact_count: number
+          profile_count: number
+          status_change_reason: string
+          status_changed_at: string
+          team_count: number
+          total_count: number
+          workspace_status: string
+          workspace_type: string
+        }[]
       }
       reset_church_contact_data: {
         Args: { p_church_id: string }

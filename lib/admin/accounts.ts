@@ -19,32 +19,25 @@ export async function getOwnerAccountsPage(
 ): Promise<OwnerPaginatedResult<OwnerAccountRow>> {
   const page = normalizeOwnerPage(params.page);
   const pageSize = normalizeOwnerPageSize(params.pageSize);
-  const q = params.q?.trim().toLowerCase();
+  const offset = (page - 1) * pageSize;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("owner_account_rows_page", {
+    p_search: params.q?.trim() || null,
+    p_limit: pageSize,
+    p_offset: offset
+  });
 
-  const rows = await getOwnerAccountRows();
+  if (error) {
+    notFound();
+  }
 
-  const filtered = q
-    ? rows.filter((account) => {
-        const haystack = [
-          account.church_name,
-          account.full_name,
-          account.email,
-          account.user_id,
-          account.role,
-          account.status,
-          account.team_member_name,
-          account.app_admin_role,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
+  const rows = (data ?? []) as Array<OwnerAccountRow & { total_count?: number }>;
+  const total = rows[0]?.total_count ?? 0;
+  const items = rows.map((row) => {
+    const account = { ...row };
+    delete account.total_count;
+    return account;
+  });
 
-        return haystack.includes(q);
-      })
-    : rows;
-
-  const start = (page - 1) * pageSize;
-  const items = filtered.slice(start, start + pageSize);
-
-  return ownerPageResult(items, filtered.length, page, pageSize);
+  return ownerPageResult(items, total, page, pageSize);
 }
