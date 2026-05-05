@@ -677,6 +677,30 @@ alter table if exists public.generated_messages
   add column if not exists approved_at timestamptz,
   add column if not exists opened_at timestamptz;
 
+create table if not exists public.message_open_events (
+  id uuid primary key default gen_random_uuid(),
+  church_id uuid not null references public.churches(id) on delete cascade,
+  contact_id uuid not null references public.contacts(id) on delete cascade,
+  generated_message_id uuid references public.generated_messages(id) on delete set null,
+  channel public.message_channel not null,
+  opened_by uuid references auth.users(id) on delete set null,
+  opened_url text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists message_open_events_contact_idx
+on public.message_open_events(contact_id, created_at desc);
+
+alter table public.message_open_events enable row level security;
+
+create policy "Members can view message open events"
+on public.message_open_events for select
+using (private.is_church_member(church_id) or private.is_app_admin());
+
+create policy "Members can create message open events"
+on public.message_open_events for insert
+with check (private.is_church_member(church_id) or private.is_app_admin());
+
 create index if not exists church_memberships_user_idx on public.church_memberships(user_id, status);
 create index if not exists church_memberships_church_idx on public.church_memberships(church_id, role, status);
 create index if not exists app_admins_role_idx on public.app_admins(role, is_protected_owner);
@@ -2381,6 +2405,57 @@ $$;
 
 revoke all on function public.owner_admin_overview() from public, anon, authenticated;
 grant execute on function public.owner_admin_overview() to authenticated;
+
+drop function if exists public.owner_admin_analytics();
+
+create or replace function public.owner_admin_analytics()
+returns table (
+  active_workspace_count bigint,
+  inactive_workspace_count bigint,
+  contacts_last_30_days bigint,
+  events_last_30_days bigint,
+  open_data_request_count bigint,
+  top_workspaces jsonb
+)
+language plpgsql
+security invoker
+set search_path = public, private
+as $$
+begin
+  perform private.require_app_admin();
+
+  return query
+  select
+    (select count(*) from public.churches where workspace_status = 'active'),
+    (select count(*) from public.churches where workspace_status = 'inactive'),
+    (select count(*) from public.contacts where deleted_at is null and created_at >= now() - interval '30 days'),
+    (select count(*) from public.events where created_at >= now() - interval '30 days'),
+    (select count(*) from public.data_requests where status in ('open','in_review')),
+    coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'church_id', ranked.church_id,
+        'church_name', ranked.church_name,
+        'workspace_type', ranked.workspace_type,
+        'contact_count', ranked.contact_count,
+        'event_count', ranked.event_count
+      ))
+      from (
+        select
+          c.id as church_id,
+          c.name as church_name,
+          c.workspace_type,
+          (select count(*) from public.contacts ct where ct.church_id = c.id and ct.deleted_at is null) as contact_count,
+          (select count(*) from public.events e where e.church_id = c.id) as event_count
+        from public.churches c
+        order by contact_count desc
+        limit 5
+      ) ranked
+    ), '[]'::jsonb);
+end;
+$$;
+
+revoke all on function public.owner_admin_analytics() from public, anon, authenticated;
+grant execute on function public.owner_admin_analytics() to authenticated;
 
 drop function if exists public.owner_account_rows();
 

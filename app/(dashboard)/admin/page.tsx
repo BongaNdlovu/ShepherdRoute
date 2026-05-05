@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { Building2, Church, ClipboardList, KeyRound, Mail, UserRoundX, UsersRound } from "lucide-react";
+import { Building2, Church, ClipboardList, KeyRound, Mail, UserRoundX, UsersRound, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { OwnerAdminMainTabs } from "@/components/app/owner-admin-main-tabs";
 import { StatCard } from "@/components/app/stat-card";
-import { getOwnerAdminOverview } from "@/lib/data";
+import { getOwnerAdminOverview, getOwnerAdminAnalytics } from "@/lib/data";
 import { requireOwnerAdmin } from "@/lib/owner-admin";
 
 export const metadata = {
@@ -14,6 +14,7 @@ export const metadata = {
 export default async function OwnerAdminPage() {
   await requireOwnerAdmin();
   const overview = await getOwnerAdminOverview();
+  const analytics = await getOwnerAdminAnalytics();
 
   return (
     <section className="space-y-6">
@@ -52,6 +53,57 @@ export default async function OwnerAdminPage() {
         <StatCard icon={KeyRound} title="Memberships" value={overview.activeAccountCount + overview.disabledAccountCount} note="Signed-up user access rows." />
         <StatCard icon={Mail} title="Pending invites" value={overview.pendingInvitationCount} note="Team account invitations awaiting acceptance." />
       </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard icon={Church} title="Active workspaces" value={analytics.activeWorkspaceCount} note="Workspaces currently active." />
+        <StatCard icon={UserRoundX} title="Inactive workspaces" value={analytics.inactiveWorkspaceCount} note="Workspaces marked inactive." />
+        <StatCard icon={UsersRound} title="Contacts (30d)" value={analytics.contactsLast30Days} note="New contacts in last 30 days." />
+        <StatCard icon={ClipboardList} title="Events (30d)" value={analytics.eventsLast30Days} note="Events created in last 30 days." />
+      </div>
+
+      {analytics.openDataRequestCount > 0 ? (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-600" />
+              Open data requests
+            </CardTitle>
+            <CardDescription>
+              {analytics.openDataRequestCount} data request{analytics.openDataRequestCount !== 1 ? "s" : ""} awaiting review.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild>
+              <Link href="/admin/data-requests">Review Data Requests</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {analytics.topWorkspaces.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Top workspaces by contact count</CardTitle>
+            <CardDescription>Workspaces with the most visitor registrations.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {analytics.topWorkspaces.map((workspace) => (
+                <div key={workspace.church_id} className="flex items-center justify-between rounded-lg border p-3">
+                  <div>
+                    <p className="font-semibold">{workspace.church_name}</p>
+                    <p className="text-sm text-muted-foreground">{workspace.workspace_type}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold">{workspace.contact_count} contacts</p>
+                    <p className="text-sm text-muted-foreground">{workspace.event_count} events</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

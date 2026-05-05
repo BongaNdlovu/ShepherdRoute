@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Check } from "lucide-react";
 import { updateContactAction, updateContactLifecycleAction } from "@/app/(dashboard)/actions";
 import { DeleteContactConfirmForm } from "@/components/app/delete-contact-confirm-form";
 import { InterestPills } from "@/components/app/interest-pills";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { statusLabels, statusOptions, contactMethodLabels, assignmentRoleLabels, assignmentRoleOptions } from "@/lib/constants";
 import type { ContactListItem } from "@/lib/data";
 import { cn } from "@/lib/utils";
@@ -18,12 +19,18 @@ type ContactListProps = {
   team: Array<{ id: string; display_name: string }>;
   compactLists?: boolean;
   canManageContacts?: boolean;
+  selectedContactIds?: string[];
+  onToggleSelection?: (contactId: string) => void;
 };
 
-export function ContactList({ churchName, contacts, team, compactLists = false, canManageContacts = false }: ContactListProps) {
+export function ContactList({ churchName, contacts, team, compactLists = false, canManageContacts = false, selectedContactIds = [], onToggleSelection }: ContactListProps) {
   return (
     <div className="mt-5 overflow-hidden rounded-2xl border border-border/70 bg-card shadow-card">
-      <div className="hidden grid-cols-[1.15fr_1fr_1.1fr_1.2fr] bg-slate-50/70 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:grid">
+      <div className={cn(
+        "hidden bg-slate-50/70 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:grid",
+        onToggleSelection ? "grid-cols-[auto_1.15fr_1fr_1.1fr_1.2fr]" : "grid-cols-[1.15fr_1fr_1.1fr_1.2fr]"
+      )}>
+        {onToggleSelection ? <span></span> : null}
         <span>Contact</span>
         <span>Interest</span>
         <span>Pathway</span>
@@ -38,15 +45,27 @@ export function ContactList({ churchName, contacts, team, compactLists = false, 
             churchName,
             eventName: contact.event_name
           });
+          const isSelected = selectedContactIds.includes(contact.id);
 
           return (
             <div
               key={contact.id}
               className={cn(
-                "grid transition-colors hover:bg-accent/5 xl:grid-cols-[1.15fr_1fr_1.1fr_1.2fr] xl:items-center",
-                compactLists ? "gap-2 px-3 py-2" : "gap-4 px-4 py-4"
+                "grid transition-colors hover:bg-accent/5 xl:items-center",
+                onToggleSelection ? "xl:grid-cols-[auto_1.15fr_1fr_1.1fr_1.2fr]" : "xl:grid-cols-[1.15fr_1fr_1.1fr_1.2fr]",
+                compactLists ? "gap-2 px-3 py-2" : "gap-4 px-4 py-4",
+                isSelected ? "bg-amber-50" : ""
               )}
             >
+              {onToggleSelection ? (
+                <div className="flex items-center">
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={() => onToggleSelection(contact.id)}
+                    aria-label={`Select ${contact.full_name}`}
+                  />
+                </div>
+              ) : null}
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Link href={`/contacts/${contact.id}`} className="font-semibold text-foreground underline-offset-4 hover:underline">
@@ -55,6 +74,7 @@ export function ContactList({ churchName, contacts, team, compactLists = false, 
                   <UrgencyBadge urgency={contact.urgency} />
                   {contact.do_not_contact ? <span className="rounded-md bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground">Do not contact</span> : null}
                   {contact.duplicate_of_contact_id ? <span className="rounded-md bg-accent/10 px-2 py-1 text-xs font-semibold text-accent">Journey match</span> : null}
+                  {isSelected ? <Check className="h-4 w-4 text-amber-600" /> : null}
                 </div>
                 <p className={cn(compactLists ? "mt-0.5 text-xs" : "mt-1 text-sm", "text-muted-foreground")}>{contact.phone ?? "No phone"}{contact.email ? ` - ${contact.email}` : ""}{contact.area ? ` - ${contact.area}` : ""}</p>
                 <p className={cn(compactLists ? "mt-0.5" : "mt-1", "text-xs text-muted-foreground")}>

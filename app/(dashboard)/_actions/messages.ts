@@ -44,13 +44,22 @@ export async function saveGeneratedMessageAction(formData: FormData) {
   }
   const supabase = await createClient();
   await requireContactManager(context, supabase, `/contacts/${parsed.data.contactId}`);
-  await supabase.from("generated_messages").insert({
+  const { data: insertedMessage } = await supabase.from("generated_messages").insert({
     church_id: context.churchId,
     contact_id: parsed.data.contactId,
     generated_by: context.userId,
     channel: "whatsapp",
     message_text: parsed.data.message,
     wa_link: link
+  }).select("id").single();
+
+  await supabase.from("message_open_events").insert({
+    church_id: context.churchId,
+    contact_id: parsed.data.contactId,
+    generated_message_id: insertedMessage?.id ?? null,
+    channel: "whatsapp",
+    opened_by: context.userId,
+    opened_url: link
   });
 
   revalidatePath(`/contacts/${parsed.data.contactId}`);
@@ -136,6 +145,15 @@ export async function openSuggestedWhatsappAction(formData: FormData) {
       redirect(`${returnTo}?error=${encodeURIComponent(updateError.message)}`);
     }
   }
+
+  await supabase.from("message_open_events").insert({
+    church_id: context.churchId,
+    contact_id: parsed.data.contactId,
+    generated_message_id: parsed.data.messageId ?? null,
+    channel: "whatsapp",
+    opened_by: context.userId,
+    opened_url: link
+  });
 
   revalidatePath("/dashboard");
   revalidatePath("/follow-ups");

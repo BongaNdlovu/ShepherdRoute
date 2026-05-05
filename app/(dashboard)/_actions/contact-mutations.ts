@@ -38,6 +38,13 @@ const contactLifecycleSchema = z.object({
   intent: z.enum(["do_not_contact", "archive", "delete"])
 });
 
+const bulkAssignmentSchema = z.object({
+  contactIds: z.array(z.string().uuid()).min(1),
+  assignedTo: z.string().uuid().or(z.literal("unassigned")),
+  assignedHandlingRole: z.enum(assignmentRoleOptions).or(z.literal("")).optional(),
+  status: z.enum(statusOptions).optional()
+});
+
 export async function updateContactAction(formData: FormData) {
   const context = await getChurchContext();
   const parsed = contactUpdateSchema.safeParse({
@@ -386,4 +393,93 @@ export async function addQuickContactAction(formData: FormData) {
 
   revalidatePath("/contacts");
   redirect(`/contacts/${contact.id}`);
+}
+
+export async function bulkAssignContactsAction(formData: FormData) {
+  const context = await getChurchContext();
+  const contactIds = formData.getAll("contactIds").map(String);
+  const parsed = bulkAssignmentSchema.safeParse({
+    contactIds,
+    assignedTo: formData.get("assignedTo"),
+    assignedHandlingRole: formData.has("assignedHandlingRole")
+      ? formData.get("assignedHandlingRole") || ""
+      : undefined,
+    status: formData.has("status") ? formData.get("status") || undefined : undefined
+  });
+
+  if (!parsed.success) {
+    redirect("/contacts?error=Could%20not%20bulk%20assign%20contacts.");
+  }
+
+  const assignedTo = parsed.data.assignedTo === "unassigned" ? null : parsed.data.assignedTo;
+  const assignedHandlingRole =
+    parsed.data.assignedHandlingRole === undefined
+      ? undefined
+      : parsed.data.assignedHandlingRole === ""
+        ? null
+        : parsed.data.assignedHandlingRole;
+
+  const supabase = await createClient();
+  await requireContactManager(context, supabase);
+
+  const { data: validContacts } = await supabase
+    .from("contacts")
+    .select("id")
+    .eq("church_id", context.churchId)
+    .in("id", parsed.data.contactIds)
+    .is("deleted_at", null)
+    .is("archived_at", null);
+
+  if (!validContacts || validContacts.length === 0) {
+    redirect("/contacts?error=No%20valid%20contacts%20found%20to%20assign.");
+  }
+
+  const validContactIds = validContacts.map((c) => c.id);
+
+  const contactUpdate: {
+    assigned_to: string | null;
+    status?: typeof parsed.data.status;
+    assigned_handling_role?: string | null;
+  } = {
+    assigned_to: assignedTo
+  };
+
+  if (parsed.data.status !== undefined) {
+    contactUpdate.status = parsed.data.status;
+  }
+
+  if (assignedHandlingRole !== undefined) {
+    contactUpdate.assigned_handling_role = assignedHandlingRole;
+  }
+
+  const { error: updateError } = await supabase
+    .from("contacts")
+    .update(contactUpdate)
+    .eq("church_id", context.churchId)
+    .in("id", validContactIds);
+
+  if (updateError) {
+    redirect(`/contacts?error=${actionError(updateError, "Could not bulk assign contacts.")}`);
+  }
+
+  for (const contactId of validContactIds) {
+    const { error: followUpError } = await supabase.from("follow_ups").insert({
+      church_id: context.churchId,
+      contact_id: contactId,
+      assigned_to: assignedTo,
+      assigned_handling_role: assignedHandlingRole ?? null,
+      author_id: context.userId,
+      channel: "note",
+      status: parsed.data.status ?? "assigned",
+      notes: "Bulk assignment updated.",
+      next_action: parsed.data.status === "closed" ? "No further action needed." : "Continue follow-up pathway."
+    });
+
+    if (followUpError) {
+      redirect(`/contacts?error=${actionError(followUpError, "Contacts updated, but follow-up history could not be saved for some contacts.")}`);
+    }
+  }
+
+  revalidatePath("/contacts");
+  redirect("/contacts?success=Bulk%20assignment%20completed.");
 }

@@ -9,6 +9,21 @@ export type OwnerAdminOverview = {
   contactCount: number;
 };
 
+export type OwnerAdminAnalytics = {
+  activeWorkspaceCount: number;
+  inactiveWorkspaceCount: number;
+  contactsLast30Days: number;
+  eventsLast30Days: number;
+  openDataRequestCount: number;
+  topWorkspaces: Array<{
+    church_id: string;
+    church_name: string;
+    workspace_type: "church" | "ministry";
+    contact_count: number;
+    event_count: number;
+  }>;
+};
+
 export type OwnerChurchSummary = {
   church_id: string;
   church_name: string;

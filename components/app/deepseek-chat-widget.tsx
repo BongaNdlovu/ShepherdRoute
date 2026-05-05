@@ -86,7 +86,7 @@ function eventIdFromPathname(pathname: string) {
   return pathname.slice(REPORT_EVENT_PATH_PREFIX.length).split("/")[0] || undefined;
 }
 
-export function DeepSeekChatWidget() {
+export function DeepSeekChatWidget({ aiEnabled = false }: { aiEnabled?: boolean }) {
   const pathname = usePathname();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState("");
@@ -190,7 +190,7 @@ export function DeepSeekChatWidget() {
     event.preventDefault();
 
     const message = input.trim();
-    if (!message || isLoading) return;
+    if (!message || isLoading || !aiEnabled) return;
 
     setInput("");
     setError(null);
@@ -259,9 +259,12 @@ export function DeepSeekChatWidget() {
                 <BrandLogo className="h-full w-full object-contain" priority />
               </div>
               <div className="min-w-0">
-                <h2 className="font-black">ShepherdRoute AI</h2>
+                <h2 className="font-black">{aiEnabled ? "ShepherdRoute AI" : "ShepherdRoute Help"}</h2>
                 <p className="text-xs text-white/70">
-                  {isReportAware ? "Ask what should happen next from this report." : "Ask about workflows, reports, and follow-up."}
+                  {aiEnabled
+                    ? (isReportAware ? "Ask what should happen next from this report." : "Ask about workflows, reports, and follow-up.")
+                    : "Workflow guidance and help documentation."
+                  }
                 </p>
               </div>
             </div>
@@ -365,12 +368,26 @@ export function DeepSeekChatWidget() {
                 placeholder={isReportAware ? "Ask what should happen next..." : "Ask ShepherdRoute AI..."}
                 className="min-h-11 min-w-0 resize-none"
                 maxLength={2000}
+                disabled={!aiEnabled}
               />
-              <Button type="submit" size="icon" className="shrink-0" disabled={isLoading || !input.trim()}>
+              <Button type="submit" size="icon" className="shrink-0" disabled={isLoading || !input.trim() || !aiEnabled}>
                 <Send className="h-4 w-4" />
               </Button>
             </div>
           </form>
+          {!aiEnabled ? (
+            <div className="grid gap-2 border-t p-3 text-sm">
+              <p className="rounded-lg bg-muted p-3 text-muted-foreground">
+                AI is not configured. You can still use the workflow guide below.
+              </p>
+              <p className="rounded-lg border p-3">
+                After an event: review new contacts, assign each person, open follow-up tasks, record outcomes, then check reports.
+              </p>
+              <p className="rounded-lg border p-3">
+                For urgent interests like prayer, baptism, or pastoral visits, assign a trusted leader and set a near due date.
+              </p>
+            </div>
+          ) : null}
         </section>
       ) : (
         <Button type="button" className="h-14 w-14 rounded-full shadow-2xl" size="icon" onClick={() => setIsOpen(true)}>
