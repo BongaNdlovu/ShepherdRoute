@@ -2385,7 +2385,11 @@ returns table (
   accepted_by_name text,
   expires_at timestamptz,
   accepted_at timestamptz,
-  created_at timestamptz
+  created_at timestamptz,
+  source text,
+  workspace_type text,
+  event_id uuid,
+  event_name text
 )
 language plpgsql
 security definer
@@ -2411,17 +2415,466 @@ begin
     accepted_by_profile.full_name as accepted_by_name,
     team_invitations.expires_at,
     team_invitations.accepted_at,
-    team_invitations.created_at
+    team_invitations.created_at,
+    'workspace_team' as source,
+    churches.workspace_type,
+    null::uuid as event_id,
+    null::text as event_name
   from public.team_invitations
   join public.churches on churches.id = team_invitations.church_id
   left join public.profiles as invited_by_profile on invited_by_profile.id = team_invitations.invited_by
   left join public.profiles as accepted_by_profile on accepted_by_profile.id = team_invitations.accepted_by
-  order by team_invitations.created_at desc;
+
+  union all
+
+  select
+    churches.id as church_id,
+    churches.name as church_name,
+    event_assignments.id as invitation_id,
+    event_assignments.team_member_id,
+    coalesce(team_members.display_name, event_assignments.invitee_email) as display_name,
+    event_assignments.invitee_email as email,
+    null::public.team_role as role,
+    case
+      when event_assignments.status = 'pending' and event_assignments.invitation_expires_at <= now() then 'expired'
+      else event_assignments.status::text
+    end::public.team_invitation_status as status,
+    invited_by_profile.full_name as invited_by_name,
+    null::text as accepted_by_name,
+    event_assignments.invitation_expires_at as expires_at,
+    event_assignments.accepted_at,
+    event_assignments.invited_at as created_at,
+    'event_team' as source,
+    churches.workspace_type,
+    event_assignments.event_id,
+    events.name as event_name
+  from public.event_assignments
+  join public.churches on churches.id = event_assignments.church_id
+  join public.events on events.id = event_assignments.event_id
+  left join public.team_members on team_members.id = event_assignments.team_member_id
+  left join public.profiles as invited_by_profile on invited_by_profile.id = event_assignments.invited_by
+  order by created_at desc;
 end;
 $$;
 
 revoke all on function public.owner_invitation_rows() from public, anon, authenticated;
 grant execute on function public.owner_invitation_rows() to authenticated;
+
+drop function if exists public.owner_reset_workspace_invites(uuid, text);
+
+create or replace function public.owner_reset_workspace_invites(p_church_id uuid, p_reason text default null)
+returns void
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+begin
+  perform private.require_app_admin();
+
+  update public.team_invitations
+  set status = 'revoked',
+      updated_at = now()
+  where church_id = p_church_id
+    and status in ('pending', 'expired', 'revoked');
+
+  update public.church_memberships
+  set status = 'disabled',
+      updated_at = now()
+  where church_id = p_church_id
+    and status = 'active'
+    and id in (
+      select distinct team_invitations.team_member_id
+      from public.team_invitations
+      where team_invitations.church_id = p_church_id
+        and team_invitations.status = 'accepted'
+        and team_invitations.team_member_id is not null
+    );
+
+  update public.team_members
+  set is_active = false,
+      updated_at = now()
+  where church_id = p_church_id
+    and membership_id in (
+      select distinct church_memberships.id
+      from public.church_memberships
+      where church_memberships.church_id = p_church_id
+        and church_memberships.status = 'disabled'
+    );
+
+  insert into public.audit_logs (church_id, actor_user_id, target_type, target_id, action, metadata)
+  select
+    p_church_id,
+    auth.uid(),
+    'team_invitation',
+    id,
+    'invitation.workspace_reset',
+    jsonb_build_object('reason', p_reason)
+  from public.team_invitations
+  where church_id = p_church_id
+    and status = 'revoked';
+end;
+$$;
+
+revoke all on function public.owner_reset_workspace_invites(uuid, text) from public, anon, authenticated;
+grant execute on function public.owner_reset_workspace_invites(uuid, text) to authenticated;
+
+drop function if exists public.owner_reset_event_invites(uuid, uuid, text);
+
+create or replace function public.owner_reset_event_invites(p_church_id uuid, p_event_id uuid default null, p_reason text default null)
+returns void
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+begin
+  perform private.require_app_admin();
+
+  update public.event_assignments
+  set status = 'revoked',
+      revoked_at = now(),
+      invitation_token_hash = null,
+      updated_at = now()
+  where church_id = p_church_id
+    and (p_event_id is null or event_id = p_event_id)
+    and status in ('pending', 'accepted');
+
+  update public.church_memberships
+  set status = 'disabled',
+      updated_at = now()
+  where church_id = p_church_id
+    and status = 'active'
+    and id in (
+      select distinct event_assignments.team_member_id
+      from public.event_assignments
+      join public.team_members on team_members.id = event_assignments.team_member_id
+      where event_assignments.church_id = p_church_id
+        and (p_event_id is null or event_assignments.event_id = p_event_id)
+        and event_assignments.status = 'revoked'
+        and event_assignments.team_member_id is not null
+        and team_members.membership_id is not null
+        and not exists (
+          select 1
+          from public.church_memberships as other_memberships
+          where other_memberships.user_id = (
+            select user_id from public.church_memberships where id = team_members.membership_id
+          )
+            and other_memberships.church_id = p_church_id
+            and other_memberships.status = 'active'
+            and other_memberships.id <> team_members.membership_id
+        )
+    );
+
+  update public.team_members
+  set is_active = false,
+      updated_at = now()
+  where church_id = p_church_id
+    and membership_id in (
+      select distinct church_memberships.id
+      from public.church_memberships
+      where church_memberships.church_id = p_church_id
+        and church_memberships.status = 'disabled'
+    );
+
+  insert into public.audit_logs (church_id, actor_user_id, target_type, target_id, action, metadata)
+  select
+    p_church_id,
+    auth.uid(),
+    'event_assignment',
+    id,
+    'invitation.event_reset',
+    jsonb_build_object('event_id', event_id, 'reason', p_reason)
+  from public.event_assignments
+  where church_id = p_church_id
+    and (p_event_id is null or event_id = p_event_id)
+    and status = 'revoked';
+end;
+$$;
+
+revoke all on function public.owner_reset_event_invites(uuid, uuid, text) from public, anon, authenticated;
+grant execute on function public.owner_reset_event_invites(uuid, uuid, text) to authenticated;
+
+drop function if exists public.owner_disable_workspace_team_member(uuid, text);
+
+create or replace function public.owner_disable_workspace_team_member(p_team_member_id uuid, p_reason text default null)
+returns void
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+declare
+  target_team_member public.team_members%rowtype;
+  target_is_protected_owner boolean := false;
+  active_leader_count integer := 0;
+begin
+  perform private.require_app_admin();
+
+  select *
+  into target_team_member
+  from public.team_members
+  where id = p_team_member_id
+  limit 1;
+
+  if target_team_member.id is null then
+    raise exception 'Team member not found.';
+  end if;
+
+  select exists (
+    select 1
+    from public.app_admins
+    join public.church_memberships on church_memberships.user_id = app_admins.user_id
+    where app_admins.is_protected_owner = true
+      and church_memberships.id = target_team_member.membership_id
+  )
+  into target_is_protected_owner;
+
+  if target_is_protected_owner then
+    raise exception 'Protected owner access cannot be disabled.';
+  end if;
+
+  select count(*)
+  into active_leader_count
+  from public.church_memberships
+  where church_id = target_team_member.church_id
+    and status = 'active'
+    and role in ('admin','pastor')
+    and id <> target_team_member.membership_id;
+
+  if active_leader_count = 0 then
+    raise exception 'Every workspace must keep at least one active admin or pastor.';
+  end if;
+
+  if target_team_member.membership_id is not null then
+    update public.church_memberships
+    set status = 'disabled',
+        updated_at = now()
+    where id = target_team_member.membership_id;
+  end if;
+
+  update public.team_members
+  set is_active = false,
+      updated_at = now()
+  where id = p_team_member_id;
+
+  insert into public.audit_logs (church_id, actor_user_id, target_type, target_id, action, metadata)
+  values (
+    target_team_member.church_id,
+    auth.uid(),
+    'team_member',
+    p_team_member_id,
+    'team_member.disabled',
+    jsonb_build_object('reason', p_reason)
+  );
+end;
+$$;
+
+revoke all on function public.owner_disable_workspace_team_member(uuid, text) from public, anon, authenticated;
+grant execute on function public.owner_disable_workspace_team_member(uuid, text) to authenticated;
+
+drop function if exists public.owner_remove_workspace_team_member(uuid, text);
+
+create or replace function public.owner_remove_workspace_team_member(p_team_member_id uuid, p_reason text default null)
+returns void
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+declare
+  target_team_member public.team_members%rowtype;
+  target_is_protected_owner boolean := false;
+  active_leader_count integer := 0;
+begin
+  perform private.require_app_admin();
+
+  select *
+  into target_team_member
+  from public.team_members
+  where id = p_team_member_id
+  limit 1;
+
+  if target_team_member.id is null then
+    raise exception 'Team member not found.';
+  end if;
+
+  select exists (
+    select 1
+    from public.app_admins
+    join public.church_memberships on church_memberships.user_id = app_admins.user_id
+    where app_admins.is_protected_owner = true
+      and church_memberships.id = target_team_member.membership_id
+  )
+  into target_is_protected_owner;
+
+  if target_is_protected_owner then
+    raise exception 'Protected owner access cannot be removed.';
+  end if;
+
+  select count(*)
+  into active_leader_count
+  from public.church_memberships
+  where church_id = target_team_member.church_id
+    and status = 'active'
+    and role in ('admin','pastor')
+    and id <> target_team_member.membership_id;
+
+  if active_leader_count = 0 then
+    raise exception 'Every workspace must keep at least one active admin or pastor.';
+  end if;
+
+  if target_team_member.membership_id is not null then
+    update public.church_memberships
+    set status = 'disabled',
+        updated_at = now()
+    where id = target_team_member.membership_id;
+  end if;
+
+  update public.team_members
+  set is_active = false,
+      updated_at = now()
+  where id = p_team_member_id;
+
+  insert into public.audit_logs (church_id, actor_user_id, target_type, target_id, action, metadata)
+  values (
+    target_team_member.church_id,
+    auth.uid(),
+    'team_member',
+    p_team_member_id,
+    'team_member.removed',
+    jsonb_build_object('reason', p_reason)
+  );
+end;
+$$;
+
+revoke all on function public.owner_remove_workspace_team_member(uuid, text) from public, anon, authenticated;
+grant execute on function public.owner_remove_workspace_team_member(uuid, text) to authenticated;
+
+drop function if exists public.owner_delete_workspace_team_member(uuid, text);
+
+create or replace function public.owner_delete_workspace_team_member(p_team_member_id uuid, p_reason text default null)
+returns void
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+declare
+  target_team_member public.team_members%rowtype;
+begin
+  perform private.require_app_admin();
+
+  select *
+  into target_team_member
+  from public.team_members
+  where id = p_team_member_id
+  limit 1;
+
+  if target_team_member.id is null then
+    raise exception 'Team member not found.';
+  end if;
+
+  if target_team_member.membership_id is not null then
+    raise exception 'Cannot delete team member with login access. Use disable or remove instead.';
+  end if;
+
+  insert into public.audit_logs (church_id, actor_user_id, target_type, target_id, action, metadata)
+  values (
+    target_team_member.church_id,
+    auth.uid(),
+    'team_member',
+    p_team_member_id,
+    'team_member.deleted',
+    jsonb_build_object('reason', p_reason)
+  );
+
+  delete from public.team_members where id = p_team_member_id;
+end;
+$$;
+
+revoke all on function public.owner_delete_workspace_team_member(uuid, text) from public, anon, authenticated;
+grant execute on function public.owner_delete_workspace_team_member(uuid, text) to authenticated;
+
+drop function if exists public.owner_revoke_event_assignment(uuid, text);
+
+create or replace function public.owner_revoke_event_assignment(p_assignment_id uuid, p_reason text default null)
+returns void
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+declare
+  target_assignment public.event_assignments%rowtype;
+begin
+  perform private.require_app_admin();
+
+  select *
+  into target_assignment
+  from public.event_assignments
+  where id = p_assignment_id
+  limit 1;
+
+  if target_assignment.id is null then
+    raise exception 'Event assignment not found.';
+  end if;
+
+  update public.event_assignments
+  set status = 'revoked',
+      revoked_at = now(),
+      revoked_by = auth.uid(),
+      updated_at = now()
+  where id = p_assignment_id;
+
+  insert into public.audit_logs (church_id, actor_user_id, target_type, target_id, action, metadata)
+  values (
+    target_assignment.church_id,
+    auth.uid(),
+    'event_assignment',
+    p_assignment_id,
+    'event_assignment.revoked',
+    jsonb_build_object('event_id', target_assignment.event_id, 'reason', p_reason)
+  );
+end;
+$$;
+
+revoke all on function public.owner_revoke_event_assignment(uuid, text) from public, anon, authenticated;
+grant execute on function public.owner_revoke_event_assignment(uuid, text) to authenticated;
+
+drop function if exists public.owner_delete_event_assignment(uuid, text);
+
+create or replace function public.owner_delete_event_assignment(p_assignment_id uuid, p_reason text default null)
+returns void
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+declare
+  target_assignment public.event_assignments%rowtype;
+begin
+  perform private.require_app_admin();
+
+  select *
+  into target_assignment
+  from public.event_assignments
+  where id = p_assignment_id
+  limit 1;
+
+  if target_assignment.id is null then
+    raise exception 'Event assignment not found.';
+  end if;
+
+  insert into public.audit_logs (church_id, actor_user_id, target_type, target_id, action, metadata)
+  values (
+    target_assignment.church_id,
+    auth.uid(),
+    'event_assignment',
+    p_assignment_id,
+    'event_assignment.deleted',
+    jsonb_build_object('event_id', target_assignment.event_id, 'reason', p_reason)
+  );
+
+  delete from public.event_assignments where id = p_assignment_id;
+end;
+$$;
+
+revoke all on function public.owner_delete_event_assignment(uuid, text) from public, anon, authenticated;
+grant execute on function public.owner_delete_event_assignment(uuid, text) to authenticated;
 
 drop function if exists public.owner_update_membership_status(uuid, public.membership_status);
 

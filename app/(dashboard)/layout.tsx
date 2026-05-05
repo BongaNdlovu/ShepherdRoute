@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { NavigationHistoryControls } from "@/components/app/navigation-history-controls";
 import { InactiveWorkspaceNotice } from "@/components/app/inactive-workspace-notice";
 import { MobileBottomNav } from "@/components/app/mobile-bottom-nav";
-import { GeminiChatWidget } from "@/components/app/gemini-chat-widget";
+import { DeepSeekChatWidget } from "@/components/app/deepseek-chat-widget";
 import { roleLabels } from "@/lib/constants";
 import { getChurchContext } from "@/lib/data";
 
@@ -46,11 +46,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
             </div>
             <div>
               <p className="text-xs text-white/60">ShepherdRoute · {context.workspaceLabel}</p>
-              <h1 className="text-base font-bold leading-tight">{context.churchName}</h1>
             </div>
           </Link>
 
-          <div className="min-h-0 flex-1 overflow-y-auto pr-1 sidebar-scroll">
+          <div className="flex flex-col gap-2 p-4 flex-1">
             {context.memberships.length > 1 ? (
               <form action={switchChurchAction} className="mt-3 grid gap-2 p-3">
                 <label htmlFor="churchId" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -136,7 +135,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </footer>
         </main>
         <MobileBottomNav />
-        {process.env.GEMINI_API_KEY ? <GeminiChatWidget /> : null}
+        {process.env.DEEPSEEK_API_KEY ? <DeepSeekChatWidget /> : null}
       </div>
     </div>
   );

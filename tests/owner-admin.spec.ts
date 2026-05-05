@@ -20,6 +20,41 @@ test.describe("owner admin account controls", () => {
     expect(schema).toContain("create or replace function public.owner_invitation_rows()");
     expect(schema).toContain("perform private.require_app_admin()");
     expect(schema).toContain("team_invitations.status");
+    expect(schema).toContain("'workspace_team' as source");
+    expect(schema).toContain("'event_team' as source");
+    expect(schema).toContain("event_assignments.status");
+    expect(schema).toContain("events.name as event_name");
+  });
+
+  test("schema exposes owner invitation and event assignment reset controls", () => {
+    expect(schema).toContain("create or replace function public.owner_reset_workspace_invites");
+    expect(schema).toContain("create or replace function public.owner_reset_event_invites");
+    expect(schema).toContain("invitation.workspace_reset");
+    expect(schema).toContain("invitation.event_reset");
+    expect(schema).toContain("invitation_token_hash = null");
+    expect(adminActions).toContain("resetWorkspaceInvitesAction");
+    expect(adminActions).toContain("resetEventInvitesAction");
+    expect(adminActions).toContain("owner_reset_workspace_invites");
+    expect(adminActions).toContain("owner_reset_event_invites");
+  });
+
+  test("schema exposes safe owner team member controls", () => {
+    expect(schema).toContain("create or replace function public.owner_disable_workspace_team_member");
+    expect(schema).toContain("create or replace function public.owner_remove_workspace_team_member");
+    expect(schema).toContain("create or replace function public.owner_delete_workspace_team_member");
+    expect(schema).toContain("create or replace function public.owner_revoke_event_assignment");
+    expect(schema).toContain("create or replace function public.owner_delete_event_assignment");
+    expect(schema).toContain("Cannot delete team member with login access. Use disable or remove instead.");
+    expect(schema).toContain("team_member.disabled");
+    expect(schema).toContain("team_member.removed");
+    expect(schema).toContain("team_member.deleted");
+    expect(schema).toContain("event_assignment.revoked");
+    expect(schema).toContain("event_assignment.deleted");
+    expect(adminActions).toContain("disableWorkspaceTeamMemberAction");
+    expect(adminActions).toContain("removeWorkspaceTeamMemberAction");
+    expect(adminActions).toContain("deleteWorkspaceTeamMemberAction");
+    expect(adminActions).toContain("revokeEventAssignmentAction");
+    expect(adminActions).toContain("deleteEventAssignmentAction");
   });
 
   test("schema exposes safe membership status updates", () => {

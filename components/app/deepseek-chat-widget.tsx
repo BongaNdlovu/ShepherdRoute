@@ -21,7 +21,7 @@ function eventIdFromPathname(pathname: string) {
   return pathname.slice(REPORT_EVENT_PATH_PREFIX.length).split("/")[0] || undefined;
 }
 
-export function GeminiChatWidget() {
+export function DeepSeekChatWidget() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);

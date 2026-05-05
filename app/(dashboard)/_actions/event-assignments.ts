@@ -9,6 +9,7 @@ import {
 } from '@/lib/event-permission-presets';
 import { requireEventPermission } from '@/lib/data-event-assignments';
 import type { AppAdminRole } from '@/lib/permissions';
+import { gmailComposeUrl, eventInviteTemplate } from '@/lib/invite-email';
 
 function hashToken(token: string) {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -375,4 +376,44 @@ export async function acceptEventInvitation(input: {
   revalidatePath(`/events/${eventId}/team`);
 
   return { ok: true, eventId };
+}
+
+export async function getEventInviteGmailUrlAction(formData: FormData) {
+  const { supabase, user } = await getCurrentUserContext();
+
+  const parsed = {
+    token: String(formData.get("token") || ""),
+    eventId: String(formData.get("eventId") || "")
+  };
+
+  if (!parsed.token || !parsed.eventId) {
+    return { error: "Invalid request" };
+  }
+
+  const { data: assignment } = await supabase
+    .from("event_assignments")
+    .select("*, events(name), churches(name)")
+    .eq("invitation_token_hash", hashToken(parsed.token))
+    .eq("event_id", parsed.eventId)
+    .single();
+
+  if (!assignment) {
+    return { error: "Invitation not found" };
+  }
+
+  const inviteLink = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/event-invitations/accept?token=${parsed.token}`;
+  const { subject, body } = eventInviteTemplate({
+    eventName: assignment.events.name,
+    workspaceName: assignment.churches.name,
+    inviterName: user.user_metadata?.full_name || "A team member",
+    inviteLink
+  });
+
+  const gmailUrl = gmailComposeUrl({
+    to: assignment.invitee_email,
+    subject,
+    body
+  });
+
+  return { gmailUrl };
 }

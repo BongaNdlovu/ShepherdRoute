@@ -1,4 +1,3 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { getChurchContext, getEventReportSummary } from "@/lib/data";
 import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
@@ -17,31 +16,38 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
-async function generateGeminiReply(apiKey: string, prompt: string) {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const modelNames = Array.from(
-    new Set([
-      process.env.GEMINI_MODEL?.trim(),
-      "gemini-2.5-flash-lite",
-      "gemini-2.5-flash",
-      "gemini-2.0-flash",
-      "gemini-1.5-flash"
-    ].filter(Boolean))
-  ) as string[];
-  let lastError: unknown;
+async function generateDeepSeekReply(prompt: string) {
+  const apiKey = process.env.DEEPSEEK_API_KEY?.trim();
 
-  for (const modelName of modelNames) {
-    try {
-      const model = genAI.getGenerativeModel({ model: modelName });
-      const result = await model.generateContent(prompt);
-      return result.response.text();
-    } catch (error) {
-      lastError = error;
-      console.error(`Gemini API error (${modelName}):`, errorMessage(error));
-    }
+  if (!apiKey) {
+    throw new Error("DeepSeek is not configured.");
   }
 
-  throw new Error(`Gemini failed for all configured models. Last error: ${errorMessage(lastError)}`);
+  const response = await fetch("https://api.deepseek.com/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: process.env.DEEPSEEK_MODEL?.trim() || "deepseek-v4-flash",
+      thinking: { type: process.env.DEEPSEEK_THINKING === "enabled" ? "enabled" : "disabled" },
+      messages: [
+        { role: "system", content: "You are the ShepherdRoute assistant. Keep answers practical, concise, and action-oriented." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.3,
+      max_tokens: 1024
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`DeepSeek API error: ${response.status} ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0]?.message?.content || "";
 }
 
 export async function POST(request: Request) {
@@ -68,12 +74,6 @@ export async function POST(request: Request) {
 
   if (message.length > MAX_MESSAGE_LENGTH) {
     return safeJson({ error: `Message must be ${MAX_MESSAGE_LENGTH} characters or fewer.` }, 400);
-  }
-
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-
-  if (!apiKey) {
-    return safeJson({ error: "Gemini is not configured." }, 503);
   }
 
   try {
@@ -106,14 +106,14 @@ Respond with:
     }
 
     try {
-      const reply = await generateGeminiReply(apiKey, prompt);
+      const reply = await generateDeepSeekReply(prompt);
       return safeJson({ reply });
     } catch (error) {
-      console.error("Gemini API error:", errorMessage(error));
+      console.error("DeepSeek API error:", errorMessage(error));
       return safeJson(
         {
           error:
-            "Gemini could not generate a response. Check that GEMINI_API_KEY is valid, enabled for Gemini, and configured in this environment."
+            "DeepSeek could not generate a response. Check that DEEPSEEK_API_KEY is valid and configured in this environment."
         },
         502
       );

@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -161,6 +161,74 @@ export type Database = {
           workspace_type?: string
         }
         Relationships: []
+      }
+      contact_form_answers: {
+        Row: {
+          answer_display: Json
+          answer_value: Json
+          church_id: string
+          contact_id: string
+          created_at: string
+          event_id: string | null
+          id: string
+          question_label: string
+          question_name: string
+          question_type: string
+        }
+        Insert: {
+          answer_display?: Json
+          answer_value?: Json
+          church_id: string
+          contact_id: string
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          question_label: string
+          question_name: string
+          question_type: string
+        }
+        Update: {
+          answer_display?: Json
+          answer_value?: Json
+          church_id?: string
+          contact_id?: string
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          question_label?: string
+          question_name?: string
+          question_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_form_answers_church_id_fkey"
+            columns: ["church_id"]
+            isOneToOne: false
+            referencedRelation: "churches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_form_answers_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_form_answers_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_form_answers_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "public_events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contact_interests: {
         Row: {
@@ -1237,15 +1305,6 @@ export type Database = {
           total_count: number
         }[]
       }
-      event_workspace_interest_counts: {
-        Args: { p_church_id: string; p_event_id: string }
-        Returns: {
-          baptism_interest_count: number
-          bible_study_interest_count: number
-          health_interest_count: number
-          prayer_request_count: number
-        }[]
-      }
       event_report_summary: {
         Args: { p_church_id: string; p_event_id: string }
         Returns: {
@@ -1253,11 +1312,22 @@ export type Database = {
           bible_study_count: number
           follow_up_count: number
           followed_up_count: number
+          form_answer_counts: Json
           high_priority_count: number
           interest_counts: Json
           prayer_count: number
           status_counts: Json
+          topic_counts: Json
           total_contacts: number
+        }[]
+      }
+      event_workspace_interest_counts: {
+        Args: { p_church_id: string; p_event_id: string }
+        Returns: {
+          baptism_interest_count: number
+          bible_study_interest_count: number
+          health_interest_count: number
+          prayer_request_count: number
         }[]
       }
       export_contacts: {
@@ -1294,6 +1364,14 @@ export type Database = {
           status: Database["public"]["Enums"]["follow_up_status"]
           total_count: number
           urgency: Database["public"]["Enums"]["urgency_level"]
+        }[]
+      }
+      get_contact_prayer_requests: {
+        Args: { p_church_id: string; p_contact_id: string }
+        Returns: {
+          created_at: string
+          request_text: string
+          visibility: string
         }[]
       }
       outreach_report_summary: {
@@ -1436,14 +1514,46 @@ export type Database = {
           church_name: string
           created_at: string
           display_name: string
-          email: string
+          email: string | null
+          event_id: string | null
+          event_name: string | null
           expires_at: string
           invitation_id: string
           invited_by_name: string
-          role: Database["public"]["Enums"]["team_role"]
+          role: Database["public"]["Enums"]["team_role"] | null
+          source: string
           status: Database["public"]["Enums"]["team_invitation_status"]
-          team_member_id: string
+          team_member_id: string | null
+          workspace_type: string
         }[]
+      }
+      owner_delete_event_assignment: {
+        Args: { p_assignment_id: string; p_reason?: string }
+        Returns: undefined
+      }
+      owner_delete_workspace_team_member: {
+        Args: { p_reason?: string; p_team_member_id: string }
+        Returns: undefined
+      }
+      owner_disable_workspace_team_member: {
+        Args: { p_reason?: string; p_team_member_id: string }
+        Returns: undefined
+      }
+      owner_remove_workspace_team_member: {
+        Args: { p_reason?: string; p_team_member_id: string }
+        Returns: undefined
+      }
+      owner_reset_event_invites: {
+        Args: { p_church_id: string; p_event_id?: string; p_reason?: string }
+        Returns: undefined
+      }
+      owner_reset_workspace_invites: {
+        Args: { p_church_id: string; p_reason?: string }
+        Returns: undefined
+      }
+      owner_revoke_event_assignment: {
+        Args: { p_assignment_id: string; p_reason?: string }
+        Returns: undefined
       }
       owner_update_membership_role: {
         Args: {
@@ -1607,6 +1717,8 @@ export type Database = {
     }
     Enums: {
       app_admin_role: "owner" | "support_admin" | "billing_admin"
+      data_request_status: "open" | "in_review" | "completed" | "declined"
+      data_request_type: "correction" | "deletion" | "export" | "restriction"
       event_assignment_status: "pending" | "accepted" | "revoked" | "expired"
       event_type:
         | "church_service"
@@ -1802,6 +1914,8 @@ export const Constants = {
   public: {
     Enums: {
       app_admin_role: ["owner", "support_admin", "billing_admin"],
+      data_request_status: ["open", "in_review", "completed", "declined"],
+      data_request_type: ["correction", "deletion", "export", "restriction"],
       event_assignment_status: ["pending", "accepted", "revoked", "expired"],
       event_type: [
         "church_service",
@@ -1871,3 +1985,4 @@ export const Constants = {
     },
   },
 } as const
+

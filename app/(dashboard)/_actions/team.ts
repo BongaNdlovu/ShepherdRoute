@@ -8,6 +8,7 @@ import { roleOptions, appRoleOptions, type AppRole, type TeamRole } from "@/lib/
 import { getChurchContext } from "@/lib/data";
 import { canInviteRole, canManageTeam } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
+import { gmailComposeUrl, workspaceInviteTemplate } from "@/lib/invite-email";
 
 const optionalEmailSchema = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -142,6 +143,46 @@ export async function addTeamMemberAction(formData: FormData) {
 
   revalidatePath("/settings/team");
   redirect("/settings/team");
+}
+
+export async function getTeamInviteGmailUrlAction(formData: FormData) {
+  const context = await getChurchContext();
+  const supabase = await createClient();
+
+  const parsed = z.object({
+    token: z.string()
+  }).safeParse({
+    token: formData.get("token")
+  });
+
+  if (!parsed.success) {
+    return { error: "Invalid token" };
+  }
+
+  const { data: invitation } = await supabase
+    .from("team_invitations")
+    .select("*, churches(name)")
+    .eq("token_hash", createHash("sha256").update(parsed.data.token).digest("hex"))
+    .single();
+
+  if (!invitation) {
+    return { error: "Invitation not found" };
+  }
+
+  const inviteLink = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/team-invitations/accept?token=${parsed.data.token}`;
+  const { subject, body } = workspaceInviteTemplate({
+    workspaceName: invitation.churches.name,
+    inviterName: context.fullName || "A team member",
+    inviteLink
+  });
+
+  const gmailUrl = gmailComposeUrl({
+    to: invitation.email,
+    subject,
+    body
+  });
+
+  return { gmailUrl };
 }
 
 export async function revokeTeamInvitationAction(formData: FormData) {

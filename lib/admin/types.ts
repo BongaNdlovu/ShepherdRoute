@@ -45,14 +45,18 @@ export type OwnerInvitationRow = {
   invitation_id: string;
   team_member_id: string | null;
   display_name: string;
-  email: string;
-  role: string;
+  email: string | null;
+  role: string | null;
   status: "pending" | "accepted" | "revoked" | "expired";
   invited_by_name: string | null;
   accepted_by_name: string | null;
   expires_at: string;
   accepted_at: string | null;
   created_at: string;
+  source: "workspace_team" | "event_team";
+  workspace_type: "church" | "ministry";
+  event_id: string | null;
+  event_name: string | null;
 };
 
 export type OwnerPaginationParams = {

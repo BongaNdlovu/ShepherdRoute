@@ -45,7 +45,7 @@ const features = [
     icon: Bot,
     title: "AI report interpretation",
     description:
-      "Use Gemini-powered guidance to interpret detailed reports and decide what should happen next."
+      "Use DeepSeek-powered guidance to interpret detailed reports and decide what should happen next."
   },
   {
     icon: UsersRound,
@@ -90,7 +90,7 @@ const stats = [
 
 export default function HomePage() {
   return (
-    <main className="cinematic-shell min-h-screen overflow-hidden no-scrollbar">
+    <div className="cinematic-shell min-h-dvh overflow-x-hidden">
       {/* Floating decorative elements */}
       <div className="pointer-events-none fixed inset-0 z-0">
         <div className="floating-element absolute left-[8%] top-[15%] h-72 w-72 rounded-full bg-amber-200/20 blur-3xl" />
@@ -271,6 +271,6 @@ export default function HomePage() {
           </div>
         </footer>
       </div>
-    </main>
+    </div>
   );
 }

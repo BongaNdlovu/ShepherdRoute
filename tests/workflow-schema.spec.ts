@@ -236,9 +236,9 @@ test.describe("workflow helpers", () => {
     ]);
   });
 
-  test("dashboard sidebar keeps logout visible below scrollable content", () => {
+  test("dashboard sidebar keeps logout visible while page owns scrolling", () => {
     expect(dashboardLayout).toContain("flex flex-col");
-    expect(dashboardLayout).toContain("overflow-y-auto");
+    expect(dashboardLayout).not.toContain("overflow-y-auto");
     expect(dashboardLayout).toContain("aria-label=\"Log out\"");
     expect(dashboardLayout).toContain("action={logoutAction}");
   });
@@ -667,21 +667,21 @@ test.describe("workflow helpers", () => {
     expect(landingPage).not.toContain("Guestloop");
   });
 
-  test("Gemini chatbot is server-side configured and dashboard-mounted", () => {
+  test("DeepSeek chatbot is server-side configured and dashboard-mounted", () => {
     const chatRoute = readFileSync("app/api/chat/route.ts", "utf8");
-    const chatWidget = readFileSync("components/app/gemini-chat-widget.tsx", "utf8");
+    const chatWidget = readFileSync("components/app/deepseek-chat-widget.tsx", "utf8");
     const dashboardLayout = readFileSync("app/(dashboard)/layout.tsx", "utf8");
     const envExample = readFileSync(".env.example", "utf8");
 
-    expect(chatRoute).toContain("@google/generative-ai");
-    expect(chatRoute).toContain("process.env.GEMINI_API_KEY");
-    expect(chatRoute).toContain("gemini-1.5-flash");
+    expect(chatRoute).toContain("https://api.deepseek.com/chat/completions");
+    expect(chatRoute).toContain("process.env.DEEPSEEK_API_KEY");
+    expect(chatRoute).toContain("deepseek-v4-flash");
     expect(chatRoute).toContain("can_view_reports");
     expect(chatWidget).toContain("/api/chat");
     expect(chatWidget).toContain("/reports/events/");
-    expect(dashboardLayout).toContain("GeminiChatWidget");
-    expect(envExample).toContain("GEMINI_API_KEY=");
-    expect(chatRoute).not.toContain("AIzaSy");
+    expect(dashboardLayout).toContain("DeepSeekChatWidget");
+    expect(envExample).toContain("DEEPSEEK_API_KEY=");
+    expect(chatRoute).not.toContain("sk-");
   });
 
   test("root route shows landing page to visitors and dashboard to signed-in users", () => {
@@ -773,10 +773,10 @@ test.describe("workflow helpers", () => {
     expect(publicValidation).toContain("ContactMethod");
   });
 
-  test("Gemini widget is conditionally mounted based on GEMINI_API_KEY", () => {
+  test("DeepSeek widget is conditionally mounted based on DEEPSEEK_API_KEY", () => {
     const dashboardLayout = readFileSync("app/(dashboard)/layout.tsx", "utf8");
-    expect(dashboardLayout).toContain("process.env.GEMINI_API_KEY");
-    expect(dashboardLayout).toContain("? <GeminiChatWidget /> : null");
+    expect(dashboardLayout).toContain("process.env.DEEPSEEK_API_KEY");
+    expect(dashboardLayout).toContain("? <DeepSeekChatWidget /> : null");
   });
 
   test("diagnostic logs are gated behind server env flags", () => {

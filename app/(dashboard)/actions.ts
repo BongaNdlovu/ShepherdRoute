@@ -1,4 +1,16 @@
-export { updateOwnerMembershipRoleAction, updateOwnerMembershipStatusAction, updateOwnerWorkspaceStatusAction, updateOwnerWorkspaceTypeAction } from "@/app/(dashboard)/_actions/admin";
+export {
+  updateOwnerMembershipStatusAction,
+  updateOwnerMembershipRoleAction,
+  updateOwnerWorkspaceStatusAction,
+  updateOwnerWorkspaceTypeAction,
+  resetWorkspaceInvitesAction,
+  resetEventInvitesAction,
+  disableWorkspaceTeamMemberAction,
+  removeWorkspaceTeamMemberAction,
+  deleteWorkspaceTeamMemberAction,
+  revokeEventAssignmentAction,
+  deleteEventAssignmentAction
+} from "@/app/(dashboard)/_actions/admin";
 export { addQuickContactAction, addFollowUpNoteAction, markFollowUpContactedAction, markFollowUpWaitingAction, updateContactAction, updateContactLifecycleAction } from "@/app/(dashboard)/_actions/contacts";
 export { switchChurchAction } from "@/app/(dashboard)/_actions/context";
 export { createEventAction, deleteEventAction, updateEventArchiveAction, updateEventStatusAction, updateEventCustomizationAction } from "@/app/(dashboard)/_actions/events";

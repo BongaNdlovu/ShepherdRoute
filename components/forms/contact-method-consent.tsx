@@ -30,9 +30,9 @@ export function ContactMethodConsent({
         </p>
         <div className="mt-3 space-y-2">
           {methods.map((method) => (
-            <label key={method} className="flex items-center gap-2 rounded-md border bg-white px-3 py-2 text-sm font-semibold">
-              <input type="checkbox" name="preferred_contact_methods" value={method} className="h-4 w-4" />
-              <span>{contactMethodLabels[method]}</span>
+            <label key={method} className="flex items-center gap-2 rounded-md border bg-white px-3 py-2 text-sm font-semibold break-words">
+              <input type="checkbox" name="preferred_contact_methods" value={method} className="h-4 w-4 shrink-0" />
+              <span className="w-full min-w-0">{contactMethodLabels[method]}</span>
             </label>
           ))}
         </div>
