@@ -8,6 +8,10 @@ import { getChurchContext } from "@/lib/data";
 import { canManageOwnerAdmin, type AppAdminRole } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 
+type OwnerActionContext = Awaited<ReturnType<typeof getChurchContext>>;
+type OwnerRpcValue = string | number | boolean | null | undefined;
+type OwnerRpcArgs = Record<string, OwnerRpcValue>;
+
 const membershipStatusSchema = z.object({
   membershipId: z.string().uuid(),
   status: z.enum(["active", "invited", "disabled"]),
@@ -40,12 +44,60 @@ function safeOwnerReturnTo(value: string | undefined) {
   return value;
 }
 
-export async function updateOwnerMembershipStatusAction(formData: FormData) {
+async function requireOwnerAdminContext(): Promise<OwnerActionContext> {
   const context = await getChurchContext();
 
   if (!canManageOwnerAdmin({ role: context.appAdminRole as AppAdminRole | null, isProtectedOwner: context.isProtectedOwner })) {
     redirect("/dashboard");
   }
+
+  return context;
+}
+
+async function requireProtectedOwnerContext(): Promise<OwnerActionContext> {
+  const context = await getChurchContext();
+
+  if (!context.isProtectedOwner || context.appAdminRole !== "owner") {
+    redirect("/dashboard");
+  }
+
+  return context;
+}
+
+function parseOwnerAction<TSchema extends z.ZodTypeAny>(
+  schema: TSchema,
+  input: unknown,
+  errorRedirect: string
+): z.infer<TSchema> {
+  const parsed = schema.safeParse(input);
+
+  if (!parsed.success) {
+    redirect(errorRedirect);
+  }
+
+  return parsed.data;
+}
+
+async function runOwnerRpcAction(options: {
+  rpc: string;
+  args: OwnerRpcArgs;
+  errorRedirect: string;
+  revalidate: string[];
+  successRedirect: string;
+}) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc(options.rpc, options.args);
+
+  if (error) {
+    redirect(`${options.errorRedirect}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  options.revalidate.forEach((path) => revalidatePath(path));
+  redirect(options.successRedirect);
+}
+
+export async function updateOwnerMembershipStatusAction(formData: FormData) {
+  await requireOwnerAdminContext();
 
   const parsed = membershipStatusSchema.safeParse({
     membershipId: formData.get("membershipId"),
@@ -73,11 +125,7 @@ export async function updateOwnerMembershipStatusAction(formData: FormData) {
 }
 
 export async function updateOwnerMembershipRoleAction(formData: FormData) {
-  const context = await getChurchContext();
-
-  if (!canManageOwnerAdmin({ role: context.appAdminRole as AppAdminRole | null, isProtectedOwner: context.isProtectedOwner })) {
-    redirect("/dashboard");
-  }
+  await requireOwnerAdminContext();
 
   const parsed = membershipRoleSchema.safeParse({
     membershipId: formData.get("membershipId"),
@@ -105,11 +153,7 @@ export async function updateOwnerMembershipRoleAction(formData: FormData) {
 }
 
 export async function updateOwnerWorkspaceStatusAction(formData: FormData) {
-  const context = await getChurchContext();
-
-  if (!context.isProtectedOwner || context.appAdminRole !== "owner") {
-    redirect("/dashboard");
-  }
+  const context = await requireProtectedOwnerContext();
 
   const parsed = ownerWorkspaceStatusSchema.safeParse({
     churchId: formData.get("churchId"),
@@ -156,11 +200,7 @@ export async function updateOwnerWorkspaceStatusAction(formData: FormData) {
 }
 
 export async function updateOwnerWorkspaceTypeAction(formData: FormData) {
-  const context = await getChurchContext();
-
-  if (!context.isProtectedOwner || context.appAdminRole !== "owner") {
-    redirect("/dashboard");
-  }
+  const context = await requireProtectedOwnerContext();
 
   const parsed = ownerWorkspaceTypeSchema.safeParse({
     churchId: formData.get("churchId"),
@@ -203,304 +243,176 @@ export async function updateOwnerWorkspaceTypeAction(formData: FormData) {
 }
 
 export async function resetWorkspaceInvitesAction(formData: FormData) {
-  const context = await getChurchContext();
-
-  if (!canManageOwnerAdmin({ role: context.appAdminRole as AppAdminRole | null, isProtectedOwner: context.isProtectedOwner })) {
-    redirect("/dashboard");
-  }
-
-  const parsed = z.object({
+  await requireOwnerAdminContext();
+  const parsed = parseOwnerAction(z.object({
     churchId: z.string().uuid(),
     reason: z.string().max(500).optional()
-  }).safeParse({
+  }), {
     churchId: formData.get("churchId"),
     reason: formData.get("reason") || undefined
+  }, "/admin/invitations?error=Invalid%20request");
+
+  await runOwnerRpcAction({
+    rpc: "owner_reset_workspace_invites",
+    args: { p_church_id: parsed.churchId, p_reason: parsed.reason },
+    errorRedirect: "/admin/invitations",
+    revalidate: ["/admin/invitations"],
+    successRedirect: "/admin/invitations?success=Workspace%20invites%20reset"
   });
-
-  if (!parsed.success) {
-    redirect("/admin/invitations?error=Invalid%20request");
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("owner_reset_workspace_invites", {
-    p_church_id: parsed.data.churchId,
-    p_reason: parsed.data.reason
-  });
-
-  if (error) {
-    redirect(`/admin/invitations?error=${encodeURIComponent(error.message)}`);
-  }
-
-  revalidatePath("/admin/invitations");
-  redirect("/admin/invitations?success=Workspace%20invites%20reset");
 }
 
 export async function resetEventInvitesAction(formData: FormData) {
-  const context = await getChurchContext();
-
-  if (!canManageOwnerAdmin({ role: context.appAdminRole as AppAdminRole | null, isProtectedOwner: context.isProtectedOwner })) {
-    redirect("/dashboard");
-  }
-
-  const parsed = z.object({
+  await requireOwnerAdminContext();
+  const parsed = parseOwnerAction(z.object({
     churchId: z.string().uuid(),
     eventId: z.string().uuid().optional(),
     reason: z.string().max(500).optional()
-  }).safeParse({
+  }), {
     churchId: formData.get("churchId"),
     eventId: formData.get("eventId") || undefined,
     reason: formData.get("reason") || undefined
+  }, "/admin/invitations?error=Invalid%20request");
+
+  await runOwnerRpcAction({
+    rpc: "owner_reset_event_invites",
+    args: { p_church_id: parsed.churchId, p_event_id: parsed.eventId, p_reason: parsed.reason },
+    errorRedirect: "/admin/invitations",
+    revalidate: ["/admin/invitations"],
+    successRedirect: "/admin/invitations?success=Event%20invites%20reset"
   });
-
-  if (!parsed.success) {
-    redirect("/admin/invitations?error=Invalid%20request");
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("owner_reset_event_invites", {
-    p_church_id: parsed.data.churchId,
-    p_event_id: parsed.data.eventId,
-    p_reason: parsed.data.reason
-  });
-
-  if (error) {
-    redirect(`/admin/invitations?error=${encodeURIComponent(error.message)}`);
-  }
-
-  revalidatePath("/admin/invitations");
-  redirect("/admin/invitations?success=Event%20invites%20reset");
 }
 
 export async function disableWorkspaceTeamMemberAction(formData: FormData) {
-  const context = await getChurchContext();
-
-  if (!canManageOwnerAdmin({ role: context.appAdminRole as AppAdminRole | null, isProtectedOwner: context.isProtectedOwner })) {
-    redirect("/dashboard");
-  }
-
-  const parsed = z.object({
+  await requireOwnerAdminContext();
+  const parsed = parseOwnerAction(z.object({
     teamMemberId: z.string().uuid(),
     reason: z.string().max(500).optional()
-  }).safeParse({
+  }), {
     teamMemberId: formData.get("teamMemberId"),
     reason: formData.get("reason") || undefined
+  }, "/admin/users?error=Invalid%20request");
+
+  await runOwnerRpcAction({
+    rpc: "owner_disable_workspace_team_member",
+    args: { p_team_member_id: parsed.teamMemberId, p_reason: parsed.reason },
+    errorRedirect: "/admin/users",
+    revalidate: ["/admin/users"],
+    successRedirect: "/admin/users?success=Team%20member%20disabled"
   });
-
-  if (!parsed.success) {
-    redirect("/admin/users?error=Invalid%20request");
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("owner_disable_workspace_team_member", {
-    p_team_member_id: parsed.data.teamMemberId,
-    p_reason: parsed.data.reason
-  });
-
-  if (error) {
-    redirect(`/admin/users?error=${encodeURIComponent(error.message)}`);
-  }
-
-  revalidatePath("/admin/users");
-  redirect("/admin/users?success=Team%20member%20disabled");
 }
 
 export async function removeWorkspaceTeamMemberAction(formData: FormData) {
-  const context = await getChurchContext();
-
-  if (!canManageOwnerAdmin({ role: context.appAdminRole as AppAdminRole | null, isProtectedOwner: context.isProtectedOwner })) {
-    redirect("/dashboard");
-  }
-
-  const parsed = z.object({
+  await requireOwnerAdminContext();
+  const parsed = parseOwnerAction(z.object({
     teamMemberId: z.string().uuid(),
     reason: z.string().max(500).optional()
-  }).safeParse({
+  }), {
     teamMemberId: formData.get("teamMemberId"),
     reason: formData.get("reason") || undefined
+  }, "/admin/users?error=Invalid%20request");
+
+  await runOwnerRpcAction({
+    rpc: "owner_remove_workspace_team_member",
+    args: { p_team_member_id: parsed.teamMemberId, p_reason: parsed.reason },
+    errorRedirect: "/admin/users",
+    revalidate: ["/admin/users"],
+    successRedirect: "/admin/users?success=Team%20member%20removed"
   });
-
-  if (!parsed.success) {
-    redirect("/admin/users?error=Invalid%20request");
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("owner_remove_workspace_team_member", {
-    p_team_member_id: parsed.data.teamMemberId,
-    p_reason: parsed.data.reason
-  });
-
-  if (error) {
-    redirect(`/admin/users?error=${encodeURIComponent(error.message)}`);
-  }
-
-  revalidatePath("/admin/users");
-  redirect("/admin/users?success=Team%20member%20removed");
 }
 
 export async function deleteWorkspaceTeamMemberAction(formData: FormData) {
-  const context = await getChurchContext();
-
-  if (!canManageOwnerAdmin({ role: context.appAdminRole as AppAdminRole | null, isProtectedOwner: context.isProtectedOwner })) {
-    redirect("/dashboard");
-  }
-
-  const parsed = z.object({
+  await requireOwnerAdminContext();
+  const parsed = parseOwnerAction(z.object({
     teamMemberId: z.string().uuid(),
     reason: z.string().max(500).optional()
-  }).safeParse({
+  }), {
     teamMemberId: formData.get("teamMemberId"),
     reason: formData.get("reason") || undefined
+  }, "/admin/users?error=Invalid%20request");
+
+  await runOwnerRpcAction({
+    rpc: "owner_delete_workspace_team_member",
+    args: { p_team_member_id: parsed.teamMemberId, p_reason: parsed.reason },
+    errorRedirect: "/admin/users",
+    revalidate: ["/admin/users"],
+    successRedirect: "/admin/users?success=Team%20member%20deleted"
   });
-
-  if (!parsed.success) {
-    redirect("/admin/users?error=Invalid%20request");
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("owner_delete_workspace_team_member", {
-    p_team_member_id: parsed.data.teamMemberId,
-    p_reason: parsed.data.reason
-  });
-
-  if (error) {
-    redirect(`/admin/users?error=${encodeURIComponent(error.message)}`);
-  }
-
-  revalidatePath("/admin/users");
-  redirect("/admin/users?success=Team%20member%20deleted");
 }
 
 export async function revokeEventAssignmentAction(formData: FormData) {
-  const context = await getChurchContext();
-
-  if (!canManageOwnerAdmin({ role: context.appAdminRole as AppAdminRole | null, isProtectedOwner: context.isProtectedOwner })) {
-    redirect("/dashboard");
-  }
-
-  const parsed = z.object({
+  await requireOwnerAdminContext();
+  const parsed = parseOwnerAction(z.object({
     assignmentId: z.string().uuid(),
     reason: z.string().max(500).optional()
-  }).safeParse({
+  }), {
     assignmentId: formData.get("assignmentId"),
     reason: formData.get("reason") || undefined
+  }, "/admin/invitations?error=Invalid%20request");
+
+  await runOwnerRpcAction({
+    rpc: "owner_revoke_event_assignment",
+    args: { p_assignment_id: parsed.assignmentId, p_reason: parsed.reason },
+    errorRedirect: "/admin/invitations",
+    revalidate: ["/admin/invitations"],
+    successRedirect: "/admin/invitations?success=Event%20assignment%20revoked"
   });
-
-  if (!parsed.success) {
-    redirect("/admin/invitations?error=Invalid%20request");
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("owner_revoke_event_assignment", {
-    p_assignment_id: parsed.data.assignmentId,
-    p_reason: parsed.data.reason
-  });
-
-  if (error) {
-    redirect(`/admin/invitations?error=${encodeURIComponent(error.message)}`);
-  }
-
-  revalidatePath("/admin/invitations");
-  redirect("/admin/invitations?success=Event%20assignment%20revoked");
 }
 
 export async function deleteEventAssignmentAction(formData: FormData) {
-  const context = await getChurchContext();
-
-  if (!canManageOwnerAdmin({ role: context.appAdminRole as AppAdminRole | null, isProtectedOwner: context.isProtectedOwner })) {
-    redirect("/dashboard");
-  }
-
-  const parsed = z.object({
+  await requireOwnerAdminContext();
+  const parsed = parseOwnerAction(z.object({
     assignmentId: z.string().uuid(),
     reason: z.string().max(500).optional()
-  }).safeParse({
+  }), {
     assignmentId: formData.get("assignmentId"),
     reason: formData.get("reason") || undefined
+  }, "/admin/invitations?error=Invalid%20request");
+
+  await runOwnerRpcAction({
+    rpc: "owner_delete_event_assignment",
+    args: { p_assignment_id: parsed.assignmentId, p_reason: parsed.reason },
+    errorRedirect: "/admin/invitations",
+    revalidate: ["/admin/invitations"],
+    successRedirect: "/admin/invitations?success=Event%20assignment%20deleted"
   });
-
-  if (!parsed.success) {
-    redirect("/admin/invitations?error=Invalid%20request");
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("owner_delete_event_assignment", {
-    p_assignment_id: parsed.data.assignmentId,
-    p_reason: parsed.data.reason
-  });
-
-  if (error) {
-    redirect(`/admin/invitations?error=${encodeURIComponent(error.message)}`);
-  }
-
-  revalidatePath("/admin/invitations");
-  redirect("/admin/invitations?success=Event%20assignment%20deleted");
 }
 
 export async function clearRevokedWorkspaceInvitationsAction(formData: FormData) {
-  const context = await getChurchContext();
-
-  if (!canManageOwnerAdmin({ role: context.appAdminRole as AppAdminRole | null, isProtectedOwner: context.isProtectedOwner })) {
-    redirect("/dashboard");
-  }
-
-  const parsed = z.object({
+  await requireOwnerAdminContext();
+  const parsed = parseOwnerAction(z.object({
     churchId: z.string().uuid().optional(),
     reason: z.string().max(500).optional()
-  }).safeParse({
+  }), {
     churchId: formData.get("churchId") || undefined,
     reason: formData.get("reason") || undefined
+  }, "/admin/invitations?error=Invalid%20request");
+
+  await runOwnerRpcAction({
+    rpc: "owner_clear_revoked_workspace_invitations",
+    args: { p_church_id: parsed.churchId ?? null, p_reason: parsed.reason },
+    errorRedirect: "/admin/invitations",
+    revalidate: ["/admin/invitations"],
+    successRedirect: "/admin/invitations?success=Revoked%20workspace%20invitations%20cleared"
   });
-
-  if (!parsed.success) {
-    redirect("/admin/invitations?error=Invalid%20request");
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("owner_clear_revoked_workspace_invitations", {
-    p_church_id: parsed.data.churchId ?? null,
-    p_reason: parsed.data.reason
-  });
-
-  if (error) {
-    redirect(`/admin/invitations?error=${encodeURIComponent(error.message)}`);
-  }
-
-  revalidatePath("/admin/invitations");
-  redirect("/admin/invitations?success=Revoked%20workspace%20invitations%20cleared");
 }
 
 export async function clearRevokedEventInvitationsAction(formData: FormData) {
-  const context = await getChurchContext();
-
-  if (!canManageOwnerAdmin({ role: context.appAdminRole as AppAdminRole | null, isProtectedOwner: context.isProtectedOwner })) {
-    redirect("/dashboard");
-  }
-
-  const parsed = z.object({
+  await requireOwnerAdminContext();
+  const parsed = parseOwnerAction(z.object({
     churchId: z.string().uuid().optional(),
     eventId: z.string().uuid().optional(),
     reason: z.string().max(500).optional()
-  }).safeParse({
+  }), {
     churchId: formData.get("churchId") || undefined,
     eventId: formData.get("eventId") || undefined,
     reason: formData.get("reason") || undefined
+  }, "/admin/invitations?error=Invalid%20request");
+
+  await runOwnerRpcAction({
+    rpc: "owner_clear_revoked_event_invitations",
+    args: { p_church_id: parsed.churchId ?? null, p_event_id: parsed.eventId ?? null, p_reason: parsed.reason },
+    errorRedirect: "/admin/invitations",
+    revalidate: ["/admin/invitations"],
+    successRedirect: "/admin/invitations?success=Revoked%20event%20invitations%20cleared"
   });
-
-  if (!parsed.success) {
-    redirect("/admin/invitations?error=Invalid%20request");
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("owner_clear_revoked_event_invitations", {
-    p_church_id: parsed.data.churchId ?? null,
-    p_event_id: parsed.data.eventId ?? null,
-    p_reason: parsed.data.reason
-  });
-
-  if (error) {
-    redirect(`/admin/invitations?error=${encodeURIComponent(error.message)}`);
-  }
-
-  revalidatePath("/admin/invitations");
-  redirect("/admin/invitations?success=Revoked%20event%20invitations%20cleared");
 }
