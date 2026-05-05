@@ -13,10 +13,15 @@ export const metadata = {
 export default async function LoginPage({
   searchParams
 }: {
-  searchParams: Promise<{ error?: string; invite?: string; next?: string }>;
+  searchParams: Promise<{ error?: string; invite?: string; eventInvite?: string; next?: string }>;
 }) {
   const params = await searchParams;
-  const inviteQuery = params.invite ? `?invite=${encodeURIComponent(params.invite)}` : "";
+  const inviteQuery = params.invite
+    ? `?invite=${encodeURIComponent(params.invite)}`
+    : params.eventInvite
+      ? `?eventInvite=${encodeURIComponent(params.eventInvite)}`
+      : "";
+  const isInviteLogin = Boolean(params.invite || params.eventInvite);
   const safeNext = params.next?.startsWith("/") && !params.next.startsWith("//") ? params.next : "";
 
   return (
@@ -32,9 +37,9 @@ export default async function LoginPage({
         </div>
         <div className="text-center">
           <BrandLogo className="mx-auto mb-3 h-20 w-auto object-contain" priority />
-          <h1 className="text-2xl font-black">{params.invite ? "Login to accept invite" : "Welcome back to ShepherdRoute"}</h1>
+          <h1 className="text-2xl font-black">{isInviteLogin ? "Login to accept invite" : "Welcome back to ShepherdRoute"}</h1>
           <p className="text-muted-foreground">
-            {params.invite ? "Use the invited email address so the workspace can be linked safely." : "The follow-up pathway for churches that care."}
+            {isInviteLogin ? "Use the invited email address so access can be linked safely." : "The follow-up pathway for churches that care."}
           </p>
         </div>
         <div className="mt-4">
@@ -45,6 +50,7 @@ export default async function LoginPage({
           ) : null}
           <form action={loginAction} className="grid gap-4">
             {params.invite ? <input type="hidden" name="inviteToken" value={params.invite} /> : null}
+            {params.eventInvite ? <input type="hidden" name="eventInviteToken" value={params.eventInvite} /> : null}
             {safeNext ? <input type="hidden" name="next" value={safeNext} /> : null}
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
@@ -57,7 +63,7 @@ export default async function LoginPage({
             <Button size="lg" type="submit">Login</Button>
           </form>
           <p className="mt-5 text-center text-sm text-muted-foreground">
-            {params.invite ? "Need an account?" : "New church?"}{" "}
+            {isInviteLogin ? "Need an account?" : "New church?"}{" "}
             <Link className="font-semibold text-foreground underline-offset-4 hover:underline" href={`/signup${inviteQuery}`}>
               Create an account
             </Link>

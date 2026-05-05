@@ -1244,11 +1244,13 @@ declare
   church_name text;
   full_name text;
   invite_token text;
+  event_invite_token text;
   workspace_type text;
 begin
   church_name := coalesce(new.raw_user_meta_data->>'church_name', 'New church');
   full_name := coalesce(new.raw_user_meta_data->>'full_name', new.email, 'Church admin');
   invite_token := nullif(new.raw_user_meta_data->>'invite_token', '');
+  event_invite_token := nullif(new.raw_user_meta_data->>'event_invite_token', '');
   workspace_type := coalesce(new.raw_user_meta_data->>'workspace_type', 'church');
 
   insert into public.profiles (id, full_name, email)
@@ -1259,6 +1261,10 @@ begin
 
   if invite_token is not null then
     perform private.accept_team_invitation_for_user(invite_token, new.id, new.email);
+    return new;
+  end if;
+
+  if event_invite_token is not null then
     return new;
   end if;
 
@@ -1970,6 +1976,65 @@ $$;
 
 revoke all on function public.team_invitation_preview(text) from public, anon, authenticated;
 grant execute on function public.team_invitation_preview(text) to anon, authenticated;
+
+drop function if exists public.event_invitation_preview(text);
+
+create or replace function private.event_invitation_preview_impl(p_token text)
+returns table (
+  workspace_name text,
+  event_name text,
+  invitee_email text,
+  status public.event_assignment_status,
+  expires_at timestamptz,
+  accepted_at timestamptz,
+  revoked_at timestamptz
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    churches.name as workspace_name,
+    events.name as event_name,
+    event_assignments.invitee_email as invitee_email,
+    case
+      when event_assignments.status = 'pending'
+        and event_assignments.invitation_expires_at <= now()
+      then 'expired'::public.event_assignment_status
+      else event_assignments.status
+    end as status,
+    event_assignments.invitation_expires_at as expires_at,
+    event_assignments.accepted_at,
+    event_assignments.revoked_at
+  from public.event_assignments
+  join public.events on events.id = event_assignments.event_id
+  join public.churches on churches.id = event_assignments.church_id
+  where event_assignments.invitation_token_hash = private.hash_invite_token(p_token)
+  limit 1;
+$$;
+
+revoke all on function private.event_invitation_preview_impl(text) from public, anon, authenticated;
+grant execute on function private.event_invitation_preview_impl(text) to anon, authenticated;
+
+create or replace function public.event_invitation_preview(p_token text)
+returns table (
+  workspace_name text,
+  event_name text,
+  invitee_email text,
+  status public.event_assignment_status,
+  expires_at timestamptz,
+  accepted_at timestamptz,
+  revoked_at timestamptz
+)
+language sql
+security invoker
+set search_path = public, private
+as $$
+  select * from private.event_invitation_preview_impl(p_token);
+$$;
+
+revoke all on function public.event_invitation_preview(text) from public, anon, authenticated;
+grant execute on function public.event_invitation_preview(text) to anon, authenticated;
 
 drop function if exists public.accept_team_invitation(text);
 

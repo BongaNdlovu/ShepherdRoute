@@ -805,12 +805,16 @@ test.describe("workflow helpers", () => {
     expect(authActions).toContain("parsed.data.next");
   });
 
-  test("event invitation accept redirects to login when unauthenticated", () => {
+  test("event invitation accept page previews before accepting", () => {
     const eventInvitationAccept = readFileSync("app/event-invitations/accept/page.tsx", "utf8");
-    expect(eventInvitationAccept).toContain("signed in");
-    expect(eventInvitationAccept).toContain("router.push");
-    expect(eventInvitationAccept).toContain("/login?next=");
+    const eventInvitationActions = readFileSync("app/event-invitations/accept/actions.ts", "utf8");
+    expect(eventInvitationAccept).toContain("getEventInvitationPreview");
+    expect(eventInvitationAccept).toContain("Create account");
+    expect(eventInvitationAccept).toContain("/login?eventInvite=");
     expect(eventInvitationAccept).toContain("/event-invitations/accept?token=");
+    expect(eventInvitationAccept).not.toContain("useEffect");
+    expect(eventInvitationActions).toContain("accept_event_invitation");
+    expect(eventInvitationActions).toContain("selected_church_id");
   });
 
   test("team actions use deriveAppRole helper", () => {

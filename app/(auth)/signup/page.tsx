@@ -15,10 +15,15 @@ export const metadata = {
 export default async function SignupPage({
   searchParams
 }: {
-  searchParams: Promise<{ error?: string; invite?: string }>;
+  searchParams: Promise<{ error?: string; invite?: string; eventInvite?: string }>;
 }) {
   const params = await searchParams;
-  const inviteQuery = params.invite ? `?invite=${encodeURIComponent(params.invite)}` : "";
+  const inviteQuery = params.invite
+    ? `?invite=${encodeURIComponent(params.invite)}`
+    : params.eventInvite
+      ? `?eventInvite=${encodeURIComponent(params.eventInvite)}`
+      : "";
+  const isInviteSignup = Boolean(params.invite || params.eventInvite);
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
@@ -33,9 +38,9 @@ export default async function SignupPage({
         </div>
         <div className="text-center">
           <BrandLogo className="mx-auto mb-3 h-20 w-auto object-contain" priority />
-          <CardTitle className="text-2xl">{params.invite ? "Create your team account" : "Start ShepherdRoute"}</CardTitle>
+          <CardTitle className="text-2xl">{isInviteSignup ? "Create your team account" : "Start ShepherdRoute"}</CardTitle>
           <CardDescription>
-            {params.invite ? "Use the invited email address to join the church workspace." : "Create your church workspace with the private platform signup code."}
+            {isInviteSignup ? "Use the invited email address to accept this invitation." : "Create your church workspace with the private platform signup code."}
           </CardDescription>
         </div>
         <div className="mt-4">
@@ -46,7 +51,8 @@ export default async function SignupPage({
           ) : null}
           <form action={signupAction} className="grid gap-4">
             {params.invite ? <input type="hidden" name="inviteToken" value={params.invite} /> : null}
-            {!params.invite ? (
+            {params.eventInvite ? <input type="hidden" name="eventInviteToken" value={params.eventInvite} /> : null}
+            {!isInviteSignup ? (
               <>
                 <div className="grid gap-2">
                   <Label htmlFor="churchName">Church name</Label>
@@ -77,7 +83,7 @@ export default async function SignupPage({
               <Label htmlFor="password">Password</Label>
               <Input id="password" name="password" type="password" autoComplete="new-password" minLength={8} required />
             </div>
-            <Button size="lg" type="submit">{params.invite ? "Create account" : "Create workspace account"}</Button>
+            <Button size="lg" type="submit">{isInviteSignup ? "Create account" : "Create workspace account"}</Button>
           </form>
           <p className="mt-5 text-center text-sm text-muted-foreground">
             Already have an account?{" "}

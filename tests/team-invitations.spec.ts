@@ -6,6 +6,7 @@ const teamAction = readFileSync("app/(dashboard)/_actions/team.ts", "utf8");
 const teamPage = readFileSync("app/(dashboard)/team/page.tsx", "utf8");
 const authActions = readFileSync("app/(auth)/actions.ts", "utf8");
 const signupPage = readFileSync("app/(auth)/signup/page.tsx", "utf8");
+const loginPage = readFileSync("app/(auth)/login/page.tsx", "utf8");
 const eventAssignments = readFileSync("app/(dashboard)/_actions/event-assignments.ts", "utf8");
 const eventInvitationModal = readFileSync("components/app/event-invitation-modal.tsx", "utf8");
 const envExample = readFileSync(".env.example", "utf8");
@@ -26,6 +27,14 @@ test.describe("team invitation workflow", () => {
     expect(schema).toContain("perform private.accept_team_invitation_for_user(invite_token, new.id, new.email);");
     expect(schema).toContain("return new;");
     expect(schema).toContain("insert into public.church_memberships");
+  });
+
+  test("event invitations have a safe preview RPC", () => {
+    expect(schema).toContain("create or replace function public.event_invitation_preview");
+    expect(schema).toContain("create or replace function private.event_invitation_preview_impl");
+    expect(schema).toContain("grant execute on function public.event_invitation_preview(text) to anon, authenticated");
+    expect(schema).toContain("event_assignments.invitation_token_hash = private.hash_invite_token(p_token)");
+    expect(schema).not.toContain("event_invitation_preview_impl(p_token text)\nreturns table (\n  invitation_token_hash");
   });
 
   test("team action creates hashed invite tokens", () => {
@@ -50,10 +59,29 @@ test.describe("team invitation workflow", () => {
     expect(eventInvitationModal).toContain("Open email draft");
   });
 
+  test("event invitation accept page uses preview and form action", () => {
+    const eventInvitationAccept = readFileSync("app/event-invitations/accept/page.tsx", "utf8");
+    const eventInvitationActions = readFileSync("app/event-invitations/accept/actions.ts", "utf8");
+
+    expect(eventInvitationAccept).toContain("getEventInvitationPreview");
+    expect(eventInvitationAccept).toContain("acceptEventInvitationAction");
+    expect(eventInvitationAccept).toContain("Create account");
+    expect(eventInvitationAccept).toContain("Login");
+    expect(eventInvitationAccept).not.toContain("useEffect");
+    expect(eventInvitationAccept).not.toContain("acceptEventInvitation({ token })");
+
+    expect(eventInvitationActions).toContain("accept_event_invitation");
+    expect(eventInvitationActions).toContain("selected_church_id");
+  });
+
   test("auth actions pass invite tokens through signup and login", () => {
     expect(authActions).toContain("invite_token: parsed.data.inviteToken");
+    expect(authActions).toContain("event_invite_token: parsed.data.eventInviteToken");
     expect(authActions).toContain("accept_team_invitation");
     expect(authActions).toContain("selected_church_id");
+    expect(authActions).toContain("eventInviteToken: rawEventInviteToken");
+    expect(authActions).toContain("withAuthInvite");
+    expect(loginPage).toContain('name="eventInviteToken"');
   });
 
   test("normal signup requires a private platform signup code", () => {
@@ -66,10 +94,11 @@ test.describe("team invitation workflow", () => {
   });
 
   test("invite signup bypasses the platform signup code", () => {
-    expect(authActions).toContain("if (value.inviteToken) {");
+    expect(authActions).toContain("if (value.inviteToken || value.eventInviteToken) {");
     expect(authActions).toContain("return;");
     expect(authActions).toContain("invite_token: parsed.data.inviteToken");
-    expect(signupPage).toContain("{!params.invite ? (");
+    expect(authActions).toContain("event_invite_token: parsed.data.eventInviteToken");
+    expect(signupPage).toContain("{!isInviteSignup ? (");
   });
 
   test("signup code is documented as a server-only environment variable", () => {

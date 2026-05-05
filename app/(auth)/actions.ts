@@ -20,10 +20,13 @@ const optionalSignupCodeSchema = z.preprocess(
   z.string().trim().max(160).optional()
 );
 
+const optionalEventInviteTokenSchema = optionalInviteTokenSchema;
+
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   inviteToken: optionalInviteTokenSchema,
+  eventInviteToken: optionalEventInviteTokenSchema,
   next: z.string().optional()
 });
 
@@ -34,9 +37,19 @@ const signupSchema = loginSchema.extend({
   ),
   workspaceType: z.enum(["church", "ministry"]).default("church"),
   fullName: z.string().min(2).max(120),
-  platformSignupCode: optionalSignupCodeSchema
+  platformSignupCode: optionalSignupCodeSchema,
+  eventInviteToken: optionalEventInviteTokenSchema
 }).superRefine((value, context) => {
-  if (value.inviteToken) {
+  if (value.inviteToken && value.eventInviteToken) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Only one invitation link can be accepted at a time.",
+      path: ["inviteToken"]
+    });
+    return;
+  }
+
+  if (value.inviteToken || value.eventInviteToken) {
     return;
   }
 
@@ -59,15 +72,22 @@ const signupSchema = loginSchema.extend({
 
 export async function loginAction(formData: FormData) {
   const rawInviteToken = normalizeInviteToken(formData.get("inviteToken"));
+  const rawEventInviteToken = normalizeInviteToken(formData.get("eventInviteToken"));
+  const rawNext = safeNextPath(formData.get("next"));
   const parsed = loginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
     inviteToken: rawInviteToken,
-    next: safeNextPath(formData.get("next"))
+    eventInviteToken: rawEventInviteToken,
+    next: rawNext
   });
 
   if (!parsed.success) {
-    redirect(withInvite("/login?error=Please%20check%20your%20email%20and%20password.", rawInviteToken));
+    redirect(withAuthInvite("/login?error=Please%20check%20your%20email%20and%20password.", {
+      inviteToken: rawInviteToken,
+      eventInviteToken: rawEventInviteToken,
+      next: rawNext
+    }));
   }
 
   const supabase = await createClient();
@@ -77,7 +97,11 @@ export async function loginAction(formData: FormData) {
   });
 
   if (error) {
-    redirect(withInvite(`/login?error=${encodeURIComponent(friendlyAuthError(error.message))}`, parsed.data.inviteToken));
+    redirect(withAuthInvite(`/login?error=${encodeURIComponent(friendlyAuthError(error.message))}`, {
+      inviteToken: parsed.data.inviteToken,
+      eventInviteToken: parsed.data.eventInviteToken,
+      next: parsed.data.next
+    }));
   }
 
   if (parsed.data.inviteToken) {
@@ -97,6 +121,7 @@ export async function loginAction(formData: FormData) {
 
 export async function signupAction(formData: FormData) {
   const rawInviteToken = normalizeInviteToken(formData.get("inviteToken"));
+  const rawEventInviteToken = normalizeInviteToken(formData.get("eventInviteToken"));
   const parsed = signupSchema.safeParse({
     churchName: formData.get("churchName"),
     workspaceType: formData.get("workspaceType") || "church",
@@ -104,11 +129,15 @@ export async function signupAction(formData: FormData) {
     email: formData.get("email"),
     password: formData.get("password"),
     inviteToken: rawInviteToken,
+    eventInviteToken: rawEventInviteToken,
     platformSignupCode: formData.get("platformSignupCode")
   });
 
   if (!parsed.success) {
-    redirect(withInvite("/signup?error=Please%20check%20all%20fields%2C%20including%20the%20signup%20code.", rawInviteToken));
+    redirect(withAuthInvite("/signup?error=Please%20check%20all%20fields%2C%20including%20the%20signup%20code.", {
+      inviteToken: rawInviteToken,
+      eventInviteToken: rawEventInviteToken
+    }));
   }
 
   const supabase = await createClient();
@@ -116,25 +145,40 @@ export async function signupAction(formData: FormData) {
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
-      emailRedirectTo: absoluteUrl(parsed.data.inviteToken ? `/invite/${parsed.data.inviteToken}` : "/dashboard"),
+      emailRedirectTo: absoluteUrl(
+        parsed.data.inviteToken
+          ? `/invite/${parsed.data.inviteToken}`
+          : parsed.data.eventInviteToken
+            ? `/event-invitations/accept?token=${parsed.data.eventInviteToken}`
+            : "/dashboard"
+      ),
       data: {
         full_name: parsed.data.fullName,
         ...(parsed.data.inviteToken
           ? { invite_token: parsed.data.inviteToken }
-          : {
-              church_name: parsed.data.churchName,
-              workspace_type: normalizeWorkspaceType(parsed.data.workspaceType)
-            })
+          : parsed.data.eventInviteToken
+            ? { event_invite_token: parsed.data.eventInviteToken }
+            : {
+                church_name: parsed.data.churchName,
+                workspace_type: normalizeWorkspaceType(parsed.data.workspaceType)
+              })
       }
     }
   });
 
   if (error) {
-    redirect(withInvite(`/signup?error=${encodeURIComponent(friendlyAuthError(error.message))}`, parsed.data.inviteToken));
+    redirect(withAuthInvite(`/signup?error=${encodeURIComponent(friendlyAuthError(error.message))}`, {
+      inviteToken: parsed.data.inviteToken,
+      eventInviteToken: parsed.data.eventInviteToken
+    }));
   }
 
   if (parsed.data.inviteToken) {
     redirect(`/invite/${encodeURIComponent(parsed.data.inviteToken)}?signup=check-email`);
+  }
+
+  if (parsed.data.eventInviteToken) {
+    redirect(`/event-invitations/accept?token=${encodeURIComponent(parsed.data.eventInviteToken)}&signup=check-email`);
   }
 
   redirect("/dashboard");
@@ -175,6 +219,27 @@ function withInvite(path: string, inviteToken: string | undefined) {
   if (!inviteToken) return path;
   const separator = path.includes("?") ? "&" : "?";
   return `${path}${separator}invite=${encodeURIComponent(inviteToken)}`;
+}
+
+function withAuthInvite(
+  path: string,
+  options: {
+    inviteToken?: string;
+    eventInviteToken?: string;
+    next?: string | null;
+  }
+) {
+  let nextPath = withInvite(path, options.inviteToken);
+  if (options.eventInviteToken) {
+    const separator = nextPath.includes("?") ? "&" : "?";
+    nextPath = `${nextPath}${separator}eventInvite=${encodeURIComponent(options.eventInviteToken)}`;
+  }
+  if (options.next) {
+    const separator = nextPath.includes("?") ? "&" : "?";
+    nextPath = `${nextPath}${separator}next=${encodeURIComponent(options.next)}`;
+  }
+
+  return nextPath;
 }
 
 function safeNextPath(value: FormDataEntryValue | null | undefined) {

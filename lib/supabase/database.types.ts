@@ -1254,6 +1254,18 @@ export type Database = {
     Functions: {
       accept_event_invitation: { Args: { p_token: string }; Returns: string }
       accept_team_invitation: { Args: { p_token: string }; Returns: string }
+      event_invitation_preview: {
+        Args: { p_token: string }
+        Returns: {
+          accepted_at: string | null
+          event_name: string
+          expires_at: string | null
+          invitee_email: string | null
+          revoked_at: string | null
+          status: Database["public"]["Enums"]["event_assignment_status"]
+          workspace_name: string
+        }[]
+      }
       dismiss_onboarding_guide: {
         Args: { p_church_id: string }
         Returns: undefined
