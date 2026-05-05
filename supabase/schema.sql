@@ -190,7 +190,7 @@ comment on column public.churches.status_change_reason is 'Optional owner/admin 
 
 drop function if exists public.dismiss_onboarding_guide(uuid);
 
-create or replace function public.dismiss_onboarding_guide(p_church_id uuid)
+create or replace function private.dismiss_onboarding_guide_impl(p_church_id uuid)
 returns void
 language plpgsql
 security definer
@@ -217,7 +217,19 @@ begin
 end;
 $$;
 
-revoke all on function public.dismiss_onboarding_guide(uuid) from public;
+revoke all on function private.dismiss_onboarding_guide_impl(uuid) from public, anon, authenticated;
+grant execute on function private.dismiss_onboarding_guide_impl(uuid) to authenticated;
+
+create or replace function public.dismiss_onboarding_guide(p_church_id uuid)
+returns void
+language sql
+security invoker
+set search_path = public, private
+as $$
+  select private.dismiss_onboarding_guide_impl(p_church_id);
+$$;
+
+revoke all on function public.dismiss_onboarding_guide(uuid) from public, anon, authenticated;
 grant execute on function public.dismiss_onboarding_guide(uuid) to authenticated;
 
 create table if not exists public.profiles (
@@ -1908,7 +1920,7 @@ drop function if exists public.has_church_role(uuid, public.team_role[]);
 
 drop function if exists public.team_invitation_preview(text);
 
-create or replace function public.team_invitation_preview(p_token text)
+create or replace function private.team_invitation_preview_impl(p_token text)
 returns table (
   church_name text,
   display_name text,
@@ -1935,6 +1947,25 @@ as $$
   join public.churches on churches.id = team_invitations.church_id
   where team_invitations.token_hash = private.hash_invite_token(p_token)
   limit 1;
+$$;
+
+revoke all on function private.team_invitation_preview_impl(text) from public, anon, authenticated;
+grant execute on function private.team_invitation_preview_impl(text) to anon, authenticated;
+
+create or replace function public.team_invitation_preview(p_token text)
+returns table (
+  church_name text,
+  display_name text,
+  email text,
+  role public.team_role,
+  status public.team_invitation_status,
+  expires_at timestamptz
+)
+language sql
+security invoker
+set search_path = public, private
+as $$
+  select * from private.team_invitation_preview_impl(p_token);
 $$;
 
 revoke all on function public.team_invitation_preview(text) from public, anon, authenticated;
@@ -2043,7 +2074,7 @@ returns table (
   new_contact_count bigint
 )
 language plpgsql
-security definer
+security invoker
 set search_path = public, private
 as $$
 begin
@@ -2119,7 +2150,7 @@ returns table (
   total_count bigint
 )
 language plpgsql
-security definer
+security invoker
 set search_path = public, private
 as $$
 begin
@@ -2197,7 +2228,7 @@ returns table (
   contact_count bigint
 )
 language plpgsql
-security definer
+security invoker
 set search_path = public, private
 as $$
 begin
@@ -2247,7 +2278,7 @@ returns table (
   contact_count bigint
 )
 language plpgsql
-security definer
+security invoker
 set search_path = public, private
 as $$
 begin
@@ -2330,7 +2361,7 @@ returns table (
   total_count bigint
 )
 language plpgsql
-security definer
+security invoker
 set search_path = public, private
 as $$
 begin
@@ -2399,7 +2430,7 @@ grant execute on function public.owner_account_rows_page(text, integer, integer)
 
 drop function if exists public.owner_invitation_rows();
 
-create or replace function public.owner_invitation_rows()
+create or replace function private.owner_invitation_rows_impl()
 returns table (
   church_id uuid,
   church_name text,
@@ -2485,12 +2516,42 @@ begin
 end;
 $$;
 
+revoke all on function private.owner_invitation_rows_impl() from public, anon, authenticated;
+grant execute on function private.owner_invitation_rows_impl() to authenticated;
+
+create or replace function public.owner_invitation_rows()
+returns table (
+  church_id uuid,
+  church_name text,
+  invitation_id uuid,
+  team_member_id uuid,
+  display_name text,
+  email text,
+  role public.team_role,
+  status public.team_invitation_status,
+  invited_by_name text,
+  accepted_by_name text,
+  expires_at timestamptz,
+  accepted_at timestamptz,
+  created_at timestamptz,
+  source text,
+  workspace_type text,
+  event_id uuid,
+  event_name text
+)
+language sql
+security invoker
+set search_path = public, private
+as $$
+  select * from private.owner_invitation_rows_impl();
+$$;
+
 revoke all on function public.owner_invitation_rows() from public, anon, authenticated;
 grant execute on function public.owner_invitation_rows() to authenticated;
 
 drop function if exists public.owner_reset_workspace_invites(uuid, text);
 
-create or replace function public.owner_reset_workspace_invites(p_church_id uuid, p_reason text default null)
+create or replace function private.owner_reset_workspace_invites_impl(p_church_id uuid, p_reason text default null)
 returns void
 language plpgsql
 security definer
@@ -2543,12 +2604,24 @@ begin
 end;
 $$;
 
+revoke all on function private.owner_reset_workspace_invites_impl(uuid, text) from public, anon, authenticated;
+grant execute on function private.owner_reset_workspace_invites_impl(uuid, text) to authenticated;
+
+create or replace function public.owner_reset_workspace_invites(p_church_id uuid, p_reason text default null)
+returns void
+language sql
+security invoker
+set search_path = public, private
+as $$
+  select private.owner_reset_workspace_invites_impl(p_church_id, p_reason);
+$$;
+
 revoke all on function public.owner_reset_workspace_invites(uuid, text) from public, anon, authenticated;
 grant execute on function public.owner_reset_workspace_invites(uuid, text) to authenticated;
 
 drop function if exists public.owner_reset_event_invites(uuid, uuid, text);
 
-create or replace function public.owner_reset_event_invites(p_church_id uuid, p_event_id uuid default null, p_reason text default null)
+create or replace function private.owner_reset_event_invites_impl(p_church_id uuid, p_event_id uuid default null, p_reason text default null)
 returns void
 language plpgsql
 security definer
@@ -2618,12 +2691,24 @@ begin
 end;
 $$;
 
+revoke all on function private.owner_reset_event_invites_impl(uuid, uuid, text) from public, anon, authenticated;
+grant execute on function private.owner_reset_event_invites_impl(uuid, uuid, text) to authenticated;
+
+create or replace function public.owner_reset_event_invites(p_church_id uuid, p_event_id uuid default null, p_reason text default null)
+returns void
+language sql
+security invoker
+set search_path = public, private
+as $$
+  select private.owner_reset_event_invites_impl(p_church_id, p_event_id, p_reason);
+$$;
+
 revoke all on function public.owner_reset_event_invites(uuid, uuid, text) from public, anon, authenticated;
 grant execute on function public.owner_reset_event_invites(uuid, uuid, text) to authenticated;
 
 drop function if exists public.owner_clear_revoked_workspace_invitations(uuid, text);
 
-create or replace function public.owner_clear_revoked_workspace_invitations(
+create or replace function private.owner_clear_revoked_workspace_invitations_impl(
   p_church_id uuid default null,
   p_reason text default null
 )
@@ -2666,12 +2751,27 @@ begin
 end;
 $$;
 
+revoke all on function private.owner_clear_revoked_workspace_invitations_impl(uuid, text) from public, anon, authenticated;
+grant execute on function private.owner_clear_revoked_workspace_invitations_impl(uuid, text) to authenticated;
+
+create or replace function public.owner_clear_revoked_workspace_invitations(
+  p_church_id uuid default null,
+  p_reason text default null
+)
+returns integer
+language sql
+security invoker
+set search_path = public, private
+as $$
+  select private.owner_clear_revoked_workspace_invitations_impl(p_church_id, p_reason);
+$$;
+
 revoke all on function public.owner_clear_revoked_workspace_invitations(uuid, text) from public, anon, authenticated;
 grant execute on function public.owner_clear_revoked_workspace_invitations(uuid, text) to authenticated;
 
 drop function if exists public.owner_clear_revoked_event_invitations(uuid, uuid, text);
 
-create or replace function public.owner_clear_revoked_event_invitations(
+create or replace function private.owner_clear_revoked_event_invitations_impl(
   p_church_id uuid default null,
   p_event_id uuid default null,
   p_reason text default null
@@ -2717,12 +2817,28 @@ begin
 end;
 $$;
 
+revoke all on function private.owner_clear_revoked_event_invitations_impl(uuid, uuid, text) from public, anon, authenticated;
+grant execute on function private.owner_clear_revoked_event_invitations_impl(uuid, uuid, text) to authenticated;
+
+create or replace function public.owner_clear_revoked_event_invitations(
+  p_church_id uuid default null,
+  p_event_id uuid default null,
+  p_reason text default null
+)
+returns integer
+language sql
+security invoker
+set search_path = public, private
+as $$
+  select private.owner_clear_revoked_event_invitations_impl(p_church_id, p_event_id, p_reason);
+$$;
+
 revoke all on function public.owner_clear_revoked_event_invitations(uuid, uuid, text) from public, anon, authenticated;
 grant execute on function public.owner_clear_revoked_event_invitations(uuid, uuid, text) to authenticated;
 
 drop function if exists public.owner_disable_workspace_team_member(uuid, text);
 
-create or replace function public.owner_disable_workspace_team_member(p_team_member_id uuid, p_reason text default null)
+create or replace function private.owner_disable_workspace_team_member_impl(p_team_member_id uuid, p_reason text default null)
 returns void
 language plpgsql
 security definer
@@ -2794,12 +2910,24 @@ begin
 end;
 $$;
 
+revoke all on function private.owner_disable_workspace_team_member_impl(uuid, text) from public, anon, authenticated;
+grant execute on function private.owner_disable_workspace_team_member_impl(uuid, text) to authenticated;
+
+create or replace function public.owner_disable_workspace_team_member(p_team_member_id uuid, p_reason text default null)
+returns void
+language sql
+security invoker
+set search_path = public, private
+as $$
+  select private.owner_disable_workspace_team_member_impl(p_team_member_id, p_reason);
+$$;
+
 revoke all on function public.owner_disable_workspace_team_member(uuid, text) from public, anon, authenticated;
 grant execute on function public.owner_disable_workspace_team_member(uuid, text) to authenticated;
 
 drop function if exists public.owner_remove_workspace_team_member(uuid, text);
 
-create or replace function public.owner_remove_workspace_team_member(p_team_member_id uuid, p_reason text default null)
+create or replace function private.owner_remove_workspace_team_member_impl(p_team_member_id uuid, p_reason text default null)
 returns void
 language plpgsql
 security definer
@@ -2871,12 +2999,24 @@ begin
 end;
 $$;
 
+revoke all on function private.owner_remove_workspace_team_member_impl(uuid, text) from public, anon, authenticated;
+grant execute on function private.owner_remove_workspace_team_member_impl(uuid, text) to authenticated;
+
+create or replace function public.owner_remove_workspace_team_member(p_team_member_id uuid, p_reason text default null)
+returns void
+language sql
+security invoker
+set search_path = public, private
+as $$
+  select private.owner_remove_workspace_team_member_impl(p_team_member_id, p_reason);
+$$;
+
 revoke all on function public.owner_remove_workspace_team_member(uuid, text) from public, anon, authenticated;
 grant execute on function public.owner_remove_workspace_team_member(uuid, text) to authenticated;
 
 drop function if exists public.owner_delete_workspace_team_member(uuid, text);
 
-create or replace function public.owner_delete_workspace_team_member(p_team_member_id uuid, p_reason text default null)
+create or replace function private.owner_delete_workspace_team_member_impl(p_team_member_id uuid, p_reason text default null)
 returns void
 language plpgsql
 security definer
@@ -2915,12 +3055,24 @@ begin
 end;
 $$;
 
+revoke all on function private.owner_delete_workspace_team_member_impl(uuid, text) from public, anon, authenticated;
+grant execute on function private.owner_delete_workspace_team_member_impl(uuid, text) to authenticated;
+
+create or replace function public.owner_delete_workspace_team_member(p_team_member_id uuid, p_reason text default null)
+returns void
+language sql
+security invoker
+set search_path = public, private
+as $$
+  select private.owner_delete_workspace_team_member_impl(p_team_member_id, p_reason);
+$$;
+
 revoke all on function public.owner_delete_workspace_team_member(uuid, text) from public, anon, authenticated;
 grant execute on function public.owner_delete_workspace_team_member(uuid, text) to authenticated;
 
 drop function if exists public.owner_revoke_event_assignment(uuid, text);
 
-create or replace function public.owner_revoke_event_assignment(p_assignment_id uuid, p_reason text default null)
+create or replace function private.owner_revoke_event_assignment_impl(p_assignment_id uuid, p_reason text default null)
 returns void
 language plpgsql
 security definer
@@ -2960,12 +3112,24 @@ begin
 end;
 $$;
 
+revoke all on function private.owner_revoke_event_assignment_impl(uuid, text) from public, anon, authenticated;
+grant execute on function private.owner_revoke_event_assignment_impl(uuid, text) to authenticated;
+
+create or replace function public.owner_revoke_event_assignment(p_assignment_id uuid, p_reason text default null)
+returns void
+language sql
+security invoker
+set search_path = public, private
+as $$
+  select private.owner_revoke_event_assignment_impl(p_assignment_id, p_reason);
+$$;
+
 revoke all on function public.owner_revoke_event_assignment(uuid, text) from public, anon, authenticated;
 grant execute on function public.owner_revoke_event_assignment(uuid, text) to authenticated;
 
 drop function if exists public.owner_delete_event_assignment(uuid, text);
 
-create or replace function public.owner_delete_event_assignment(p_assignment_id uuid, p_reason text default null)
+create or replace function private.owner_delete_event_assignment_impl(p_assignment_id uuid, p_reason text default null)
 returns void
 language plpgsql
 security definer
@@ -3000,12 +3164,24 @@ begin
 end;
 $$;
 
+revoke all on function private.owner_delete_event_assignment_impl(uuid, text) from public, anon, authenticated;
+grant execute on function private.owner_delete_event_assignment_impl(uuid, text) to authenticated;
+
+create or replace function public.owner_delete_event_assignment(p_assignment_id uuid, p_reason text default null)
+returns void
+language sql
+security invoker
+set search_path = public, private
+as $$
+  select private.owner_delete_event_assignment_impl(p_assignment_id, p_reason);
+$$;
+
 revoke all on function public.owner_delete_event_assignment(uuid, text) from public, anon, authenticated;
 grant execute on function public.owner_delete_event_assignment(uuid, text) to authenticated;
 
 drop function if exists public.owner_update_membership_status(uuid, public.membership_status);
 
-create or replace function public.owner_update_membership_status(
+create or replace function private.owner_update_membership_status_impl(
   p_membership_id uuid,
   p_status public.membership_status
 )
@@ -3092,13 +3268,27 @@ begin
 end;
 $$;
 
+revoke all on function private.owner_update_membership_status_impl(uuid, public.membership_status) from public, anon, authenticated;
+grant execute on function private.owner_update_membership_status_impl(uuid, public.membership_status) to authenticated;
+
+create or replace function public.owner_update_membership_status(
+  p_membership_id uuid,
+  p_status public.membership_status
+)
+returns void
+language sql
+security invoker
+set search_path = public, private
+as $$
+  select private.owner_update_membership_status_impl(p_membership_id, p_status);
+$$;
+
 revoke all on function public.owner_update_membership_status(uuid, public.membership_status) from public, anon, authenticated;
-revoke all on function public.owner_update_membership_status(uuid, public.membership_status) from public;
 grant execute on function public.owner_update_membership_status(uuid, public.membership_status) to authenticated;
 
 drop function if exists public.owner_update_membership_role(uuid, public.team_role);
 
-create or replace function public.owner_update_membership_role(
+create or replace function private.owner_update_membership_role_impl(
   p_membership_id uuid,
   p_role public.team_role
 )
@@ -3185,8 +3375,22 @@ begin
 end;
 $$;
 
+revoke all on function private.owner_update_membership_role_impl(uuid, public.team_role) from public, anon, authenticated;
+grant execute on function private.owner_update_membership_role_impl(uuid, public.team_role) to authenticated;
+
+create or replace function public.owner_update_membership_role(
+  p_membership_id uuid,
+  p_role public.team_role
+)
+returns void
+language sql
+security invoker
+set search_path = public, private
+as $$
+  select private.owner_update_membership_role_impl(p_membership_id, p_role);
+$$;
+
 revoke all on function public.owner_update_membership_role(uuid, public.team_role) from public, anon, authenticated;
-revoke all on function public.owner_update_membership_role(uuid, public.team_role) from public;
 grant execute on function public.owner_update_membership_role(uuid, public.team_role) to authenticated;
 
 drop function if exists public.search_contacts(
@@ -3553,7 +3757,7 @@ returns table (
   due_now_follow_ups bigint
 )
 language sql
-security definer
+security invoker
 set search_path = public
 as $$
   select
@@ -3582,7 +3786,7 @@ as $$
     and c.deleted_at is null;
 $$;
 
-revoke all on function public.event_follow_up_counts(uuid, uuid) from public;
+revoke all on function public.event_follow_up_counts(uuid, uuid) from public, anon, authenticated;
 grant execute on function public.event_follow_up_counts(uuid, uuid) to authenticated;
 
 drop function if exists public.event_workspace_interest_counts(uuid, uuid);
@@ -3598,7 +3802,7 @@ returns table (
   health_interest_count bigint
 )
 language sql
-security definer
+security invoker
 set search_path = public
 as $$
   with event_contacts as (
@@ -3639,7 +3843,7 @@ as $$
     ) as health_interest_count;
 $$;
 
-revoke all on function public.event_workspace_interest_counts(uuid, uuid) from public;
+revoke all on function public.event_workspace_interest_counts(uuid, uuid) from public, anon, authenticated;
 grant execute on function public.event_workspace_interest_counts(uuid, uuid) to authenticated;
 
 drop function if exists public.event_follow_ups_page(uuid, uuid, text, uuid, public.urgency_level, integer, integer);
@@ -3673,7 +3877,7 @@ returns table (
   total_count bigint
 )
 language sql
-security definer
+security invoker
 set search_path = public
 as $$
   with filtered as (
@@ -3721,7 +3925,7 @@ as $$
   offset greatest(0, coalesce(p_offset, 0));
 $$;
 
-revoke all on function public.event_follow_ups_page(uuid, uuid, text, uuid, public.urgency_level, integer, integer) from public;
+revoke all on function public.event_follow_ups_page(uuid, uuid, text, uuid, public.urgency_level, integer, integer) from public, anon, authenticated;
 grant execute on function public.event_follow_ups_page(uuid, uuid, text, uuid, public.urgency_level, integer, integer) to authenticated;
 
 drop function if exists public.export_contacts(
@@ -4223,7 +4427,7 @@ grant execute on function public.event_report_summary(uuid, uuid) to authenticat
 
 drop function if exists public.reset_church_contact_data(uuid);
 
-create function public.reset_church_contact_data(p_church_id uuid)
+create or replace function private.reset_church_contact_data_impl(p_church_id uuid)
 returns void
 language plpgsql
 security definer
@@ -4295,7 +4499,19 @@ begin
 end;
 $$;
 
-revoke all on function public.reset_church_contact_data(uuid) from public;
+revoke all on function private.reset_church_contact_data_impl(uuid) from public, anon, authenticated;
+grant execute on function private.reset_church_contact_data_impl(uuid) to authenticated;
+
+create or replace function public.reset_church_contact_data(p_church_id uuid)
+returns void
+language sql
+security invoker
+set search_path = public, private
+as $$
+  select private.reset_church_contact_data_impl(p_church_id);
+$$;
+
+revoke all on function public.reset_church_contact_data(uuid) from public, anon, authenticated;
 grant execute on function public.reset_church_contact_data(uuid) to authenticated;
 
 drop function if exists public.submit_event_registration(
@@ -4902,7 +5118,7 @@ returns table (
   created_at timestamptz
 )
 language plpgsql
-security definer
+security invoker
 set search_path = public
 as $$
 begin
@@ -4938,7 +5154,8 @@ begin
           and c.assigned_to in (
             select tm.id
             from public.team_members tm
-            where tm.user_id = auth.uid()
+            join public.church_memberships cm on cm.id = tm.membership_id
+            where cm.user_id = auth.uid()
               and tm.church_id = p_church_id
               and tm.is_active = true
           )
@@ -4947,6 +5164,7 @@ begin
 end;
 $$;
 
+revoke all on function public.get_contact_prayer_requests(uuid, uuid) from public, anon, authenticated;
 grant execute on function public.get_contact_prayer_requests(uuid, uuid) to authenticated;
 
 drop function if exists public.owner_church_profiles_page(uuid, text, integer, integer);
@@ -4971,7 +5189,7 @@ returns table (
   total_count bigint
 )
 language plpgsql
-security definer
+security invoker
 set search_path = public, private
 as $$
 begin
@@ -5038,7 +5256,7 @@ returns table (
   total_count bigint
 )
 language plpgsql
-security definer
+security invoker
 set search_path = public, private
 as $$
 begin

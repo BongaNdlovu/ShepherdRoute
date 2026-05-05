@@ -7,7 +7,7 @@ import { OwnerAdminTabs } from "@/components/app/owner-admin-tabs";
 import { StatCard } from "@/components/app/stat-card";
 import { getOwnerChurchDetail } from "@/lib/data";
 import { requireOwnerAdmin } from "@/lib/owner-admin";
-import { updateOwnerWorkspaceStatusAction, updateOwnerWorkspaceTypeAction, resetWorkspaceInvitesAction, resetEventInvitesAction } from "@/app/(dashboard)/actions";
+import { updateOwnerWorkspaceStatusAction, updateOwnerWorkspaceTypeAction, resetWorkspaceInvitesAction } from "@/app/(dashboard)/actions";
 
 export const metadata = {
   title: "Owner Church Detail"

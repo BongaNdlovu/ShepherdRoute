@@ -33,7 +33,6 @@ export default async function OwnerInvitationsPage({
 
   const pending = invitationsPage.items.filter((invitation) => invitation.status === "pending").length;
   const accepted = invitationsPage.items.filter((invitation) => invitation.status === "accepted").length;
-  const expired = invitationsPage.items.filter((invitation) => invitation.status === "expired").length;
   const revoked = invitationsPage.items.filter((invitation) => invitation.status === "revoked").length;
   const revokedWorkspace = invitationsPage.items.filter((invitation) => invitation.status === "revoked" && invitation.source === "workspace_team").length;
   const revokedEvent = invitationsPage.items.filter((invitation) => invitation.status === "revoked" && invitation.source === "event_team").length;
