@@ -8,7 +8,7 @@ import { getChurchContext } from "@/lib/data";
 import { getHealthChecks, type HealthStatus } from "@/lib/health";
 
 export const metadata = {
-  title: "Setup Health"
+  title: "System Health"
 };
 
 const statusConfig: Record<HealthStatus, { label: string; icon: typeof CheckCircle2; className: string }> = {
@@ -39,8 +39,8 @@ export default async function SetupHealthPage() {
 
   return (
     <DashboardShell
-      title="Setup health"
-      description="Check configuration and database health for your workspace."
+      title="System health"
+      description="Check configuration, environment, and database health for your workspace."
       actions={
         <Badge variant={failed ? "destructive" : warned ? "warning" : "success"}>
           {failed ? `${failed} fix needed` : warned ? `${warned} warning` : "Ready"}

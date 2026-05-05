@@ -124,7 +124,7 @@ export function getEffectiveFormConfig(event: PublicEvent, template: EventTempla
     show_prayer_visibility: formConfig.show_prayer_visibility !== false,
     show_interests: formConfig.show_interests !== false,
     require_phone: formConfig.require_phone !== false,
-    require_email: formConfig.require_email !== false,
+    require_email: formConfig.require_email === true,
     require_at_least_one_contact_method: formConfig.require_at_least_one_contact_method !== false,
     interest_options: visibleInterestOptions,
     questions: visibleQuestions

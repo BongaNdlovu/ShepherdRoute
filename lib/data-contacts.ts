@@ -195,13 +195,10 @@ export async function getContact(churchId: string, id: string): Promise<ContactD
       .eq("id", id)
       .is("deleted_at", null)
       .maybeSingle(),
-    supabase
-      .from("prayer_requests")
-      .select("request_text, visibility, created_at")
-      .eq("church_id", churchId)
-      .eq("contact_id", id)
-      .order("created_at", { ascending: false })
-      .limit(CONTACT_DETAIL_PRAYER_LIMIT),
+    supabase.rpc("get_contact_prayer_requests", {
+      p_church_id: churchId,
+      p_contact_id: id
+    }),
     supabase
       .from("team_members")
       .select("id, display_name, role")
@@ -286,7 +283,11 @@ export async function getContact(churchId: string, id: string): Promise<ContactD
 
   return {
     contact: { ...contactRow, events: event },
-    prayer: prayer ?? [],
+    prayer: (prayer ?? []).slice(0, CONTACT_DETAIL_PRAYER_LIMIT).map((request: { request_text: string; visibility: string; created_at: string }) => ({
+      request_text: request.request_text,
+      visibility: request.visibility,
+      created_at: request.created_at
+    })),
     journey: (journey ?? []) as unknown as ContactDetailResult["journey"],
     team: team ?? [],
     followUps: followUps ?? [],

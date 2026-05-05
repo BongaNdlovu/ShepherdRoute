@@ -30,6 +30,15 @@ export type EventAssignmentRow = {
   can_manage_event_team: boolean;
   can_view_prayer_requests: boolean;
   can_delete_event: boolean;
+  team_members?: {
+    display_name: string | null;
+    email: string | null;
+    role: string | null;
+  } | {
+    display_name: string | null;
+    email: string | null;
+    role: string | null;
+  }[] | null;
 };
 
 const APP_ADMIN_ROLES = ['owner', 'support_admin', 'billing_admin'] as const satisfies readonly AppAdminRole[];
@@ -79,7 +88,10 @@ export async function getEventAssignments(
 
   const { data, error } = await supabase
     .from('event_assignments')
-    .select('*')
+    .select(`
+      *,
+      team_members(display_name, email, role)
+    `)
     .eq('church_id', churchId)
     .eq('event_id', eventId)
     .order('created_at', { ascending: false });

@@ -7,6 +7,7 @@ import { eventTypeOptions } from "@/lib/constants";
 import { getChurchContext } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/utils";
+import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 import { requireEventManager } from "./event-guards";
 
 const eventSchema = z.object({
@@ -94,7 +95,11 @@ export async function updateEventStatusAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  await requireEventManager(context, supabase);
+  await requireCurrentUserEventPermission({
+    churchId: context.churchId,
+    eventId: parsed.data.eventId,
+    permission: "can_edit_event_settings"
+  });
   const { error } = await supabase
     .from("events")
     .update({ is_active: parsed.data.isActive === "true" })
@@ -125,7 +130,11 @@ export async function updateEventAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  await requireEventManager(context, supabase);
+  await requireCurrentUserEventPermission({
+    churchId: context.churchId,
+    eventId: parsed.data.eventId,
+    permission: "can_edit_event_settings"
+  });
   const { error } = await supabase
     .from("events")
     .update({
@@ -159,7 +168,11 @@ export async function updateEventArchiveAction(formData: FormData) {
 
   const isArchiving = parsed.data.archived === "true";
   const supabase = await createClient();
-  await requireEventManager(context, supabase);
+  await requireCurrentUserEventPermission({
+    churchId: context.churchId,
+    eventId: parsed.data.eventId,
+    permission: "can_edit_event_settings"
+  });
   const { error } = await supabase
     .from("events")
     .update({
@@ -193,7 +206,11 @@ export async function deleteEventAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  await requireEventManager(context, supabase);
+  await requireCurrentUserEventPermission({
+    churchId: context.churchId,
+    eventId: parsed.data.eventId,
+    permission: "can_delete_event"
+  });
 
   const { count: contactCount, error: contactCountError } = await supabase
     .from("contacts")

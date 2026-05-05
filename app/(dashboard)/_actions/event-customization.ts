@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getChurchContext, getEvent } from "@/lib/data";
 import { parseEventCustomizationFormData } from "@/lib/events/customization-form";
 import { createClient } from "@/lib/supabase/server";
+import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 import { requireEventManager } from "./event-guards";
 
 export async function updateEventCustomizationAction(formData: FormData) {
@@ -19,6 +20,12 @@ export async function updateEventCustomizationAction(formData: FormData) {
   if ("error" in parsed) {
     redirect(`/events/${eventId}/customize?error=${encodeURIComponent(parsed.error)}`);
   }
+
+  await requireCurrentUserEventPermission({
+    churchId: context.churchId,
+    eventId: eventId,
+    permission: "can_edit_event_settings"
+  });
 
   const { error } = await supabase
     .from("events")

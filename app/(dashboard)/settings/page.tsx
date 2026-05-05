@@ -82,7 +82,7 @@ export default async function SettingsPage({
               <CardContent className="grid gap-2">
                 <Button asChild variant="outline" className="justify-start"><Link href="/profile">Profile</Link></Button>
                 {canManageChurch ? <Button asChild variant="outline" className="justify-start"><Link href="/settings/team"><UserCog className="h-4 w-4" /> Team settings</Link></Button> : null}
-                {canManageChurch ? <Button asChild variant="outline" className="justify-start"><Link href="/settings/health"><Settings2 className="h-4 w-4" /> Setup health</Link></Button> : null}
+                {canManageChurch ? <Button asChild variant="outline" className="justify-start"><Link href="/settings/health"><Settings2 className="h-4 w-4" /> System health</Link></Button> : null}
               </CardContent>
             </Card>
 

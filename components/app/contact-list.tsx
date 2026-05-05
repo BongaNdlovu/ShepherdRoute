@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { MessageCircle, Trash2 } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { updateContactAction, updateContactLifecycleAction } from "@/app/(dashboard)/actions";
+import { DeleteContactConfirmForm } from "@/components/app/delete-contact-confirm-form";
 import { InterestPills } from "@/components/app/interest-pills";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
@@ -151,26 +152,11 @@ export function ContactList({ churchName, contacts, team, compactLists = false, 
                   )}
                 </div>
                 {canManageContacts ? (
-                  <form action={async (formData: FormData) => {
-                    formData.append("contactId", contact.id);
-                    formData.append("intent", "delete");
-                    await updateContactLifecycleAction(formData);
-                    window.location.href = "/contacts";
-                  }} onSubmit={(e) => {
-                    const confirmed = window.confirm(
-                      `Delete this contact? This will remove ${contact.full_name} from active contact lists, follow-up workflows, reports, and exports. This action cannot be undone.`
-                    );
-                    if (!confirmed) {
-                      e.preventDefault();
-                    }
-                  }}>
-                    <input type="hidden" name="contactId" value={contact.id} />
-                    <input type="hidden" name="intent" value="delete" />
-                    <Button type="submit" size="sm" variant="destructive" className="w-full">
-                      <Trash2 className="h-4 w-4" />
-                      Delete
-                    </Button>
-                  </form>
+                  <DeleteContactConfirmForm
+                    contactId={contact.id}
+                    contactName={contact.full_name}
+                    action={updateContactLifecycleAction}
+                  />
                 ) : null}
               </div>
             </div>

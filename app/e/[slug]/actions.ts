@@ -1,10 +1,81 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { registrationSchema, validatePublicEventRegistration } from "@/lib/public-events/validation";
 
+async function hashIP(ip: string, salt: string): Promise<string> {
+  const textEncoder = new TextEncoder();
+  const data = textEncoder.encode(`${ip}${salt}`);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function getClientIP(): Promise<string> {
+  const headersList = await headers();
+  const forwarded = headersList.get("x-forwarded-for");
+  const realIP = headersList.get("x-real-ip");
+  
+  if (forwarded) {
+    return forwarded.split(",")[0].trim();
+  }
+  if (realIP) {
+    return realIP;
+  }
+  return "unknown";
+}
+
+async function checkRateLimit(slug: string): Promise<boolean> {
+  const ip = await getClientIP();
+  const salt = process.env.PUBLIC_FORM_RATE_LIMIT_SALT || "default-salt";
+  const ipHash = await hashIP(ip, salt);
+  
+  const supabase = await createClient();
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  
+  const { data, error } = await supabase
+    .from("public_form_submissions")
+    .select("id")
+    .eq("slug", slug)
+    .eq("ip_hash", ipHash)
+    .gte("created_at", oneHourAgo);
+  
+  if (error) {
+    console.error("Rate limit check error:", error);
+    return true; // Allow on error to be safe
+  }
+  
+  // Allow 5 submissions per hour per IP
+  if (data && data.length >= 5) {
+    return false;
+  }
+  
+  // Record this submission
+  await supabase.from("public_form_submissions").insert({
+    slug,
+    ip_hash: ipHash
+  });
+  
+  return true;
+}
+
 export async function submitRegistrationAction(formData: FormData) {
+  // Honeypot check: if website field is filled, it's likely a bot
+  const website = formData.get("website");
+  if (website && String(website).trim().length > 0) {
+    // Silently redirect to success to confuse bots
+    redirect(`/e/${formData.get("slug")}?submitted=true`);
+  }
+
+  // Rate limit check
+  const slug = String(formData.get("slug"));
+  const isAllowed = await checkRateLimit(slug);
+  if (!isAllowed) {
+    redirect(`/e/${slug}?error=Too%20many%20submissions.%20Please%20try%20again%20later.`);
+  }
+
   const parsed = registrationSchema.safeParse({
     slug: formData.get("slug"),
     fullName: formData.get("fullName"),

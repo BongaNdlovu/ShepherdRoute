@@ -4,6 +4,12 @@ const email = process.env.E2E_EMAIL;
 const password = process.env.E2E_PASSWORD;
 const hasAuth = Boolean(email && password);
 
+test("authenticated smoke credentials are configured in CI", async () => {
+  test.skip(!process.env.CI, "Only enforce this in CI.");
+  expect(process.env.E2E_EMAIL, "E2E_EMAIL must be configured").toBeTruthy();
+  expect(process.env.E2E_PASSWORD, "E2E_PASSWORD must be configured").toBeTruthy();
+});
+
 async function login(page: import("@playwright/test").Page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email!);

@@ -1,11 +1,27 @@
 import { getChurchContext, getTeamMembers } from "@/lib/data";
 import { getEventAssignments } from "@/lib/data-event-assignments";
 import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
+import type { EventAssignmentRow } from "@/lib/data-event-assignments";
 import { CinematicSection } from "@/components/ui/cinematic-section";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EventInvitationModal } from "@/components/app/event-invitation-modal";
+import { EventAssignmentActions } from "@/components/app/event-assignment-actions";
+import type { EventAssignmentPermissions } from "@/lib/event-permission-presets";
+
+function permissionsFromAssignment(assignment: EventAssignmentRow): Partial<EventAssignmentPermissions> {
+  return {
+    can_view_contacts: assignment.can_view_contacts,
+    can_assign_contacts: assignment.can_assign_contacts,
+    can_view_reports: assignment.can_view_reports,
+    can_export_reports: assignment.can_export_reports,
+    can_edit_event_settings: assignment.can_edit_event_settings,
+    can_manage_event_team: assignment.can_manage_event_team,
+    can_view_prayer_requests: assignment.can_view_prayer_requests,
+    can_delete_event: assignment.can_delete_event,
+  };
+}
 
 export const metadata = {
   title: "Event Team"
@@ -80,38 +96,52 @@ export default async function EventTeamPage({
           <CardContent>
             {assignments.length > 0 ? (
               <div className="space-y-3">
-                {assignments.map((assignment) => (
-                  <div key={assignment.id} className="rounded-lg border p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-semibold">
-                          {assignment.team_member_id ? `Team Member: ${assignment.team_member_id}` : `Invited: ${assignment.invitee_email}`}
-                        </p>
-                        <div className="flex gap-2 mt-2">
-                          <Badge variant={assignment.status === 'accepted' ? 'default' : 'secondary'}>
-                            {assignment.status}
-                          </Badge>
-                          {assignment.revoked_at && <Badge variant="destructive">Revoked</Badge>}
+                {assignments.map((assignment) => {
+                  const teamMember = Array.isArray(assignment.team_members)
+                    ? assignment.team_members[0] ?? null
+                    : assignment.team_members;
+
+                  return (
+                    <div key={assignment.id} className="rounded-lg border p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="font-semibold">
+                            {teamMember
+                              ? teamMember.display_name ?? teamMember.email ?? "Assigned team member"
+                              : `Invited: ${assignment.invitee_email}`}
+                          </p>
+                          {teamMember ? (
+                            <p className="text-sm text-muted-foreground">
+                              {[teamMember.email, teamMember.role?.replace(/_/g, " ")].filter(Boolean).join(" - ")}
+                            </p>
+                          ) : null}
+                          <div className="flex gap-2 mt-2">
+                            <Badge variant={assignment.status === 'accepted' ? 'default' : 'secondary'}>
+                              {assignment.status}
+                            </Badge>
+                            {assignment.revoked_at && <Badge variant="destructive">Revoked</Badge>}
+                          </div>
                         </div>
+                        <EventAssignmentActions
+                          assignmentId={assignment.id}
+                          eventId={id}
+                          initialPermissions={permissionsFromAssignment(assignment)}
+                          revoked={Boolean(assignment.revoked_at)}
+                        />
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">
-                          Invited: {new Date(assignment.invited_at).toLocaleDateString()}
-                        </p>
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                        {assignment.can_view_contacts && <Badge>View contacts</Badge>}
+                        {assignment.can_assign_contacts && <Badge>Assign contacts</Badge>}
+                        {assignment.can_view_reports && <Badge>View reports</Badge>}
+                        {assignment.can_export_reports && <Badge>Export reports</Badge>}
+                        {assignment.can_edit_event_settings && <Badge>Edit settings</Badge>}
+                        {assignment.can_manage_event_team && <Badge>Manage team</Badge>}
+                        {assignment.can_view_prayer_requests && <Badge>View prayers</Badge>}
+                        {assignment.can_delete_event && <Badge>Delete event</Badge>}
                       </div>
                     </div>
-                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                      {assignment.can_view_contacts && <Badge>View contacts</Badge>}
-                      {assignment.can_assign_contacts && <Badge>Assign contacts</Badge>}
-                      {assignment.can_view_reports && <Badge>View reports</Badge>}
-                      {assignment.can_export_reports && <Badge>Export reports</Badge>}
-                      {assignment.can_edit_event_settings && <Badge>Edit settings</Badge>}
-                      {assignment.can_manage_event_team && <Badge>Manage team</Badge>}
-                      {assignment.can_view_prayer_requests && <Badge>View prayers</Badge>}
-                      {assignment.can_delete_event && <Badge>Delete event</Badge>}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="p-8 text-center">

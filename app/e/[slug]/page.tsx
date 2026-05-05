@@ -384,6 +384,17 @@ export default async function PublicEventPage({
 
                 <input type="hidden" name="consentTextSnapshot" value={consentText} />
                 <input type="hidden" name="privacyPolicyVersion" value="contact-consent-v1" />
+                
+                {/* Honeypot field for bot protection */}
+                <input
+                  type="text"
+                  name="website"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  className="hidden"
+                  aria-hidden="true"
+                />
+                
                 <ContactMethodConsent availableMethods={availableContactMethods} />
                 <PendingSubmitButton size="lg" pendingText="Submitting...">
                   Submit visitor form

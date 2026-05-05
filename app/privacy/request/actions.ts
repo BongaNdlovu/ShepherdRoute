@@ -1,0 +1,57 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
+import { getPublicChurch } from "@/lib/data-public";
+
+const schema = z.object({
+  churchSlug: z.string().min(1),
+  requestType: z.enum(["correction", "deletion", "export", "restriction"]),
+  requesterName: z.string().min(2, "Name must be at least 2 characters"),
+  requesterContact: z.string().min(3, "Contact must be at least 3 characters"),
+  notes: z.string().optional(),
+  website: z.string().optional(), // honeypot field
+});
+
+export async function submitPublicDataRequestAction(formData: FormData) {
+  const parsed = schema.safeParse({
+    churchSlug: formData.get("churchSlug"),
+    requestType: formData.get("requestType"),
+    requesterName: formData.get("requesterName"),
+    requesterContact: formData.get("requesterContact"),
+    notes: formData.get("notes"),
+    website: formData.get("website"),
+  });
+
+  if (!parsed.success) {
+    redirect(`?error=${encodeURIComponent(parsed.error.errors[0].message)}`);
+  }
+
+  const { churchSlug, requestType, requesterName, requesterContact, notes, website } = parsed.data;
+
+  // Honeypot check: if website field is filled, it's likely a bot
+  if (website && website.trim().length > 0) {
+    redirect(`?submitted=true`);
+  }
+
+  const church = await getPublicChurch(churchSlug);
+  if (!church) {
+    redirect(`?error=${encodeURIComponent("Invalid church")}`);
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("submit_public_data_request", {
+    p_church_id: church.id,
+    p_request_type: requestType,
+    p_requester_name: requesterName,
+    p_requester_contact: requesterContact,
+    p_notes: notes || null,
+  });
+
+  if (error) {
+    redirect(`?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect(`?submitted=true`);
+}

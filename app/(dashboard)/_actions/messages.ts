@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getChurchContext } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { createWhatsappLink } from "@/lib/whatsapp";
+import { requireContactManager, requireFollowUpAssigner } from "./contact-guards";
 
 const generatedMessageSchema = z.object({
   contactId: z.string().uuid(),
@@ -42,6 +43,7 @@ export async function saveGeneratedMessageAction(formData: FormData) {
     redirect("/contacts?error=Add%20a%20valid%20WhatsApp%20phone%20number%20before%20opening%20WhatsApp.");
   }
   const supabase = await createClient();
+  await requireContactManager(context, supabase, `/contacts/${parsed.data.contactId}`);
   await supabase.from("generated_messages").insert({
     church_id: context.churchId,
     contact_id: parsed.data.contactId,
@@ -69,6 +71,7 @@ export async function openSuggestedWhatsappAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  await requireFollowUpAssigner(context, supabase, "/follow-ups");
   const { data: followUp, error: followUpError } = await supabase
     .from("follow_ups")
     .select("id, contact_id, completed_at")

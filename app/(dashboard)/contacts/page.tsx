@@ -31,6 +31,8 @@ export default async function ContactsPage({
   ]);
   const { contacts, total, page, pageCount } = contactsPage;
   const userCanManageContacts = canManageContacts(context.role as "admin" | "pastor" | "elder" | "bible_worker" | "health_leader" | "prayer_team" | "youth_leader" | "viewer");
+  const userCanExportContacts =
+    context.isAppAdmin || context.role === "admin" || context.role === "pastor";
   const exportHref = () => {
     const search = new URLSearchParams();
 
@@ -57,12 +59,14 @@ export default async function ContactsPage({
               Add contact
             </Link>
           </Button>
-          <Button asChild variant="outline">
-            <Link href={exportHref()}>
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Link>
-          </Button>
+          {userCanExportContacts ? (
+            <Button asChild variant="outline">
+              <Link href={exportHref()}>
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Link>
+            </Button>
+          ) : null}
         </div>
       }
     >

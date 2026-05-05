@@ -552,6 +552,68 @@ create table if not exists public.data_requests (
 create index if not exists data_requests_church_status_idx
 on public.data_requests(church_id, status, created_at desc);
 
+drop function if exists public.submit_public_data_request(uuid, public.data_request_type, text, text, text);
+
+create or replace function public.submit_public_data_request(
+  p_church_id uuid,
+  p_request_type public.data_request_type,
+  p_requester_name text,
+  p_requester_contact text,
+  p_notes text default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_request_id uuid;
+begin
+  if length(trim(coalesce(p_requester_name, ''))) < 2 then
+    raise exception 'Requester name is required.';
+  end if;
+
+  if length(trim(coalesce(p_requester_contact, ''))) < 3 then
+    raise exception 'Requester contact is required.';
+  end if;
+
+  insert into public.data_requests (
+    church_id,
+    request_type,
+    requester_name,
+    requester_contact,
+    status,
+    notes,
+    created_by
+  )
+  values (
+    p_church_id,
+    p_request_type,
+    trim(p_requester_name),
+    trim(p_requester_contact),
+    'open',
+    nullif(trim(coalesce(p_notes, '')), ''),
+    null
+  )
+  returning id into new_request_id;
+
+  return new_request_id;
+end;
+$$;
+
+revoke all on function public.submit_public_data_request(uuid, public.data_request_type, text, text, text) from public, anon, authenticated;
+grant execute on function public.submit_public_data_request(uuid, public.data_request_type, text, text, text) to anon, authenticated;
+
+create table if not exists public.public_form_submissions (
+  id uuid primary key default gen_random_uuid(),
+  slug text not null,
+  ip_hash text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists public_form_submissions_slug_ip_created_idx
+on public.public_form_submissions(slug, ip_hash, created_at desc);
+
 create table if not exists public.contact_journey_events (
   id uuid primary key default gen_random_uuid(),
   church_id uuid not null references public.churches(id) on delete cascade,
@@ -4187,6 +4249,7 @@ as $$
     left join public.contacts on contacts.event_id = events.id
       and contacts.church_id = events.church_id
       and contacts.deleted_at is null
+      and contacts.archived_at is null
     where events.church_id = p_church_id
     group by events.id, events.name, events.event_type, events.created_at
   )
@@ -4196,6 +4259,7 @@ as $$
       from public.contacts
       where contacts.church_id = p_church_id
         and contacts.deleted_at is null
+        and contacts.archived_at is null
     ) as total_contacts,
     (
       select count(*)
@@ -4203,6 +4267,7 @@ as $$
       where contacts.church_id = p_church_id
         and contacts.status <> 'new'
         and contacts.deleted_at is null
+        and contacts.archived_at is null
     ) as followed_up_count,
     (
       select count(distinct contacts.id)
@@ -4212,6 +4277,7 @@ as $$
       where contacts.church_id = p_church_id
         and contact_interests.interest = 'bible_study'
         and contacts.deleted_at is null
+        and contacts.archived_at is null
     ) as bible_study_count,
     (
       select count(distinct contacts.id)
@@ -4221,6 +4287,7 @@ as $$
       where contacts.church_id = p_church_id
         and contact_interests.interest = 'prayer'
         and contacts.deleted_at is null
+        and contacts.archived_at is null
     ) as prayer_count,
     (
       select count(distinct contacts.id)
@@ -4230,6 +4297,7 @@ as $$
       where contacts.church_id = p_church_id
         and contact_interests.interest in ('health', 'cooking_class')
         and contacts.deleted_at is null
+        and contacts.archived_at is null
     ) as health_count,
     (
       select count(distinct contacts.id)
@@ -4239,6 +4307,7 @@ as $$
       where contacts.church_id = p_church_id
         and contact_interests.interest = 'baptism'
         and contacts.deleted_at is null
+        and contacts.archived_at is null
     ) as baptism_count,
     (
       select count(*)
@@ -4246,6 +4315,7 @@ as $$
       where contacts.church_id = p_church_id
         and contacts.urgency = 'high'
         and contacts.deleted_at is null
+        and contacts.archived_at is null
     ) as high_priority_count,
     (
       select count(*)
@@ -4254,6 +4324,7 @@ as $$
         and contacts.assigned_to is null
         and contacts.status <> 'closed'
         and contacts.deleted_at is null
+        and contacts.archived_at is null
     ) as unassigned_count,
     (
       select count(distinct follow_ups.contact_id)
@@ -4262,6 +4333,7 @@ as $$
       where follow_ups.church_id = p_church_id
         and contacts.status <> 'closed'
         and contacts.deleted_at is null
+        and contacts.archived_at is null
         and follow_ups.completed_at is null
         and follow_ups.due_at >= date_trunc('day', now())
         and follow_ups.due_at < date_trunc('day', now()) + interval '1 day'
@@ -4273,6 +4345,7 @@ as $$
       where follow_ups.church_id = p_church_id
         and contacts.status <> 'closed'
         and contacts.deleted_at is null
+        and contacts.archived_at is null
         and follow_ups.completed_at is null
         and follow_ups.due_at < now()
     ) as overdue_count,
@@ -4283,6 +4356,7 @@ as $$
         and contacts.status = 'waiting'
         and contacts.status <> 'closed'
         and contacts.deleted_at is null
+        and contacts.archived_at is null
     ) as waiting_reply_count,
     (
       select count(*)
@@ -4291,6 +4365,7 @@ as $$
         and contacts.consent_given is distinct from true
         and contacts.status <> 'closed'
         and contacts.deleted_at is null
+        and contacts.archived_at is null
     ) as no_consent_count,
     (
       select count(*)
@@ -4298,6 +4373,7 @@ as $$
       where contacts.church_id = p_church_id
         and contacts.do_not_contact = true
         and contacts.deleted_at is null
+        and contacts.archived_at is null
     ) as do_not_contact_count,
     coalesce(
       (
@@ -4348,6 +4424,7 @@ as $$
     where contacts.church_id = p_church_id
       and contacts.event_id = p_event_id
       and contacts.deleted_at is null
+      and contacts.archived_at is null
   ),
   event_form_config as (
     select form_config

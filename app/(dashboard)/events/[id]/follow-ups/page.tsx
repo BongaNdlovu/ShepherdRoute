@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getChurchContext, getTeamMembers } from "@/lib/data";
 import { getEventFollowUpsPage, type EventFollowUpsParams } from "@/lib/data-events";
+import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 import { EventFollowUpFilters } from "@/components/app/event-follow-up-filters";
 import { CinematicSection } from "@/components/ui/cinematic-section";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
@@ -22,6 +23,31 @@ export default async function EventFollowUpsPage({
   const { id } = await params;
   const query = await searchParams;
   const context = await getChurchContext();
+
+  try {
+    await requireCurrentUserEventPermission({
+      churchId: context.churchId,
+      eventId: id,
+      permission: "can_view_contacts"
+    });
+  } catch {
+    return (
+      <CinematicSection className="cinematic-fade-up">
+        <section className="space-y-4">
+          <EventWorkspaceTabs eventId={id} />
+          <Card>
+            <CardContent className="p-6">
+              <h1 className="text-lg font-semibold">Access restricted</h1>
+              <p className="text-sm text-muted-foreground">
+                You do not have permission to view this event follow-up queue.
+              </p>
+            </CardContent>
+          </Card>
+        </section>
+      </CinematicSection>
+    );
+  }
+
   const team = await getTeamMembers(context.churchId);
   const { followUps, totalCount, page, pageSize } = await getEventFollowUpsPage(context.churchId, id, query);
 

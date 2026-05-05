@@ -326,6 +326,7 @@ export async function getEventReportContacts(churchId: string, id: string) {
     .eq("church_id", churchId)
     .eq("event_id", id)
     .is("deleted_at", null)
+    .is("archived_at", null)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -359,6 +360,7 @@ export async function getEventReportContactsPage(churchId: string, id: string, o
     .eq("church_id", churchId)
     .eq("event_id", id)
     .is("deleted_at", null)
+    .is("archived_at", null)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 

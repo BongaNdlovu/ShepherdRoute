@@ -20,3 +20,23 @@ export async function getPublicEvent(slug: string) {
 
   return data;
 }
+
+export async function getPublicChurch(slug: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("churches")
+    .select("id, name, slug")
+    .eq("slug", slug)
+    .single();
+
+  if (error) {
+    console.error("Error fetching public church:", error);
+    notFound();
+  }
+
+  if (!data) {
+    notFound();
+  }
+
+  return data;
+}

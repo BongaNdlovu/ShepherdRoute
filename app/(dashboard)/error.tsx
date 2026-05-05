@@ -25,7 +25,7 @@ export default function DashboardError({ error, reset }: { error: Error & { dige
         <div className="mt-4 flex flex-wrap gap-2">
           <Button onClick={reset}>Try again</Button>
           <Button asChild variant="outline">
-            <Link href="/settings/health">Open setup health check</Link>
+            <Link href="/settings/health">Open system health check</Link>
           </Button>
         </div>
       </CardContent>
