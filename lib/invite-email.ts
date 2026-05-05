@@ -16,6 +16,22 @@ export function gmailComposeUrl(params: {
   return `${baseUrl}&${searchParams.toString()}`;
 }
 
+export function mailtoUrl(params: {
+  to: string;
+  subject: string;
+  body: string;
+  cc?: string;
+  bcc?: string;
+}): string {
+  const { to, subject, body, cc, bcc } = params;
+  const searchParams = new URLSearchParams();
+  searchParams.set("subject", subject);
+  searchParams.set("body", body);
+  if (cc) searchParams.set("cc", cc);
+  if (bcc) searchParams.set("bcc", bcc);
+  return `mailto:${encodeURIComponent(to)}?${searchParams.toString()}`;
+}
+
 export function workspaceInviteTemplate(params: {
   workspaceName: string;
   inviterName: string;

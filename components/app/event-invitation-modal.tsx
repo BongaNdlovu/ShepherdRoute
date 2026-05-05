@@ -38,6 +38,8 @@ export function EventInvitationModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [gmailUrl, setGmailUrl] = useState<string | null>(null);
+  const [emailUrl, setEmailUrl] = useState<string | null>(null);
   const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
@@ -53,7 +55,9 @@ export function EventInvitationModal({
           permissions,
         });
         if (result.token) {
-          setInviteUrl(`${window.location.origin}/event-invitations/accept?token=${result.token}`);
+          setInviteUrl(result.inviteUrl ?? `${window.location.origin}/event-invitations/accept?token=${result.token}`);
+          setGmailUrl(result.gmailUrl ?? null);
+          setEmailUrl(result.emailUrl ?? null);
         }
       } else {
         await assignTeamMemberToEvent({
@@ -102,13 +106,27 @@ export function EventInvitationModal({
           <Button
             type="button"
             variant="outline"
-            onClick={() => {
-              setInviteUrl(null);
-              setEmail('');
-            }}
-          >
-            Invite someone else
-          </Button>
+          onClick={() => {
+            setInviteUrl(null);
+            setGmailUrl(null);
+            setEmailUrl(null);
+            setEmail('');
+          }}
+        >
+          Invite someone else
+        </Button>
+          <div className="flex flex-wrap gap-2">
+            {gmailUrl ? (
+              <Button asChild type="button" variant="outline">
+                <a href={gmailUrl} target="_blank" rel="noreferrer">Open Gmail draft</a>
+              </Button>
+            ) : null}
+            {emailUrl ? (
+              <Button asChild type="button" variant="outline">
+                <a href={emailUrl}>Open email draft</a>
+              </Button>
+            ) : null}
+          </div>
         </div>
       ) : (
       <form onSubmit={handleSubmit} className="space-y-4">

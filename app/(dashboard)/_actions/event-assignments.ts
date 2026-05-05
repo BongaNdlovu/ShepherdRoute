@@ -9,7 +9,7 @@ import {
 } from '@/lib/event-permission-presets';
 import { requireEventPermission } from '@/lib/data-event-assignments';
 import type { AppAdminRole } from '@/lib/permissions';
-import { gmailComposeUrl, eventInviteTemplate } from '@/lib/invite-email';
+import { gmailComposeUrl, mailtoUrl, eventInviteTemplate } from '@/lib/invite-email';
 
 function hashToken(token: string) {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -285,12 +285,30 @@ export async function inviteToEventByEmail(input: {
     throw new Error(`Failed to create invitation: ${error.message} (Code: ${error.code})`);
   }
 
-  // Email delivery is intentionally manual for now; return the raw token once so
-  // the UI can show a shareable invite URL without storing it.
+  const inviteLink = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/event-invitations/accept?token=${rawToken}`;
+  const { data: eventDetails } = await supabase
+    .from('events')
+    .select('name, churches(name)')
+    .eq('id', input.eventId)
+    .single();
+  const churches = eventDetails?.churches as { name: string }[] | null | undefined;
+  const workspaceName = churches?.[0]?.name;
+  const { subject, body } = eventInviteTemplate({
+    eventName: eventDetails?.name ?? 'this event',
+    workspaceName: workspaceName ?? 'your workspace',
+    inviterName: user.user_metadata?.full_name || user.email || 'A team member',
+    inviteLink
+  });
 
   revalidatePath(`/events/${input.eventId}/team`);
 
-  return { ok: true, token: rawToken };
+  return {
+    ok: true,
+    token: rawToken,
+    inviteUrl: inviteLink,
+    gmailUrl: gmailComposeUrl({ to: email, subject, body }),
+    emailUrl: mailtoUrl({ to: email, subject, body })
+  };
 }
 
 export async function updateEventAssignmentPermissions(input: {
@@ -415,5 +433,11 @@ export async function getEventInviteGmailUrlAction(formData: FormData) {
     body
   });
 
-  return { gmailUrl };
+  const emailUrl = mailtoUrl({
+    to: assignment.invitee_email,
+    subject,
+    body
+  });
+
+  return { gmailUrl, emailUrl };
 }

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { CheckCircle2, Mail, UserPlus, XCircle } from "lucide-react";
 import { addTeamMemberAction, revokeTeamInvitationAction } from "@/app/(dashboard)/actions";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { roleLabels, roleOptions, appRoleLabels, appRoleOptions } from "@/lib/constants";
 import { getChurchContext, getTeamInvitations, getTeamMembers } from "@/lib/data";
+import { gmailComposeUrl, mailtoUrl, workspaceInviteTemplate } from "@/lib/invite-email";
+import { createClient } from "@/lib/supabase/server";
 import { absoluteUrl, initials } from "@/lib/utils";
 
 export const metadata = {
@@ -28,6 +31,9 @@ export default async function TeamPage({
     getTeamInvitations(context.churchId)
   ]);
   const inviteUrl = params.invite ? absoluteUrl(`/invite/${params.invite}`) : null;
+  const inviteEmail = params.invite
+    ? await getWorkspaceInviteEmailDraft(params.invite, context.fullName || "A team member")
+    : null;
   const pendingInvitations = invitations.filter((invitation) => invitation.status === "pending");
 
   return (
@@ -152,6 +158,22 @@ export default async function TeamPage({
               <div className="mb-4 grid gap-2 rounded-xl border border-success/20 bg-success/10 p-3">
                 <p className="text-sm font-semibold text-success">Invite link ready</p>
                 <Input readOnly value={inviteUrl} className="bg-background font-mono text-xs" />
+                {inviteEmail ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Button asChild size="sm" variant="outline">
+                      <a href={inviteEmail.gmailUrl} target="_blank" rel="noreferrer">
+                        <Mail className="h-4 w-4" />
+                        Open Gmail draft
+                      </a>
+                    </Button>
+                    <Button asChild size="sm" variant="outline">
+                      <a href={inviteEmail.emailUrl}>
+                        <Mail className="h-4 w-4" />
+                        Open email draft
+                      </a>
+                    </Button>
+                  </div>
+                ) : null}
               </div>
             ) : null}
             <form action={addTeamMemberAction} className="grid gap-4">
@@ -199,4 +221,33 @@ export default async function TeamPage({
       </CinematicSection>
     </DashboardShell>
   );
+}
+
+async function getWorkspaceInviteEmailDraft(token: string, inviterName: string) {
+  const supabase = await createClient();
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const { data: invitation } = await supabase
+    .from("team_invitations")
+    .select("email, churches(name)")
+    .eq("token_hash", tokenHash)
+    .maybeSingle();
+
+  const churches = invitation?.churches as { name: string }[] | null | undefined;
+  const workspaceName = churches?.[0]?.name;
+
+  if (!invitation?.email || !workspaceName) {
+    return null;
+  }
+
+  const inviteLink = absoluteUrl(`/invite/${token}`);
+  const { subject, body } = workspaceInviteTemplate({
+    workspaceName,
+    inviterName,
+    inviteLink
+  });
+
+  return {
+    gmailUrl: gmailComposeUrl({ to: invitation.email, subject, body }),
+    emailUrl: mailtoUrl({ to: invitation.email, subject, body })
+  };
 }

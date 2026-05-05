@@ -3,8 +3,11 @@ import { expect, test } from "@playwright/test";
 
 const schema = readFileSync("supabase/schema.sql", "utf8");
 const teamAction = readFileSync("app/(dashboard)/_actions/team.ts", "utf8");
+const teamPage = readFileSync("app/(dashboard)/team/page.tsx", "utf8");
 const authActions = readFileSync("app/(auth)/actions.ts", "utf8");
 const signupPage = readFileSync("app/(auth)/signup/page.tsx", "utf8");
+const eventAssignments = readFileSync("app/(dashboard)/_actions/event-assignments.ts", "utf8");
+const eventInvitationModal = readFileSync("components/app/event-invitation-modal.tsx", "utf8");
 const envExample = readFileSync(".env.example", "utf8");
 const deploymentDocs = readFileSync("docs/deployment.md", "utf8");
 const setupDocs = readFileSync("docs/supabase-schema-setup.md", "utf8");
@@ -30,6 +33,21 @@ test.describe("team invitation workflow", () => {
     expect(teamAction).toContain("createHash(\"sha256\")");
     expect(teamAction).toContain("team_invitations");
     expect(teamAction).toContain("redirect(`/settings/team?invite=");
+  });
+
+  test("workspace invite email drafts use the real invite route", () => {
+    expect(teamAction).toContain("/invite/${parsed.data.token}");
+    expect(teamAction).not.toContain("/team-invitations/accept");
+    expect(teamPage).toContain("Open Gmail draft");
+    expect(teamPage).toContain("Open email draft");
+  });
+
+  test("event email invites return draft links to the visible modal", () => {
+    expect(eventAssignments).toContain("gmailUrl: gmailComposeUrl");
+    expect(eventAssignments).toContain("emailUrl: mailtoUrl");
+    expect(eventInvitationModal).toContain("setGmailUrl(result.gmailUrl");
+    expect(eventInvitationModal).toContain("Open Gmail draft");
+    expect(eventInvitationModal).toContain("Open email draft");
   });
 
   test("auth actions pass invite tokens through signup and login", () => {

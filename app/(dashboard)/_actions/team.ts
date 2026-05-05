@@ -8,7 +8,7 @@ import { roleOptions, appRoleOptions, type AppRole, type TeamRole } from "@/lib/
 import { getChurchContext } from "@/lib/data";
 import { canInviteRole, canManageTeam } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
-import { gmailComposeUrl, workspaceInviteTemplate } from "@/lib/invite-email";
+import { gmailComposeUrl, mailtoUrl, workspaceInviteTemplate } from "@/lib/invite-email";
 
 const optionalEmailSchema = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -169,7 +169,7 @@ export async function getTeamInviteGmailUrlAction(formData: FormData) {
     return { error: "Invitation not found" };
   }
 
-  const inviteLink = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/team-invitations/accept?token=${parsed.data.token}`;
+  const inviteLink = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/invite/${parsed.data.token}`;
   const { subject, body } = workspaceInviteTemplate({
     workspaceName: invitation.churches.name,
     inviterName: context.fullName || "A team member",
@@ -182,7 +182,13 @@ export async function getTeamInviteGmailUrlAction(formData: FormData) {
     body
   });
 
-  return { gmailUrl };
+  const emailUrl = mailtoUrl({
+    to: invitation.email,
+    subject,
+    body
+  });
+
+  return { gmailUrl, emailUrl };
 }
 
 export async function revokeTeamInvitationAction(formData: FormData) {
