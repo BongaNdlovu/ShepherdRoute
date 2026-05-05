@@ -3,6 +3,8 @@ import { CinematicSection } from "@/components/ui/cinematic-section";
 import { OwnerAdminTabs } from "@/components/app/owner-admin-tabs";
 import { OwnerPagination } from "@/components/app/owner-pagination";
 import { OwnerSearchForm } from "@/components/app/owner-search-form";
+import { Button } from "@/components/ui/button";
+import { disableWorkspaceTeamMemberAction, removeWorkspaceTeamMemberAction, deleteWorkspaceTeamMemberAction } from "@/app/(dashboard)/actions";
 import { getOwnerChurchDetail, getOwnerChurchTeamPage } from "@/lib/data";
 import { requireOwnerAdmin } from "@/lib/owner-admin";
 
@@ -61,6 +63,7 @@ export default async function OwnerChurchTeamPage({
                   <th className="px-4 py-2 text-left font-semibold">Login access</th>
                   <th className="px-4 py-2 text-left font-semibold">Status</th>
                   <th className="px-4 py-2 text-left font-semibold">Created</th>
+                  <th className="px-4 py-2 text-left font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -73,6 +76,28 @@ export default async function OwnerChurchTeamPage({
                     <td className="px-4 py-3">{member.membership_id ? "Yes" : "No"}</td>
                     <td className="px-4 py-3">{member.is_active ? "Active" : "Inactive"}</td>
                     <td className="px-4 py-3">{new Date(member.created_at).toLocaleDateString()}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-2">
+                        <form action={disableWorkspaceTeamMemberAction}>
+                          <input type="hidden" name="teamMemberId" value={member.id} />
+                          <Button type="submit" size="sm" variant="outline" disabled={!member.is_active}>
+                            Disable
+                          </Button>
+                        </form>
+                        <form action={removeWorkspaceTeamMemberAction}>
+                          <input type="hidden" name="teamMemberId" value={member.id} />
+                          <Button type="submit" size="sm" variant="destructive">
+                            Remove
+                          </Button>
+                        </form>
+                        <form action={deleteWorkspaceTeamMemberAction}>
+                          <input type="hidden" name="teamMemberId" value={member.id} />
+                          <Button type="submit" size="sm" variant="destructive">
+                            Delete
+                          </Button>
+                        </form>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

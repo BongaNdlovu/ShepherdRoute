@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CinematicSection } from "@/components/ui/cinematic-section";
 import { OwnerAdminTabs } from "@/components/app/owner-admin-tabs";
 import { OwnerPagination } from "@/components/app/owner-pagination";
 import { OwnerSearchForm } from "@/components/app/owner-search-form";
+import { resetEventInvitesAction } from "@/app/(dashboard)/actions";
 import { getOwnerChurchDetail, getOwnerChurchEventsPage } from "@/lib/data";
 import { requireOwnerAdmin } from "@/lib/owner-admin";
 
@@ -97,6 +99,35 @@ export default async function OwnerChurchEventsPage({
           {!eventsPage.items.length ? (
             <p className="rounded-lg bg-white/10 p-4 text-sm text-muted-foreground">No events found.</p>
           ) : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Reset event invitations</CardTitle>
+          <CardDescription>Revoke all pending event invitations for this church or a specific event.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form action={resetEventInvitesAction} className="grid gap-2 p-3">
+            <input type="hidden" name="churchId" value={church.id} />
+            <div className="grid gap-2">
+              <label className="text-sm font-semibold">Optional: Specific event</label>
+              <select name="eventId" className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring">
+                <option value="">All events</option>
+                {eventsPage.items.map((event) => (
+                  <option key={event.id} value={event.id}>{event.name}</option>
+                ))}
+              </select>
+            </div>
+            <textarea
+              name="reason"
+              placeholder="Optional reason for resetting event invitations"
+              className="min-h-20 rounded-md border border-input bg-background px-3 py-2 text-sm focus-ring"
+            />
+            <Button type="submit" variant="destructive" className="w-full">
+              Reset pending event invitations
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </section>

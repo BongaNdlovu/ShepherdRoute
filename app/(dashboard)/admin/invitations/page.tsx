@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Mail } from "lucide-react";
+import { Mail, RotateCcw, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { StatCard } from "@/components/app/stat-card";
 import { roleLabels } from "@/lib/constants";
 import { getOwnerInvitationsPage } from "@/lib/data";
 import { requireOwnerAdmin } from "@/lib/owner-admin";
+import { revokeEventAssignmentAction, deleteEventAssignmentAction } from "@/app/(dashboard)/actions";
 
 export const metadata = {
   title: "Owner Invitations",
@@ -80,17 +81,20 @@ export default async function OwnerInvitationsPage({
             {invitationsPage.items.map((invitation) => (
               <div
                 key={invitation.invitation_id}
-                className="cinematic-lift grid gap-3 rounded-2xl border bg-white/20 p-4 lg:grid-cols-[1.2fr_1fr_0.7fr_0.7fr_0.9fr] lg:items-center"
+                className="cinematic-lift grid gap-3 rounded-2xl border bg-white/20 p-4 lg:grid-cols-[1.2fr_1fr_0.7fr_0.7fr_0.7fr_0.9fr] lg:items-center"
               >
                 <div>
                   <p className="font-bold">{invitation.display_name}</p>
                   <p className="text-sm text-muted-foreground">{invitation.church_name}</p>
+                  {invitation.source === "event_team" && invitation.event_name ? (
+                    <p className="text-xs text-muted-foreground">Event: {invitation.event_name}</p>
+                  ) : null}
                 </div>
 
                 <p className="truncate text-sm font-semibold">{invitation.email}</p>
 
                 <p className="text-sm font-semibold">
-                  {roleLabels[invitation.role as keyof typeof roleLabels] ?? invitation.role}
+                  {invitation.role ? (roleLabels[invitation.role as keyof typeof roleLabels] ?? invitation.role) : "-"}
                 </p>
 
                 <Badge variant={invitationStatusVariant(invitation.status)}>{invitation.status}</Badge>
@@ -104,6 +108,25 @@ export default async function OwnerInvitationsPage({
                   {invitation.invited_by_name ? <p>Invited by {invitation.invited_by_name}</p> : null}
                   {invitation.accepted_by_name ? <p>Accepted by {invitation.accepted_by_name}</p> : null}
                 </div>
+
+                {invitation.source === "event_team" && invitation.status === "pending" ? (
+                  <div className="flex gap-2">
+                    <form action={revokeEventAssignmentAction}>
+                      <input type="hidden" name="assignmentId" value={invitation.invitation_id} />
+                      <Button type="submit" size="sm" variant="outline">
+                        <RotateCcw className="h-4 w-4 mr-1" />
+                        Revoke
+                      </Button>
+                    </form>
+                    <form action={deleteEventAssignmentAction}>
+                      <input type="hidden" name="assignmentId" value={invitation.invitation_id} />
+                      <Button type="submit" size="sm" variant="destructive">
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
+                    </form>
+                  </div>
+                ) : null}
               </div>
             ))}
 

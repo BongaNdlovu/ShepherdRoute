@@ -37,7 +37,7 @@ async function generateDeepSeekReply(prompt: string) {
         { role: "user", content: prompt }
       ],
       temperature: 0.3,
-      max_tokens: 1024
+      max_tokens: process.env.DEEPSEEK_MODEL?.includes("pro") ? 4096 : 1024
     })
   });
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarClock, ClipboardList, UsersRound } from "lucide-react";
+import { CalendarClock, ClipboardList, UsersRound, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CinematicSection } from "@/components/ui/cinematic-section";
@@ -7,7 +7,7 @@ import { OwnerAdminTabs } from "@/components/app/owner-admin-tabs";
 import { StatCard } from "@/components/app/stat-card";
 import { getOwnerChurchDetail } from "@/lib/data";
 import { requireOwnerAdmin } from "@/lib/owner-admin";
-import { updateOwnerWorkspaceStatusAction, updateOwnerWorkspaceTypeAction } from "@/app/(dashboard)/actions";
+import { updateOwnerWorkspaceStatusAction, updateOwnerWorkspaceTypeAction, resetWorkspaceInvitesAction, resetEventInvitesAction } from "@/app/(dashboard)/actions";
 
 export const metadata = {
   title: "Owner Church Detail"
@@ -89,6 +89,27 @@ export default async function OwnerChurchDetailPage({
           <Button asChild variant="outline"><Link href={`/admin/churches/${church.id}/profiles`}>Profiles</Link></Button>
           <Button asChild variant="outline"><Link href={`/admin/churches/${church.id}/events`}>Events</Link></Button>
           <Button asChild variant="outline"><Link href={`/admin/churches/${church.id}/contacts`}>Contacts</Link></Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Reset invitations</CardTitle>
+          <CardDescription>Revoke all pending invitations for this workspace.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form action={resetWorkspaceInvitesAction} className="grid gap-2 p-3">
+            <input type="hidden" name="churchId" value={church.id} />
+            <textarea
+              name="reason"
+              placeholder="Optional reason for resetting workspace invitations"
+              className="min-h-20 rounded-md border border-input bg-background px-3 py-2 text-sm focus-ring"
+            />
+            <Button type="submit" variant="destructive" className="w-full">
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Reset all pending workspace invitations
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </section>

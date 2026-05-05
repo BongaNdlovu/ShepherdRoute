@@ -68,7 +68,7 @@ export function DeepSeekChatWidget() {
     <div className="fixed bottom-20 right-4 z-50 md:bottom-6 md:right-6">
       {isOpen ? (
         <section className="flex h-[32rem] w-[calc(100vw-2rem)] max-w-md flex-col overflow-hidden rounded-3xl border border-border/70 bg-white shadow-2xl md:w-96">
-          <header className="flex items-start justify-between gap-3 border-b bg-slate-950 p-4 text-white">
+          <header className="flex items-start justify-between gap-3 border-b bg-sky-500 p-4 text-white">
             <div className="flex gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white p-1.5">
                 <BrandLogo className="h-full w-full object-contain" priority />
