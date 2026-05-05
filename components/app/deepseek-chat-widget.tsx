@@ -250,41 +250,41 @@ export function DeepSeekChatWidget() {
   }
 
   return (
-    <div className="fixed bottom-20 right-4 z-50 md:bottom-6 md:right-6">
+    <div className="fixed bottom-20 left-3 right-3 z-50 md:bottom-6 md:left-auto md:right-6">
       {isOpen ? (
-        <section className="flex h-[32rem] w-[calc(100vw-2rem)] max-w-md flex-col overflow-hidden rounded-3xl border border-border/70 bg-white shadow-2xl md:w-96">
-          <header className="flex items-start justify-between gap-3 border-b bg-sky-500 p-4 text-white">
-            <div className="flex gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white p-1.5">
+        <section className="ml-auto flex h-[32rem] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-border/70 bg-white shadow-2xl md:w-96">
+          <header className="flex flex-col gap-3 border-b bg-sky-500 p-4 text-white sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white p-1.5">
                 <BrandLogo className="h-full w-full object-contain" priority />
               </div>
-              <div>
+              <div className="min-w-0">
                 <h2 className="font-black">ShepherdRoute AI</h2>
                 <p className="text-xs text-white/70">
                   {isReportAware ? "Ask what should happen next from this report." : "Ask about workflows, reports, and follow-up."}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              <Button type="button" size="icon" variant="ghost" title="Chat history" aria-label="Chat history" onClick={() => setShowHistory((value) => !value)}>
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-1 sm:justify-end">
+              <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" title="Chat history" aria-label="Chat history" onClick={() => setShowHistory((value) => !value)}>
                 <History className="h-4 w-4" />
               </Button>
-              <Button type="button" size="icon" variant="ghost" title="Back" aria-label="Previous chat" disabled={!canGoBack} onClick={() => navigateChat("back")}>
+              <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" title="Back" aria-label="Previous chat" disabled={!canGoBack} onClick={() => navigateChat("back")}>
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <Button type="button" size="icon" variant="ghost" title="Forward" aria-label="Next chat" disabled={!canGoForward} onClick={() => navigateChat("forward")}>
+              <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" title="Forward" aria-label="Next chat" disabled={!canGoForward} onClick={() => navigateChat("forward")}>
                 <ArrowRight className="h-4 w-4" />
               </Button>
-              <Button type="button" size="icon" variant="ghost" title="New chat" aria-label="New chat" onClick={startNewChat}>
+              <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" title="New chat" aria-label="New chat" onClick={startNewChat}>
                 <Plus className="h-4 w-4" />
               </Button>
-              <Button type="button" size="icon" variant="ghost" title="Archive chat" aria-label="Archive chat" onClick={archiveActiveChat}>
+              <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" title="Archive chat" aria-label="Archive chat" onClick={archiveActiveChat}>
                 <Archive className="h-4 w-4" />
               </Button>
-              <Button type="button" size="icon" variant="ghost" title="Delete chat" aria-label="Delete chat" onClick={deleteActiveChat}>
+              <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" title="Delete chat" aria-label="Delete chat" onClick={deleteActiveChat}>
                 <Trash2 className="h-4 w-4" />
               </Button>
-              <Button type="button" size="icon" variant="ghost" title="Close" aria-label="Close chat" onClick={() => setIsOpen(false)}>
+              <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" title="Close" aria-label="Close chat" onClick={() => setIsOpen(false)}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -358,15 +358,15 @@ export function DeepSeekChatWidget() {
           </div>
 
           <form onSubmit={handleSubmit} className="border-t p-3">
-            <div className="flex gap-2">
+            <div className="flex min-w-0 gap-2">
               <Textarea
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 placeholder={isReportAware ? "Ask what should happen next..." : "Ask ShepherdRoute AI..."}
-                className="min-h-11 resize-none"
+                className="min-h-11 min-w-0 resize-none"
                 maxLength={2000}
               />
-              <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+              <Button type="submit" size="icon" className="shrink-0" disabled={isLoading || !input.trim()}>
                 <Send className="h-4 w-4" />
               </Button>
             </div>
