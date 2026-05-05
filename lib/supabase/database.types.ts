@@ -1254,14 +1254,6 @@ export type Database = {
     Functions: {
       accept_event_invitation: { Args: { p_token: string }; Returns: string }
       accept_team_invitation: { Args: { p_token: string }; Returns: string }
-      current_user_can_manage_event_assignments: {
-        Args: { target_event_id: string }
-        Returns: boolean
-      }
-      current_user_team_member_id_for_event: {
-        Args: { target_event_id: string }
-        Returns: string
-      }
       dismiss_onboarding_guide: {
         Args: { p_church_id: string }
         Returns: undefined

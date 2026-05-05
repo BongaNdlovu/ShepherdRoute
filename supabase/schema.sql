@@ -1,5 +1,8 @@
-create extension if not exists "pgcrypto";
-create extension if not exists "pg_trgm";
+create schema if not exists extensions;
+create extension if not exists "pgcrypto" with schema extensions;
+create extension if not exists "pg_trgm" with schema extensions;
+alter extension "pgcrypto" set schema extensions;
+alter extension "pg_trgm" set schema extensions;
 
 create schema if not exists private;
 revoke all on schema private from public;
@@ -627,7 +630,7 @@ create index if not exists events_slug_idx on public.events(slug);
 create index if not exists people_church_phone_idx on public.people(church_id, normalized_phone) where normalized_phone is not null;
 create index if not exists people_church_whatsapp_idx on public.people(church_id, normalized_whatsapp) where normalized_whatsapp is not null;
 create index if not exists people_church_email_idx on public.people(church_id, normalized_email) where normalized_email is not null;
-create index if not exists people_church_name_trgm_idx on public.people using gin (normalized_name gin_trgm_ops);
+create index if not exists people_church_name_trgm_idx on public.people using gin (normalized_name extensions.gin_trgm_ops);
 create index if not exists people_church_area_idx on public.people(church_id, normalized_area);
 create index if not exists people_church_contact_flags_idx on public.people(church_id, do_not_contact, archived_at, deleted_at);
 create index if not exists contacts_church_status_idx on public.contacts(church_id, status);
@@ -639,10 +642,10 @@ create index if not exists contacts_church_phone_norm_idx on public.contacts(chu
 create index if not exists contacts_church_whatsapp_norm_idx on public.contacts(church_id, normalized_whatsapp) where normalized_whatsapp is not null;
 create index if not exists contacts_church_email_norm_idx on public.contacts(church_id, normalized_email) where normalized_email is not null;
 create index if not exists contacts_church_created_at_idx on public.contacts(church_id, created_at desc);
-create index if not exists contacts_full_name_trgm_idx on public.contacts using gin (full_name gin_trgm_ops);
-create index if not exists contacts_normalized_name_trgm_idx on public.contacts using gin (normalized_name gin_trgm_ops);
-create index if not exists contacts_phone_trgm_idx on public.contacts using gin (phone gin_trgm_ops);
-create index if not exists contacts_area_trgm_idx on public.contacts using gin (area gin_trgm_ops);
+create index if not exists contacts_full_name_trgm_idx on public.contacts using gin (full_name extensions.gin_trgm_ops);
+create index if not exists contacts_normalized_name_trgm_idx on public.contacts using gin (normalized_name extensions.gin_trgm_ops);
+create index if not exists contacts_phone_trgm_idx on public.contacts using gin (phone extensions.gin_trgm_ops);
+create index if not exists contacts_area_trgm_idx on public.contacts using gin (area extensions.gin_trgm_ops);
 create index if not exists contact_interests_church_interest_idx on public.contact_interests(church_id, interest);
 create index if not exists follow_ups_contact_idx on public.follow_ups(contact_id, created_at desc);
 create index if not exists follow_ups_church_due_idx on public.follow_ups(church_id, due_at) where completed_at is null;
@@ -1172,7 +1175,10 @@ drop trigger if exists event_assignments_touch_updated_at on public.event_assign
 create trigger event_assignments_touch_updated_at before update on public.event_assignments for each row execute function public.touch_updated_at();
 
 create or replace function public.validate_event_assignment_church_scope()
-returns trigger as $$
+returns trigger
+language plpgsql
+set search_path = public
+as $$
 declare
   event_church_id uuid;
   member_church_id uuid;
@@ -1207,7 +1213,7 @@ begin
 
   return new;
 end;
-$$ language plpgsql;
+$$;
 
 drop trigger if exists validate_event_assignment_church_scope_trigger on public.event_assignments;
 create trigger validate_event_assignment_church_scope_trigger
@@ -1373,7 +1379,10 @@ as $$
   );
 $$;
 
-create or replace function public.current_user_can_manage_event_assignments(target_event_id uuid)
+drop function if exists public.current_user_can_manage_event_assignments(uuid) cascade;
+drop function if exists public.current_user_team_member_id_for_event(uuid) cascade;
+
+create or replace function private.current_user_can_manage_event_assignments(target_event_id uuid)
 returns boolean
 language sql
 security definer
@@ -1396,7 +1405,7 @@ as $$
   );
 $$;
 
-create or replace function public.current_user_team_member_id_for_event(target_event_id uuid)
+create or replace function private.current_user_team_member_id_for_event(target_event_id uuid)
 returns uuid
 language sql
 security definer
@@ -1463,8 +1472,8 @@ revoke all on function private.is_church_member(uuid) from public, anon, authent
 revoke all on function private.is_app_admin() from public, anon, authenticated;
 revoke all on function private.is_app_owner() from public, anon, authenticated;
 revoke all on function private.has_church_role(uuid, public.team_role[]) from public, anon, authenticated;
-revoke all on function public.current_user_can_manage_event_assignments(uuid) from public, anon, authenticated;
-revoke all on function public.current_user_team_member_id_for_event(uuid) from public, anon, authenticated;
+revoke all on function private.current_user_can_manage_event_assignments(uuid) from public, anon, authenticated;
+revoke all on function private.current_user_team_member_id_for_event(uuid) from public, anon, authenticated;
 revoke all on function private.hash_invite_token(text) from public, anon, authenticated;
 revoke all on function private.accept_team_invitation_for_user(text, uuid, text) from public, anon, authenticated;
 revoke all on function private.accept_event_invitation_for_user(text, uuid, text) from public, anon, authenticated;
@@ -1474,8 +1483,8 @@ grant execute on function private.is_church_member(uuid) to anon, authenticated;
 grant execute on function private.is_app_admin() to anon, authenticated;
 grant execute on function private.is_app_owner() to anon, authenticated;
 grant execute on function private.has_church_role(uuid, public.team_role[]) to anon, authenticated;
-grant execute on function public.current_user_can_manage_event_assignments(uuid) to anon, authenticated;
-grant execute on function public.current_user_team_member_id_for_event(uuid) to anon, authenticated;
+grant execute on function private.current_user_can_manage_event_assignments(uuid) to authenticated;
+grant execute on function private.current_user_team_member_id_for_event(uuid) to authenticated;
 grant execute on function private.require_app_admin(public.app_admin_role[]) to authenticated;
 grant execute on function private.require_protected_owner() to authenticated;
 
@@ -1663,6 +1672,11 @@ create policy "Members can view church events"
 on public.events for select
 using (private.is_church_member(church_id) or private.is_app_admin());
 
+drop policy if exists "Public can view active public events" on public.events;
+create policy "Public can view active public events"
+on public.events for select
+using (is_active = true and archived_at is null);
+
 drop policy if exists "Leaders can manage church events" on public.events;
 create policy "Leaders can manage church events"
 on public.events for all
@@ -1686,12 +1700,12 @@ create policy "event assignments select safely"
 on public.event_assignments
 for select
 using (
-  public.current_user_can_manage_event_assignments(event_id)
-  or team_member_id = public.current_user_team_member_id_for_event(event_id)
+  private.current_user_can_manage_event_assignments(event_id)
+  or team_member_id = private.current_user_team_member_id_for_event(event_id)
   or (
     status = 'accepted'
     and revoked_at is null
-    and team_member_id = public.current_user_team_member_id_for_event(event_id)
+    and team_member_id = private.current_user_team_member_id_for_event(event_id)
   )
 );
 
@@ -1700,7 +1714,7 @@ create policy "event assignments insert by managers"
 on public.event_assignments
 for insert
 with check (
-  public.current_user_can_manage_event_assignments(event_id)
+  private.current_user_can_manage_event_assignments(event_id)
 );
 
 drop policy if exists "event assignments update by managers" on public.event_assignments;
@@ -1708,10 +1722,10 @@ create policy "event assignments update by managers"
 on public.event_assignments
 for update
 using (
-  public.current_user_can_manage_event_assignments(event_id)
+  private.current_user_can_manage_event_assignments(event_id)
 )
 with check (
-  public.current_user_can_manage_event_assignments(event_id)
+  private.current_user_can_manage_event_assignments(event_id)
 );
 
 drop policy if exists "event assignments delete disabled" on public.event_assignments;
@@ -1931,7 +1945,7 @@ drop function if exists public.accept_team_invitation(text);
 create or replace function public.accept_team_invitation(p_token text)
 returns uuid
 language plpgsql
-security definer
+security invoker
 set search_path = public
 as $$
 declare
@@ -1941,16 +1955,14 @@ begin
     raise exception 'Login is required before accepting this invitation.';
   end if;
 
-  select email
-  into current_email
-  from auth.users
-  where id = auth.uid();
+  current_email := nullif(auth.jwt() ->> 'email', '');
 
   return private.accept_team_invitation_for_user(p_token, auth.uid(), current_email);
 end;
 $$;
 
 revoke all on function public.accept_team_invitation(text) from public, anon, authenticated;
+grant execute on function private.accept_team_invitation_for_user(text, uuid, text) to authenticated;
 grant execute on function public.accept_team_invitation(text) to authenticated;
 
 drop function if exists public.accept_event_invitation(text);
@@ -1958,7 +1970,7 @@ drop function if exists public.accept_event_invitation(text);
 create or replace function public.accept_event_invitation(p_token text)
 returns uuid
 language plpgsql
-security definer
+security invoker
 set search_path = public
 as $$
 declare
@@ -1968,20 +1980,19 @@ begin
     raise exception 'Login is required before accepting this invitation.';
   end if;
 
-  select email
-  into current_email
-  from auth.users
-  where id = auth.uid();
+  current_email := nullif(auth.jwt() ->> 'email', '');
 
   return private.accept_event_invitation_for_user(p_token, auth.uid(), current_email);
 end;
 $$;
 
 revoke all on function public.accept_event_invitation(text) from public, anon, authenticated;
+grant execute on function private.accept_event_invitation_for_user(text, uuid, text) to authenticated;
 grant execute on function public.accept_event_invitation(text) to authenticated;
 
 drop view if exists public.public_events;
 create view public.public_events
+with (security_invoker = true)
 as
 select
   events.id,
@@ -2000,7 +2011,24 @@ where events.is_active = true
   and events.archived_at is null;
 
 grant select on public.public_events to anon, authenticated;
-grant select on public.churches, public.events to anon, authenticated;
+revoke select on public.churches from anon;
+revoke select on public.events from anon;
+grant select (id, name) on public.churches to anon;
+grant select (
+  id,
+  name,
+  event_type,
+  starts_on,
+  location,
+  slug,
+  church_id,
+  is_active,
+  archived_at,
+  form_config,
+  branding_config,
+  public_info
+) on public.events to anon;
+grant select on public.churches, public.events to authenticated;
 
 drop function if exists public.owner_church_summaries();
 
