@@ -1,4 +1,6 @@
 export {
+  clearRevokedWorkspaceInvitationsAction,
+  clearRevokedEventInvitationsAction,
   updateOwnerMembershipStatusAction,
   updateOwnerMembershipRoleAction,
   updateOwnerWorkspaceStatusAction,

@@ -435,3 +435,72 @@ export async function deleteEventAssignmentAction(formData: FormData) {
   revalidatePath("/admin/invitations");
   redirect("/admin/invitations?success=Event%20assignment%20deleted");
 }
+
+export async function clearRevokedWorkspaceInvitationsAction(formData: FormData) {
+  const context = await getChurchContext();
+
+  if (!canManageOwnerAdmin({ role: context.appAdminRole as AppAdminRole | null, isProtectedOwner: context.isProtectedOwner })) {
+    redirect("/dashboard");
+  }
+
+  const parsed = z.object({
+    churchId: z.string().uuid().optional(),
+    reason: z.string().max(500).optional()
+  }).safeParse({
+    churchId: formData.get("churchId") || undefined,
+    reason: formData.get("reason") || undefined
+  });
+
+  if (!parsed.success) {
+    redirect("/admin/invitations?error=Invalid%20request");
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("owner_clear_revoked_workspace_invitations", {
+    p_church_id: parsed.data.churchId ?? null,
+    p_reason: parsed.data.reason
+  });
+
+  if (error) {
+    redirect(`/admin/invitations?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/admin/invitations");
+  redirect("/admin/invitations?success=Revoked%20workspace%20invitations%20cleared");
+}
+
+export async function clearRevokedEventInvitationsAction(formData: FormData) {
+  const context = await getChurchContext();
+
+  if (!canManageOwnerAdmin({ role: context.appAdminRole as AppAdminRole | null, isProtectedOwner: context.isProtectedOwner })) {
+    redirect("/dashboard");
+  }
+
+  const parsed = z.object({
+    churchId: z.string().uuid().optional(),
+    eventId: z.string().uuid().optional(),
+    reason: z.string().max(500).optional()
+  }).safeParse({
+    churchId: formData.get("churchId") || undefined,
+    eventId: formData.get("eventId") || undefined,
+    reason: formData.get("reason") || undefined
+  });
+
+  if (!parsed.success) {
+    redirect("/admin/invitations?error=Invalid%20request");
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("owner_clear_revoked_event_invitations", {
+    p_church_id: parsed.data.churchId ?? null,
+    p_event_id: parsed.data.eventId ?? null,
+    p_reason: parsed.data.reason
+  });
+
+  if (error) {
+    redirect(`/admin/invitations?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/admin/invitations");
+  redirect("/admin/invitations?success=Revoked%20event%20invitations%20cleared");
+}

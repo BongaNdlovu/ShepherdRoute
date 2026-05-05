@@ -1547,6 +1547,14 @@ export type Database = {
         Args: { p_church_id: string; p_event_id?: string; p_reason?: string }
         Returns: undefined
       }
+      owner_clear_revoked_workspace_invitations: {
+        Args: { p_church_id?: string | null; p_reason?: string | null }
+        Returns: number
+      }
+      owner_clear_revoked_event_invitations: {
+        Args: { p_church_id?: string | null; p_event_id?: string | null; p_reason?: string | null }
+        Returns: number
+      }
       owner_reset_workspace_invites: {
         Args: { p_church_id: string; p_reason?: string }
         Returns: undefined

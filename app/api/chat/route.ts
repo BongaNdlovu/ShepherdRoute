@@ -3,6 +3,30 @@ import { getChurchContext, getEventReportSummary } from "@/lib/data";
 import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 
 const MAX_MESSAGE_LENGTH = 2000;
+const MAX_HISTORY_MESSAGES = 10;
+
+type ClientChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+function parseClientMessages(value: unknown): ClientChatMessage[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .slice(-MAX_HISTORY_MESSAGES)
+    .flatMap((message) => {
+      if (!message || typeof message !== "object") return [];
+
+      const candidate = message as { role?: unknown; content?: unknown };
+      const role = candidate.role === "user" || candidate.role === "assistant" ? candidate.role : null;
+      const content = typeof candidate.content === "string" ? candidate.content.trim() : "";
+
+      if (!role || !content || content.length > MAX_MESSAGE_LENGTH) return [];
+
+      return [{ role, content }];
+    });
+}
 
 function isReportEventPath(pathname: string | undefined, eventId: string | undefined) {
   return Boolean(pathname?.startsWith("/reports/events/") && eventId);
@@ -16,7 +40,7 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
-async function generateDeepSeekReply(prompt: string) {
+async function generateDeepSeekReply(prompt: string, history: ClientChatMessage[] = []) {
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim();
 
   if (!apiKey) {
@@ -34,6 +58,7 @@ async function generateDeepSeekReply(prompt: string) {
       thinking: { type: process.env.DEEPSEEK_THINKING === "enabled" ? "enabled" : "disabled" },
       messages: [
         { role: "system", content: "You are the ShepherdRoute assistant. Keep answers practical, concise, and action-oriented." },
+        ...history,
         { role: "user", content: prompt }
       ],
       temperature: 0.3,
@@ -63,8 +88,9 @@ export async function POST(request: Request) {
     return safeJson({ error: "Invalid request body." }, 400);
   }
 
-  const payload = body as { message?: unknown; pathname?: unknown; eventId?: unknown };
+  const payload = body as { message?: unknown; messages?: unknown; pathname?: unknown; eventId?: unknown };
   const message = typeof payload.message === "string" ? payload.message.trim() : "";
+  const history = parseClientMessages(payload.messages);
   const pathname = typeof payload.pathname === "string" ? payload.pathname : undefined;
   const eventId = typeof payload.eventId === "string" ? payload.eventId : undefined;
 
@@ -106,7 +132,7 @@ Respond with:
     }
 
     try {
-      const reply = await generateDeepSeekReply(prompt);
+      const reply = await generateDeepSeekReply(prompt, history);
       return safeJson({ reply });
     } catch (error) {
       console.error("DeepSeek API error:", errorMessage(error));

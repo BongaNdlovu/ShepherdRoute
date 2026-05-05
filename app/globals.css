@@ -341,6 +341,25 @@
   .sidebar-scroll::-webkit-scrollbar-thumb:hover {
     background: rgba(0, 0, 0, 0.1);
   }
+
+  .mobile-safe-container {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .mobile-safe-text {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  .mobile-safe-field {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+  }
 }
 
 @keyframes float {

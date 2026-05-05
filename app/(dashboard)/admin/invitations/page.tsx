@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Mail, RotateCcw, Trash2 } from "lucide-react";
+import { Mail, RotateCcw, Trash2, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,12 @@ import { StatCard } from "@/components/app/stat-card";
 import { roleLabels } from "@/lib/constants";
 import { getOwnerInvitationsPage } from "@/lib/data";
 import { requireOwnerAdmin } from "@/lib/owner-admin";
-import { revokeEventAssignmentAction, deleteEventAssignmentAction } from "@/app/(dashboard)/actions";
+import {
+  clearRevokedEventInvitationsAction,
+  clearRevokedWorkspaceInvitationsAction,
+  revokeEventAssignmentAction,
+  deleteEventAssignmentAction
+} from "@/app/(dashboard)/actions";
 
 export const metadata = {
   title: "Owner Invitations",
@@ -29,6 +34,9 @@ export default async function OwnerInvitationsPage({
   const pending = invitationsPage.items.filter((invitation) => invitation.status === "pending").length;
   const accepted = invitationsPage.items.filter((invitation) => invitation.status === "accepted").length;
   const expired = invitationsPage.items.filter((invitation) => invitation.status === "expired").length;
+  const revoked = invitationsPage.items.filter((invitation) => invitation.status === "revoked").length;
+  const revokedWorkspace = invitationsPage.items.filter((invitation) => invitation.status === "revoked" && invitation.source === "workspace_team").length;
+  const revokedEvent = invitationsPage.items.filter((invitation) => invitation.status === "revoked" && invitation.source === "event_team").length;
 
   return (
     <section className="space-y-6">
@@ -54,7 +62,7 @@ export default async function OwnerInvitationsPage({
         <StatCard icon={Mail} title="Invitations found" value={invitationsPage.total} note="Matching the current search." />
         <StatCard icon={Mail} title="Pending" value={pending} note="Pending invitations on this page." />
         <StatCard icon={Mail} title="Accepted" value={accepted} note="Accepted invitations on this page." />
-        <StatCard icon={Mail} title="Expired" value={expired} note="Expired invitations on this page." />
+        <StatCard icon={XCircle} title="Revoked" value={revoked} note="Revoked invitations on this page." />
       </div>
 
       <Card>
@@ -67,6 +75,32 @@ export default async function OwnerInvitationsPage({
 
         <CardContent className="space-y-4">
           <OwnerSearchForm placeholder="Search invitations, email, church, role..." defaultValue={params.q ?? ""} />
+
+          {revoked ? (
+            <div className="flex flex-col gap-2 rounded-2xl border bg-destructive/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                Clear revoked invitation rows after review. Pending, accepted, and expired invitations are not affected.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {revokedWorkspace ? (
+                  <form action={clearRevokedWorkspaceInvitationsAction}>
+                    <Button type="submit" size="sm" variant="outline">
+                      <Trash2 className="mr-1 h-4 w-4" />
+                      Clear revoked workspace
+                    </Button>
+                  </form>
+                ) : null}
+                {revokedEvent ? (
+                  <form action={clearRevokedEventInvitationsAction}>
+                    <Button type="submit" size="sm" variant="outline">
+                      <Trash2 className="mr-1 h-4 w-4" />
+                      Clear revoked events
+                    </Button>
+                  </form>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
 
           <OwnerPagination
             page={invitationsPage.page}

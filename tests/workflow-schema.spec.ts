@@ -667,6 +667,80 @@ test.describe("workflow helpers", () => {
     expect(landingPage).not.toContain("Guestloop");
   });
 
+  test("schema includes revoked invitation cleanup RPCs with audit logging", () => {
+    expect(schema).toContain("create or replace function public.owner_clear_revoked_workspace_invitations");
+    expect(schema).toContain("create or replace function public.owner_clear_revoked_event_invitations");
+    expect(schema).toContain("delete from public.team_invitations");
+    expect(schema).toContain("where status = 'revoked'");
+    expect(schema).toContain("delete from public.event_assignments");
+    expect(schema).toContain("'workspace_invitations.revoked_cleared'");
+    expect(schema).toContain("'event_invitations.revoked_cleared'");
+    expect(schema).toContain("'deletedCount'");
+    expect(schema).toContain("'clearedAt'");
+  });
+
+  test("revoked invitation cleanup RPCs are defined in database types", () => {
+    const dbTypes = readFileSync("lib/supabase/database.types.ts", "utf8");
+
+    expect(dbTypes).toContain("owner_clear_revoked_workspace_invitations:");
+    expect(dbTypes).toContain("owner_clear_revoked_event_invitations:");
+    expect(dbTypes).toMatch(/owner_clear_revoked_workspace_invitations:[\s\S]*Returns: number/);
+    expect(dbTypes).toMatch(/owner_clear_revoked_event_invitations:[\s\S]*Returns: number/);
+  });
+
+  test("revoked invitation cleanup actions exist and are exported", () => {
+    const adminActions = readFileSync("app/(dashboard)/_actions/admin.ts", "utf8");
+    const dashboardActions = readFileSync("app/(dashboard)/actions.ts", "utf8");
+
+    expect(adminActions).toContain("clearRevokedWorkspaceInvitationsAction");
+    expect(adminActions).toContain("clearRevokedEventInvitationsAction");
+    expect(adminActions).toContain("owner_clear_revoked_workspace_invitations");
+    expect(adminActions).toContain("owner_clear_revoked_event_invitations");
+    expect(dashboardActions).toContain("clearRevokedWorkspaceInvitationsAction");
+    expect(dashboardActions).toContain("clearRevokedEventInvitationsAction");
+  });
+
+  test("invitations page shows revoked count and cleanup buttons", () => {
+    const invitationsPage = readFileSync("app/(dashboard)/admin/invitations/page.tsx", "utf8");
+
+    expect(invitationsPage).toContain("const revoked = invitationsPage.items.filter");
+    expect(invitationsPage).toContain("const revokedWorkspace");
+    expect(invitationsPage).toContain("const revokedEvent");
+    expect(invitationsPage).toContain("title=\"Revoked\"");
+    expect(invitationsPage).toContain("XCircle");
+    expect(invitationsPage).toContain("Clear revoked workspace");
+    expect(invitationsPage).toContain("Clear revoked events");
+    expect(invitationsPage).toContain("clearRevokedWorkspaceInvitationsAction");
+    expect(invitationsPage).toContain("clearRevokedEventInvitationsAction");
+  });
+
+  test("mobile-safe CSS utilities prevent overflow on public forms", () => {
+    const globals = readFileSync("app/globals.css", "utf8");
+
+    expect(globals).toContain(".mobile-safe-container");
+    expect(globals).toContain(".mobile-safe-text");
+    expect(globals).toContain(".mobile-safe-field");
+    expect(globals).toContain("min-width: 0");
+    expect(globals).toContain("max-width: 100%");
+    expect(globals).toContain("overflow-x: hidden");
+    expect(globals).toContain("overflow-wrap: anywhere");
+  });
+
+  test("public event form uses mobile-safe classes", () => {
+    const publicEventPage = readFileSync("app/e/[slug]/page.tsx", "utf8");
+
+    expect(publicEventPage).toContain("mobile-safe-container");
+    expect(publicEventPage).toContain("mobile-safe-text");
+    expect(publicEventPage).toContain("mobile-safe-field");
+  });
+
+  test("contact method consent uses mobile-safe classes", () => {
+    const contactMethodConsent = readFileSync("components/forms/contact-method-consent.tsx", "utf8");
+
+    expect(contactMethodConsent).toContain("mobile-safe-container");
+    expect(contactMethodConsent).toContain("mobile-safe-text");
+  });
+
   test("DeepSeek chatbot is server-side configured and dashboard-mounted", () => {
     const chatRoute = readFileSync("app/api/chat/route.ts", "utf8");
     const chatWidget = readFileSync("components/app/deepseek-chat-widget.tsx", "utf8");

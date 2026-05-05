@@ -2593,6 +2593,105 @@ $$;
 revoke all on function public.owner_reset_event_invites(uuid, uuid, text) from public, anon, authenticated;
 grant execute on function public.owner_reset_event_invites(uuid, uuid, text) to authenticated;
 
+drop function if exists public.owner_clear_revoked_workspace_invitations(uuid, text);
+
+create or replace function public.owner_clear_revoked_workspace_invitations(
+  p_church_id uuid default null,
+  p_reason text default null
+)
+returns integer
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+declare
+  deleted_count integer := 0;
+begin
+  perform private.require_app_admin(array['owner','support_admin']::public.app_admin_role[]);
+
+  delete from public.team_invitations
+  where status = 'revoked'
+    and (p_church_id is null or church_id = p_church_id);
+
+  get diagnostics deleted_count = row_count;
+
+  insert into public.audit_logs (
+    church_id,
+    actor_user_id,
+    target_type,
+    action,
+    metadata
+  )
+  values (
+    p_church_id,
+    auth.uid(),
+    'team_invitation',
+    'workspace_invitations.revoked_cleared',
+    jsonb_build_object(
+      'deletedCount', deleted_count,
+      'reason', nullif(p_reason, ''),
+      'clearedAt', now()
+    )
+  );
+
+  return deleted_count;
+end;
+$$;
+
+revoke all on function public.owner_clear_revoked_workspace_invitations(uuid, text) from public, anon, authenticated;
+grant execute on function public.owner_clear_revoked_workspace_invitations(uuid, text) to authenticated;
+
+drop function if exists public.owner_clear_revoked_event_invitations(uuid, uuid, text);
+
+create or replace function public.owner_clear_revoked_event_invitations(
+  p_church_id uuid default null,
+  p_event_id uuid default null,
+  p_reason text default null
+)
+returns integer
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+declare
+  deleted_count integer := 0;
+begin
+  perform private.require_app_admin(array['owner','support_admin']::public.app_admin_role[]);
+
+  delete from public.event_assignments
+  where status = 'revoked'
+    and (p_church_id is null or church_id = p_church_id)
+    and (p_event_id is null or event_id = p_event_id);
+
+  get diagnostics deleted_count = row_count;
+
+  insert into public.audit_logs (
+    church_id,
+    actor_user_id,
+    target_type,
+    action,
+    metadata
+  )
+  values (
+    p_church_id,
+    auth.uid(),
+    'event_assignment',
+    'event_invitations.revoked_cleared',
+    jsonb_build_object(
+      'eventId', p_event_id,
+      'deletedCount', deleted_count,
+      'reason', nullif(p_reason, ''),
+      'clearedAt', now()
+    )
+  );
+
+  return deleted_count;
+end;
+$$;
+
+revoke all on function public.owner_clear_revoked_event_invitations(uuid, uuid, text) from public, anon, authenticated;
+grant execute on function public.owner_clear_revoked_event_invitations(uuid, uuid, text) to authenticated;
+
 drop function if exists public.owner_disable_workspace_team_member(uuid, text);
 
 create or replace function public.owner_disable_workspace_team_member(p_team_member_id uuid, p_reason text default null)

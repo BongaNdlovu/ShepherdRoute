@@ -124,7 +124,7 @@ export default async function PublicEventPage({
 
   return (
     <main
-      className="min-h-screen py-6 md:py-10 bg-[radial-gradient(circle_at_top_left,var(--event-primary,#fde68a)_0,var(--event-accent,#f7f3eb)_34%,#f8fafc_100%)]"
+      className="mobile-safe-container min-h-screen py-6 md:py-10 bg-[radial-gradient(circle_at_top_left,var(--event-primary,#fde68a)_0,var(--event-accent,#f7f3eb)_34%,#f8fafc_100%)]"
       style={
         {
           "--event-primary": brandingConfig.primary_color,
@@ -132,8 +132,8 @@ export default async function PublicEventPage({
         } as CSSProperties
       }
     >
-      <section className="mx-auto max-w-3xl px-5 sm:px-8">
-        <div className="overflow-hidden rounded-2xl">
+      <section className="mobile-safe-container mx-auto max-w-3xl px-5 sm:px-8">
+        <div className="mobile-safe-container overflow-hidden rounded-2xl">
           {brandingConfig.cover_image_url ? (
             <ExternalBrandImage
               src={brandingConfig.cover_image_url}
@@ -178,25 +178,25 @@ export default async function PublicEventPage({
                 </p>
               </div>
             ) : (
-              <form action={submitRegistrationAction} className="grid gap-5">
+              <form action={submitRegistrationAction} className="mobile-safe-container grid gap-5">
                 <input type="hidden" name="slug" value={event.slug} />
                 <input type="hidden" name="visitorType" value={event.event_type} />
                 <input type="hidden" name="templateType" value={event.event_type} />
 
-                <div className="grid gap-2 w-full min-w-0">
-                  <Label htmlFor="fullName">Full name</Label>
+                <div className="mobile-safe-container grid gap-2 w-full min-w-0">
+                  <Label htmlFor="fullName" className="mobile-safe-text">Full name</Label>
                   <Input
                     id="fullName"
                     name="fullName"
                     placeholder="Your full name"
                     required
-                    className="text-base sm:text-sm"
+                    className="mobile-safe-field text-base sm:text-sm"
                   />
                 </div>
 
                 {formConfig.show_phone ? (
-                  <div className="grid gap-2 w-full min-w-0">
-                    <Label htmlFor="phone">
+                  <div className="mobile-safe-container grid gap-2 w-full min-w-0">
+                    <Label htmlFor="phone" className="mobile-safe-text">
                       Phone / WhatsApp
                       {formConfig.require_phone && <span className="text-destructive"> *</span>}
                     </Label>
@@ -205,14 +205,14 @@ export default async function PublicEventPage({
                       name="phone"
                       placeholder="+27..."
                       required={formConfig.require_phone}
-                      className="text-base sm:text-sm"
+                      className="mobile-safe-field text-base sm:text-sm"
                     />
                   </div>
                 ) : null}
 
                 {formConfig.show_email ? (
-                  <div className="grid gap-2 w-full min-w-0">
-                    <Label htmlFor="email">
+                  <div className="mobile-safe-container grid gap-2 w-full min-w-0">
+                    <Label htmlFor="email" className="mobile-safe-text">
                       Email
                       {formConfig.require_email && <span className="text-destructive"> *</span>}
                     </Label>
@@ -222,32 +222,33 @@ export default async function PublicEventPage({
                       type="email"
                       placeholder="you@example.com"
                       required={formConfig.require_email}
-                      className="text-base sm:text-sm"
+                      className="mobile-safe-field text-base sm:text-sm"
                     />
                   </div>
                 ) : null}
 
                 {formConfig.show_phone && formConfig.show_email && !formConfig.require_phone && !formConfig.require_email ? (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="mobile-safe-text text-xs text-muted-foreground">
                     If you prefer email only, you may leave Phone / WhatsApp blank and provide your email address.
                   </p>
                 ) : null}
 
                 {formConfig.show_area ? (
-                  <div className="grid gap-2">
-                    <Label htmlFor="area">Area / suburb</Label>
+                  <div className="mobile-safe-container grid gap-2">
+                    <Label htmlFor="area" className="mobile-safe-text">Area / suburb</Label>
                     <Input
                       id="area"
                       name="area"
                       placeholder="Your area or suburb"
+                      className="mobile-safe-field"
                     />
                   </div>
                 ) : null}
 
                 {formConfig.show_language ? (
-                  <div className="grid gap-2 w-full min-w-0">
-                    <Label htmlFor="language">Preferred language</Label>
-                    <select id="language" name="language" defaultValue="English" className="h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                  <div className="mobile-safe-container grid gap-2 w-full min-w-0">
+                    <Label htmlFor="language" className="mobile-safe-text">Preferred language</Label>
+                    <select id="language" name="language" defaultValue="English" className="mobile-safe-field h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                       <option>English</option>
                       <option>isiZulu</option>
                       <option>Afrikaans</option>
@@ -258,9 +259,9 @@ export default async function PublicEventPage({
                 ) : null}
 
                 {formConfig.show_best_time ? (
-                  <div className="grid gap-2 w-full min-w-0">
-                    <Label htmlFor="bestTimeToContact">Best time to contact</Label>
-                    <select id="bestTimeToContact" name="bestTimeToContact" defaultValue="" className="h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                  <div className="mobile-safe-container grid gap-2 w-full min-w-0">
+                    <Label htmlFor="bestTimeToContact" className="mobile-safe-text">Best time to contact</Label>
+                    <select id="bestTimeToContact" name="bestTimeToContact" defaultValue="" className="mobile-safe-field h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                       <option value="">No preference</option>
                       <option>Morning</option>
                       <option>Afternoon</option>
@@ -271,9 +272,9 @@ export default async function PublicEventPage({
                 ) : null}
 
                 {shouldShowTopic ? (
-                  <div className="grid gap-2 w-full min-w-0">
-                    <Label htmlFor="topic">Topic</Label>
-                    <select id="topic" name="topic" defaultValue="" className="h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                  <div className="mobile-safe-container grid gap-2 w-full min-w-0">
+                    <Label htmlFor="topic" className="mobile-safe-text">Topic</Label>
+                    <select id="topic" name="topic" defaultValue="" className="mobile-safe-field h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                       <option value="">Select a topic</option>
                       {template.topicOptions?.map((topic) => (
                         <option key={topic} value={topic}>{topic}</option>
@@ -283,16 +284,16 @@ export default async function PublicEventPage({
                 ) : null}
 
                 {formConfig.show_interests && formConfig.interest_options.length > 0 && (
-                  <div className="grid gap-2 w-full min-w-0">
-                    <Label className="flex items-center gap-2">
+                  <div className="mobile-safe-container grid gap-2 w-full min-w-0">
+                    <Label className="mobile-safe-text flex items-center gap-2">
                       <HeartHandshake className="h-4 w-4 text-accent" />
                       How can we serve you?
                     </Label>
                     <div className="grid gap-2 sm:grid-cols-2">
                       {formConfig.interest_options.map((option, index) => (
-                        <label key={`${option.value}-${index}`} className="flex items-start gap-2 rounded-xl border border-border/70 bg-white px-3 py-3 text-sm font-medium transition hover:bg-accent/5 break-words">
+                        <label key={`${option.value}-${index}`} className="mobile-safe-container flex items-start gap-2 rounded-xl border border-border/70 bg-white px-3 py-3 text-sm font-medium transition hover:bg-accent/5 break-words">
                           <input type="checkbox" name="interests" value={option.value} className="mt-0.5 h-4 w-4 shrink-0" />
-                          <span className="w-full min-w-0">
+                          <span className="mobile-safe-text w-full min-w-0">
                             {option.label}
                             {option.description ? <span className="block text-xs font-normal leading-5 text-muted-foreground">{option.description}</span> : null}
                           </span>
@@ -303,22 +304,22 @@ export default async function PublicEventPage({
                 )}
 
                 {formConfig.questions.length > 0 && (
-                  <div className="space-y-4">
+                  <div className="mobile-safe-container space-y-4">
                     {formConfig.questions.map((question) => (
-                      <div key={question.name} className="grid gap-3 rounded-2xl border border-border/70 bg-white/80 p-4 shadow-sm">
-                        <Label htmlFor={question.name}>
+                      <div key={question.name} className="mobile-safe-container grid gap-3 rounded-2xl border border-border/70 bg-white/80 p-4 shadow-sm">
+                        <Label htmlFor={question.name} className="mobile-safe-text">
                           {question.label}
                           {question.required && <span className="text-destructive"> *</span>}
                         </Label>
                         {question.description && (
-                          <p className="text-sm text-muted-foreground">{question.description}</p>
+                          <p className="mobile-safe-text text-sm text-muted-foreground">{question.description}</p>
                         )}
                         {question.type === "select" && (
                           <select
                             id={question.name}
                             name={question.name}
                             required={question.required}
-                            className="h-10 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            className="mobile-safe-field h-10 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           >
                             <option value="">Select an option</option>
                             {question.options.map((option) => (
@@ -327,9 +328,9 @@ export default async function PublicEventPage({
                           </select>
                         )}
                         {question.type === "radio" && (
-                          <div className="grid gap-2">
+                          <div className="mobile-safe-container grid gap-2">
                             {question.options.map((option) => (
-                              <label key={option.value} className="flex items-center gap-3 rounded-xl border border-border/70 bg-white px-4 py-3 text-sm font-medium transition hover:bg-accent/5">
+                              <label key={option.value} className="mobile-safe-container flex items-center gap-3 rounded-xl border border-border/70 bg-white px-4 py-3 text-sm font-medium transition hover:bg-accent/5">
                                 <input
                                   type="radio"
                                   name={question.name}
@@ -337,22 +338,22 @@ export default async function PublicEventPage({
                                   required={question.required}
                                   className="h-4 w-4"
                                 />
-                                <span>{option.label}</span>
+                                <span className="mobile-safe-text">{option.label}</span>
                               </label>
                             ))}
                           </div>
                         )}
                         {question.type === "checkbox_group" && (
-                          <div className="grid gap-2 sm:grid-cols-2">
+                          <div className="mobile-safe-container grid gap-2 sm:grid-cols-2">
                             {question.options.map((option) => (
-                              <label key={option.value} className="flex items-center gap-3 rounded-xl border border-border/70 bg-white px-4 py-3 text-sm font-medium transition hover:bg-accent/5">
+                              <label key={option.value} className="mobile-safe-container flex items-center gap-3 rounded-xl border border-border/70 bg-white px-4 py-3 text-sm font-medium transition hover:bg-accent/5">
                                 <input
                                   type="checkbox"
                                   name={question.name}
                                   value={option.value}
                                   className="h-4 w-4"
                                 />
-                                <span>{option.label}</span>
+                                <span className="mobile-safe-text">{option.label}</span>
                               </label>
                             ))}
                           </div>
@@ -363,17 +364,17 @@ export default async function PublicEventPage({
                 )}
 
                 {formConfig.show_message ? (
-                  <div className="grid gap-2 w-full min-w-0">
-                    <Label htmlFor="message">Optional message / prayer request</Label>
-                    <Textarea id="message" name="message" placeholder="Tell us how we can help..." className="text-base sm:text-sm" />
-                    <p className="text-xs text-muted-foreground">Prayer requests are stored separately from your general contact details.</p>
+                  <div className="mobile-safe-container grid gap-2 w-full min-w-0">
+                    <Label htmlFor="message" className="mobile-safe-text">Optional message / prayer request</Label>
+                    <Textarea id="message" name="message" placeholder="Tell us how we can help..." className="mobile-safe-field text-base sm:text-sm" />
+                    <p className="mobile-safe-text text-xs text-muted-foreground">Prayer requests are stored separately from your general contact details.</p>
                   </div>
                 ) : null}
 
                 {formConfig.show_prayer_visibility ? (
-                  <div className="grid gap-2 w-full min-w-0">
-                    <Label htmlFor="prayerVisibility">Who may view a prayer request?</Label>
-                    <select id="prayerVisibility" name="prayerVisibility" defaultValue="general_prayer" className="h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                  <div className="mobile-safe-container grid gap-2 w-full min-w-0">
+                    <Label htmlFor="prayerVisibility" className="mobile-safe-text">Who may view a prayer request?</Label>
+                    <select id="prayerVisibility" name="prayerVisibility" defaultValue="general_prayer" className="mobile-safe-field h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                       {prayerVisibilityOptions.map((visibility) => (
                         <option key={visibility} value={visibility}>{prayerVisibilityLabels[visibility]}</option>
                       ))}
