@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getChurchContext, getEventReportSummary } from "@/lib/data";
 import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
+import { createClient } from "@/lib/supabase/server";
 
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_HISTORY_MESSAGES = 10;
@@ -103,6 +104,16 @@ export async function POST(request: Request) {
   }
 
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: userError
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return safeJson({ error: "Authentication is required." }, 401);
+    }
+
     let prompt = `You are the ShepherdRoute assistant. Help users understand the ShepherdRoute app, church follow-up workflows, event reporting, visitor care, and ministry accountability. Keep answers practical, concise, and action-oriented. User question: ${message}`;
 
     if (isReportEventPath(pathname, eventId)) {

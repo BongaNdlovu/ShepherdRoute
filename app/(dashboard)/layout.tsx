@@ -135,7 +135,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </footer>
         </main>
         <MobileBottomNav />
-        <DeepSeekChatWidget aiEnabled={Boolean(process.env.DEEPSEEK_API_KEY)} />
+        {process.env.DEEPSEEK_API_KEY ? <DeepSeekChatWidget /> : null}
       </div>
     </div>
   );

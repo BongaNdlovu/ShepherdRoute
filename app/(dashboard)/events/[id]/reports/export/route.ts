@@ -6,7 +6,19 @@ import { slugify } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 
 const EXPORT_BATCH_SIZE = 1000;
-const EVENT_EXPORT_HEADERS = ["Name", "Phone", "Area", "Interests", "Status", "Urgency", "Created At"];
+const EVENT_EXPORT_HEADERS = [
+  "Name",
+  "Phone",
+  "Email",
+  "Area",
+  "Language",
+  "Best Time",
+  "Interests",
+  "Status",
+  "Urgency",
+  "Assignee",
+  "Created At"
+];
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -103,10 +115,14 @@ async function* eventRows(churchId: string, eventId: string, uniqueQuestions: Ar
       yield [
         contact.full_name,
         contact.phone,
+        contact.email ?? "",
         contact.area ?? "",
+        contact.language ?? "",
+        contact.best_time_to_contact ?? "",
         interests,
         statusLabels[contact.status as FollowUpStatus],
         contact.urgency,
+        contact.assigned_name ?? "",
         contact.created_at,
         ...dynamicValues
       ];

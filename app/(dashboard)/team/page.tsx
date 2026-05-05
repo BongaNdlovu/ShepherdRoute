@@ -9,9 +9,10 @@ import { DashboardShell } from "@/components/app/dashboard-shell";
 import { InlineHelp } from "@/components/app/inline-help";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { roleLabels, roleOptions, appRoleLabels, appRoleOptions } from "@/lib/constants";
+import { roleLabels, roleOptions, appRoleLabels, appRoleOptions, type AppRole, type TeamRole } from "@/lib/constants";
 import { getChurchContext, getTeamInvitations, getTeamMembers } from "@/lib/data";
 import { gmailComposeUrl, mailtoUrl, workspaceInviteTemplate } from "@/lib/invite-email";
+import { canManageTeam } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { absoluteUrl, initials } from "@/lib/utils";
 
@@ -35,6 +36,7 @@ export default async function TeamPage({
     ? await getWorkspaceInviteEmailDraft(params.invite, context.fullName || "A team member")
     : null;
   const pendingInvitations = invitations.filter((invitation) => invitation.status === "pending");
+  const userCanManageTeam = canManageTeam(context.role as TeamRole, context.appRole as AppRole | null);
 
   return (
     <DashboardShell
@@ -128,13 +130,15 @@ export default async function TeamPage({
                       {invitation.email} - {roleLabels[invitation.role as keyof typeof roleLabels]} - Expires {new Date(invitation.expires_at).toLocaleDateString()}
                     </p>
                   </div>
-                  <form action={revokeTeamInvitationAction}>
-                    <input type="hidden" name="invitationId" value={invitation.id} />
-                    <Button type="submit" size="sm" variant="outline">
-                      <XCircle className="h-4 w-4" />
-                      Revoke
-                    </Button>
-                  </form>
+                  {userCanManageTeam ? (
+                    <form action={revokeTeamInvitationAction}>
+                      <input type="hidden" name="invitationId" value={invitation.id} />
+                      <Button type="submit" size="sm" variant="outline">
+                        <XCircle className="h-4 w-4" />
+                        Revoke
+                      </Button>
+                    </form>
+                  ) : null}
                 </div>
               ))}
               {!pendingInvitations.length ? (
@@ -144,6 +148,7 @@ export default async function TeamPage({
           </Card>
         </div>
 
+        {userCanManageTeam ? (
         <Card className="xl:sticky xl:top-6 xl:self-start">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -217,6 +222,19 @@ export default async function TeamPage({
             </form>
           </CardContent>
         </Card>
+        ) : (
+          <Card className="xl:sticky xl:top-6 xl:self-start">
+            <CardHeader>
+              <CardTitle>Team management restricted</CardTitle>
+              <CardDescription>Only admins and pastors can add members, invite login access, or revoke pending invitations.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                You can still view the team roster and use assigned contact workflows available to your role.
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </section>
       </CinematicSection>
     </DashboardShell>

@@ -86,7 +86,7 @@ function eventIdFromPathname(pathname: string) {
   return pathname.slice(REPORT_EVENT_PATH_PREFIX.length).split("/")[0] || undefined;
 }
 
-export function DeepSeekChatWidget({ aiEnabled = false }: { aiEnabled?: boolean }) {
+export function DeepSeekChatWidget({ aiEnabled = true }: { aiEnabled?: boolean }) {
   const pathname = usePathname();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState("");

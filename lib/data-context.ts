@@ -9,6 +9,7 @@ export type WorkspaceStatus = "active" | "inactive";
 export type ChurchMembershipOption = {
   churchId: string;
   churchName: string;
+  churchSlug: string;
   role: string;
   workspaceType: WorkspaceType;
   workspaceStatus: WorkspaceStatus;
@@ -18,6 +19,7 @@ export type ChurchContext = {
   userId: string;
   churchId: string;
   churchName: string;
+  churchSlug: string;
   workspaceType: WorkspaceType;
   workspaceStatus: WorkspaceStatus;
   workspaceLabel: string;
@@ -53,7 +55,7 @@ export const getChurchContext = cache(async function getChurchContext(): Promise
       .single(),
     supabase
       .from("church_memberships")
-      .select("id, church_id, role, churches(name, workspace_type, workspace_status)")
+      .select("id, church_id, role, churches(name, slug, workspace_type, workspace_status)")
       .eq("user_id", user.id)
       .eq("status", "active")
       .order("created_at", { ascending: true }),
@@ -95,6 +97,7 @@ export const getChurchContext = cache(async function getChurchContext(): Promise
     return {
       churchId: membership.church_id,
       churchName: church?.name ?? "Your church",
+      churchSlug: church?.slug ?? membership.church_id,
       role: membership.role,
       workspaceType: (church?.workspace_type === "ministry" ? "ministry" : "church") as WorkspaceType,
       workspaceStatus: (church?.workspace_status === "inactive" ? "inactive" : "active") as WorkspaceStatus
@@ -122,6 +125,7 @@ export const getChurchContext = cache(async function getChurchContext(): Promise
     userId: user.id,
     churchId: selectedMembership.church_id,
     churchName: selectedChurch?.name ?? "Your church",
+    churchSlug: selectedChurch?.slug ?? selectedMembership.church_id,
     workspaceType: selectedWorkspaceType,
     workspaceStatus: selectedWorkspaceStatus,
     workspaceLabel: selectedWorkspaceLabel,

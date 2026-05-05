@@ -162,6 +162,7 @@ alter table if exists public.churches
 comment on column public.churches.onboarding_dismissed_at is 'When a church member dismissed the onboarding guidance banner';
 
 alter table if exists public.churches
+  add column if not exists slug text,
   add column if not exists workspace_type text not null default 'church',
   add column if not exists workspace_status text not null default 'active',
   add column if not exists status_changed_at timestamptz,
@@ -187,6 +188,17 @@ comment on column public.churches.workspace_status is 'Whether this workspace is
 comment on column public.churches.status_changed_at is 'When the workspace status last changed';
 comment on column public.churches.status_changed_by is 'Owner/admin user who last changed the workspace status';
 comment on column public.churches.status_change_reason is 'Optional owner/admin reason for status change';
+comment on column public.churches.slug is 'Stable public workspace slug used for privacy request links';
+
+update public.churches
+set slug = regexp_replace(lower(trim(coalesce(name, 'workspace'))), '[^a-z0-9]+', '-', 'g') || '-' || left(id::text, 8)
+where slug is null or trim(slug) = '';
+
+alter table if exists public.churches
+  alter column slug set default ('workspace-' || left(gen_random_uuid()::text, 8)),
+  alter column slug set not null;
+
+create unique index if not exists churches_slug_idx on public.churches(slug);
 
 drop function if exists public.dismiss_onboarding_guide(uuid);
 
@@ -676,6 +688,20 @@ alter table if exists public.generated_messages
   add column if not exists purpose text not null default 'manual',
   add column if not exists approved_at timestamptz,
   add column if not exists opened_at timestamptz;
+
+create table if not exists public.message_open_events (
+  id uuid primary key default gen_random_uuid(),
+  church_id uuid not null references public.churches(id) on delete cascade,
+  contact_id uuid not null references public.contacts(id) on delete cascade,
+  generated_message_id uuid references public.generated_messages(id) on delete set null,
+  channel public.message_channel not null,
+  opened_by uuid references auth.users(id) on delete set null,
+  opened_url text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists message_open_events_contact_idx
+on public.message_open_events(contact_id, created_at desc);
 
 create index if not exists church_memberships_user_idx on public.church_memberships(user_id, status);
 create index if not exists church_memberships_church_idx on public.church_memberships(church_id, role, status);
@@ -1584,6 +1610,7 @@ alter table public.contact_journey_events enable row level security;
 alter table public.follow_ups enable row level security;
 alter table public.prayer_requests enable row level security;
 alter table public.generated_messages enable row level security;
+alter table public.message_open_events enable row level security;
 alter table public.contact_form_answers enable row level security;
 alter table public.data_requests enable row level security;
 
@@ -1838,13 +1865,22 @@ using (private.is_church_member(church_id) or private.is_app_admin());
 drop policy if exists "Members can create church contacts" on public.contacts;
 create policy "Members can create church contacts"
 on public.contacts for insert
-with check (private.is_church_member(church_id));
+with check (
+  private.is_app_admin()
+  or private.has_church_role(church_id, array['admin','pastor','elder','bible_worker','health_leader','youth_leader']::public.team_role[])
+);
 
 drop policy if exists "Members can update church contacts" on public.contacts;
 create policy "Members can update church contacts"
 on public.contacts for update
-using (private.is_church_member(church_id))
-with check (private.is_church_member(church_id));
+using (
+  private.is_app_admin()
+  or private.has_church_role(church_id, array['admin','pastor','elder','bible_worker','health_leader','youth_leader']::public.team_role[])
+)
+with check (
+  private.is_app_admin()
+  or private.has_church_role(church_id, array['admin','pastor','elder','bible_worker','health_leader','youth_leader']::public.team_role[])
+);
 
 drop policy if exists "Members can view contact interests" on public.contact_interests;
 create policy "Members can view contact interests"
@@ -1886,13 +1922,22 @@ using (private.is_church_member(church_id) or private.is_app_admin());
 drop policy if exists "Members can create follow ups" on public.follow_ups;
 create policy "Members can create follow ups"
 on public.follow_ups for insert
-with check (private.is_church_member(church_id));
+with check (
+  private.is_app_admin()
+  or private.has_church_role(church_id, array['admin','pastor','elder','bible_worker','health_leader','youth_leader']::public.team_role[])
+);
 
 drop policy if exists "Members can update follow ups" on public.follow_ups;
 create policy "Members can update follow ups"
 on public.follow_ups for update
-using (private.is_church_member(church_id))
-with check (private.is_church_member(church_id));
+using (
+  private.is_app_admin()
+  or private.has_church_role(church_id, array['admin','pastor','elder','bible_worker','health_leader','youth_leader']::public.team_role[])
+)
+with check (
+  private.is_app_admin()
+  or private.has_church_role(church_id, array['admin','pastor','elder','bible_worker','health_leader','youth_leader']::public.team_role[])
+);
 
 drop policy if exists "Prayer roles can view prayer requests" on public.prayer_requests;
 create policy "Prayer roles can view prayer requests"
@@ -1942,6 +1987,16 @@ drop policy if exists "Members can update generated messages" on public.generate
 create policy "Members can update generated messages"
 on public.generated_messages for update
 using (private.is_church_member(church_id) or private.is_app_admin())
+with check (private.is_church_member(church_id) or private.is_app_admin());
+
+drop policy if exists "Members can view message open events" on public.message_open_events;
+create policy "Members can view message open events"
+on public.message_open_events for select
+using (private.is_church_member(church_id) or private.is_app_admin());
+
+drop policy if exists "Members can create message open events" on public.message_open_events;
+create policy "Members can create message open events"
+on public.message_open_events for insert
 with check (private.is_church_member(church_id) or private.is_app_admin());
 
 -- Contact form answers RLS policies
@@ -3558,6 +3613,7 @@ returns table (
   assigned_handling_role text,
   recommended_assigned_role text,
   do_not_contact boolean,
+  preferred_contact_methods text[],
   duplicate_of_contact_id uuid,
   duplicate_match_confidence numeric,
   duplicate_match_reason text,
@@ -3588,6 +3644,7 @@ as $$
       contacts.assigned_handling_role,
       contacts.recommended_assigned_role,
       contacts.do_not_contact,
+      contacts.preferred_contact_methods,
       contacts.duplicate_of_contact_id,
       contacts.duplicate_match_confidence,
       contacts.duplicate_match_reason,
@@ -3646,6 +3703,7 @@ as $$
     filtered.assigned_handling_role,
     filtered.recommended_assigned_role,
     filtered.do_not_contact,
+    filtered.preferred_contact_methods,
     filtered.duplicate_of_contact_id,
     filtered.duplicate_match_confidence,
     filtered.duplicate_match_reason,
@@ -4089,6 +4147,7 @@ returns table (
   assigned_handling_role text,
   recommended_assigned_role text,
   do_not_contact boolean,
+  preferred_contact_methods text[],
   duplicate_of_contact_id uuid,
   duplicate_match_confidence numeric,
   duplicate_match_reason text,
@@ -4119,6 +4178,7 @@ as $$
       contacts.assigned_handling_role,
       contacts.recommended_assigned_role,
       contacts.do_not_contact,
+      contacts.preferred_contact_methods,
       contacts.duplicate_of_contact_id,
       contacts.duplicate_match_confidence,
       contacts.duplicate_match_reason,
@@ -4176,6 +4236,7 @@ as $$
     filtered.assigned_handling_role,
     filtered.recommended_assigned_role,
     filtered.do_not_contact,
+    filtered.preferred_contact_methods,
     filtered.duplicate_of_contact_id,
     filtered.duplicate_match_confidence,
     filtered.duplicate_match_reason,
@@ -4593,6 +4654,9 @@ begin
   ) then
     raise exception 'You do not have permission to reset contact data.';
   end if;
+
+  delete from public.message_open_events
+  where church_id = p_church_id;
 
   delete from public.generated_messages
   where church_id = p_church_id;

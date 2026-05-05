@@ -31,11 +31,7 @@ export async function getPublicChurch(slug: string) {
 
   if (error) {
     console.error("Error fetching public church:", error);
-    notFound();
-  }
-
-  if (!data) {
-    notFound();
+    return null;
   }
 
   return data;

@@ -95,6 +95,11 @@ export default async function SettingsPage({
                 <p>Your login email is managed by Supabase Auth and is read-only in ShepherdRoute for now.</p>
                 <p>{context.workspaceLabel} roles are managed by authorized {context.workspaceLabel.toLowerCase()} leaders or the ShepherdRoute owner.</p>
                 <p>Prayer request visibility is protected by role-based access rules.</p>
+                <Button asChild variant="outline" className="mt-2 justify-start">
+                  <Link href={`/privacy/request?church=${encodeURIComponent(context.churchSlug)}`}>
+                    Public privacy request form
+                  </Link>
+                </Button>
               </CardContent>
             </Card>
 

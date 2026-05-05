@@ -162,6 +162,7 @@ alter table if exists public.churches
 comment on column public.churches.onboarding_dismissed_at is 'When a church member dismissed the onboarding guidance banner';
 
 alter table if exists public.churches
+  add column if not exists slug text,
   add column if not exists workspace_type text not null default 'church',
   add column if not exists workspace_status text not null default 'active',
   add column if not exists status_changed_at timestamptz,
@@ -187,6 +188,17 @@ comment on column public.churches.workspace_status is 'Whether this workspace is
 comment on column public.churches.status_changed_at is 'When the workspace status last changed';
 comment on column public.churches.status_changed_by is 'Owner/admin user who last changed the workspace status';
 comment on column public.churches.status_change_reason is 'Optional owner/admin reason for status change';
+comment on column public.churches.slug is 'Stable public workspace slug used for privacy request links';
+
+update public.churches
+set slug = regexp_replace(lower(trim(coalesce(name, 'workspace'))), '[^a-z0-9]+', '-', 'g') || '-' || left(id::text, 8)
+where slug is null or trim(slug) = '';
+
+alter table if exists public.churches
+  alter column slug set default ('workspace-' || left(gen_random_uuid()::text, 8)),
+  alter column slug set not null;
+
+create unique index if not exists churches_slug_idx on public.churches(slug);
 
 drop function if exists public.dismiss_onboarding_guide(uuid);
 
@@ -1862,13 +1874,22 @@ using (private.is_church_member(church_id) or private.is_app_admin());
 drop policy if exists "Members can create church contacts" on public.contacts;
 create policy "Members can create church contacts"
 on public.contacts for insert
-with check (private.is_church_member(church_id));
+with check (
+  private.is_app_admin()
+  or private.has_church_role(church_id, array['admin','pastor','elder','bible_worker','health_leader','youth_leader']::public.team_role[])
+);
 
 drop policy if exists "Members can update church contacts" on public.contacts;
 create policy "Members can update church contacts"
 on public.contacts for update
-using (private.is_church_member(church_id))
-with check (private.is_church_member(church_id));
+using (
+  private.is_app_admin()
+  or private.has_church_role(church_id, array['admin','pastor','elder','bible_worker','health_leader','youth_leader']::public.team_role[])
+)
+with check (
+  private.is_app_admin()
+  or private.has_church_role(church_id, array['admin','pastor','elder','bible_worker','health_leader','youth_leader']::public.team_role[])
+);
 
 drop policy if exists "Members can view contact interests" on public.contact_interests;
 create policy "Members can view contact interests"
@@ -1910,13 +1931,22 @@ using (private.is_church_member(church_id) or private.is_app_admin());
 drop policy if exists "Members can create follow ups" on public.follow_ups;
 create policy "Members can create follow ups"
 on public.follow_ups for insert
-with check (private.is_church_member(church_id));
+with check (
+  private.is_app_admin()
+  or private.has_church_role(church_id, array['admin','pastor','elder','bible_worker','health_leader','youth_leader']::public.team_role[])
+);
 
 drop policy if exists "Members can update follow ups" on public.follow_ups;
 create policy "Members can update follow ups"
 on public.follow_ups for update
-using (private.is_church_member(church_id))
-with check (private.is_church_member(church_id));
+using (
+  private.is_app_admin()
+  or private.has_church_role(church_id, array['admin','pastor','elder','bible_worker','health_leader','youth_leader']::public.team_role[])
+)
+with check (
+  private.is_app_admin()
+  or private.has_church_role(church_id, array['admin','pastor','elder','bible_worker','health_leader','youth_leader']::public.team_role[])
+);
 
 drop policy if exists "Prayer roles can view prayer requests" on public.prayer_requests;
 create policy "Prayer roles can view prayer requests"
@@ -3633,6 +3663,7 @@ returns table (
   assigned_handling_role text,
   recommended_assigned_role text,
   do_not_contact boolean,
+  preferred_contact_methods text[],
   duplicate_of_contact_id uuid,
   duplicate_match_confidence numeric,
   duplicate_match_reason text,
@@ -3663,6 +3694,7 @@ as $$
       contacts.assigned_handling_role,
       contacts.recommended_assigned_role,
       contacts.do_not_contact,
+      contacts.preferred_contact_methods,
       contacts.duplicate_of_contact_id,
       contacts.duplicate_match_confidence,
       contacts.duplicate_match_reason,
@@ -3721,6 +3753,7 @@ as $$
     filtered.assigned_handling_role,
     filtered.recommended_assigned_role,
     filtered.do_not_contact,
+    filtered.preferred_contact_methods,
     filtered.duplicate_of_contact_id,
     filtered.duplicate_match_confidence,
     filtered.duplicate_match_reason,
@@ -4164,6 +4197,7 @@ returns table (
   assigned_handling_role text,
   recommended_assigned_role text,
   do_not_contact boolean,
+  preferred_contact_methods text[],
   duplicate_of_contact_id uuid,
   duplicate_match_confidence numeric,
   duplicate_match_reason text,
@@ -4194,6 +4228,7 @@ as $$
       contacts.assigned_handling_role,
       contacts.recommended_assigned_role,
       contacts.do_not_contact,
+      contacts.preferred_contact_methods,
       contacts.duplicate_of_contact_id,
       contacts.duplicate_match_confidence,
       contacts.duplicate_match_reason,
@@ -4251,6 +4286,7 @@ as $$
     filtered.assigned_handling_role,
     filtered.recommended_assigned_role,
     filtered.do_not_contact,
+    filtered.preferred_contact_methods,
     filtered.duplicate_of_contact_id,
     filtered.duplicate_match_confidence,
     filtered.duplicate_match_reason,
@@ -4668,6 +4704,9 @@ begin
   ) then
     raise exception 'You do not have permission to reset contact data.';
   end if;
+
+  delete from public.message_open_events
+  where church_id = p_church_id;
 
   delete from public.generated_messages
   where church_id = p_church_id;

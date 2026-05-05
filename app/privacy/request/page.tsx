@@ -21,6 +21,7 @@ export default async function PrivacyRequestPage({
   const params = await searchParams;
   const churchSlug = params.church || "";
   const errorMessage = params.error ? decodeURIComponent(params.error) : null;
+  const missingChurch = !churchSlug;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
@@ -40,6 +41,16 @@ export default async function PrivacyRequestPage({
                 Your privacy request has been submitted. The church will review it and respond according to their privacy policy.
               </p>
               <Button asChild>
+                <Link href="/">Return Home</Link>
+              </Button>
+            </div>
+          ) : missingChurch ? (
+            <div className="space-y-4 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              <p className="font-semibold">Workspace link required</p>
+              <p>
+                Open this request form from a ShepherdRoute privacy link so the request can be routed to the correct church or ministry.
+              </p>
+              <Button asChild variant="outline" className="w-full">
                 <Link href="/">Return Home</Link>
               </Button>
             </div>

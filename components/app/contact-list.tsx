@@ -113,44 +113,49 @@ export function ContactList({ churchName, contacts, team, compactLists = false, 
                 ) : null}
               </div>
               <div className={cn("grid", compactLists ? "gap-1.5" : "gap-2")}>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <form action={updateContactAction} className="flex gap-2">
-                    <input type="hidden" name="contactId" value={contact.id} />
-                    <input type="hidden" name="status" value={contact.status} />
-                    <input type="hidden" name="assignedHandlingRole" value={contact.assigned_handling_role ?? ""} />
-                    <select name="assignedTo" defaultValue={contact.assigned_to ?? "unassigned"} className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-ring">
-                      <option value="unassigned">Unassigned</option>
-                      {team.map((member) => (
-                        <option key={member.id} value={member.id}>{member.display_name}</option>
-                      ))}
-                    </select>
-                    <Button type="submit" size="sm" variant="outline">Assign</Button>
-                  </form>
-                  <form action={updateContactAction} className="flex gap-2">
-                    <input type="hidden" name="contactId" value={contact.id} />
-                    <input type="hidden" name="assignedTo" value={contact.assigned_to ?? "unassigned"} />
-                    <select name="assignedHandlingRole" defaultValue={contact.assigned_handling_role ?? ""} className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-ring">
-                      <option value="">No role</option>
-                      {assignmentRoleOptions.map((role) => (
-                        <option key={role} value={role}>{assignmentRoleLabels[role]}</option>
-                      ))}
-                    </select>
-                    <Button type="submit" size="sm" variant="outline">Set Role</Button>
-                  </form>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <form action={updateContactAction} className="flex gap-2">
-                    <input type="hidden" name="contactId" value={contact.id} />
-                    <input type="hidden" name="assignedTo" value={contact.assigned_to ?? "unassigned"} />
-                    <input type="hidden" name="assignedHandlingRole" value={contact.assigned_handling_role ?? ""} />
-                    <select name="status" defaultValue={contact.status} className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-ring">
-                      {statusOptions.map((status) => (
-                        <option key={status} value={status}>{statusLabels[status]}</option>
-                      ))}
-                    </select>
-                    <Button type="submit" size="sm" variant="outline">Save Status</Button>
-                  </form>
-                </div>
+                {canManageContacts ? (
+                  <>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <form action={updateContactAction} className="flex gap-2">
+                        <input type="hidden" name="contactId" value={contact.id} />
+                        <input type="hidden" name="status" value={contact.status} />
+                        <input type="hidden" name="assignedHandlingRole" value={contact.assigned_handling_role ?? ""} />
+                        <select name="assignedTo" defaultValue={contact.assigned_to ?? "unassigned"} className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-ring">
+                          <option value="unassigned">Unassigned</option>
+                          {team.map((member) => (
+                            <option key={member.id} value={member.id}>{member.display_name}</option>
+                          ))}
+                        </select>
+                        <Button type="submit" size="sm" variant="outline">Assign</Button>
+                      </form>
+                      <form action={updateContactAction} className="flex gap-2">
+                        <input type="hidden" name="contactId" value={contact.id} />
+                        <input type="hidden" name="assignedTo" value={contact.assigned_to ?? "unassigned"} />
+                        <input type="hidden" name="status" value={contact.status} />
+                        <select name="assignedHandlingRole" defaultValue={contact.assigned_handling_role ?? ""} className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-ring">
+                          <option value="">No role</option>
+                          {assignmentRoleOptions.map((role) => (
+                            <option key={role} value={role}>{assignmentRoleLabels[role]}</option>
+                          ))}
+                        </select>
+                        <Button type="submit" size="sm" variant="outline">Set Role</Button>
+                      </form>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <form action={updateContactAction} className="flex gap-2">
+                        <input type="hidden" name="contactId" value={contact.id} />
+                        <input type="hidden" name="assignedTo" value={contact.assigned_to ?? "unassigned"} />
+                        <input type="hidden" name="assignedHandlingRole" value={contact.assigned_handling_role ?? ""} />
+                        <select name="status" defaultValue={contact.status} className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-ring">
+                          {statusOptions.map((status) => (
+                            <option key={status} value={status}>{statusLabels[status]}</option>
+                          ))}
+                        </select>
+                        <Button type="submit" size="sm" variant="outline">Save Status</Button>
+                      </form>
+                    </div>
+                  </>
+                ) : null}
                 <div className="grid gap-2 sm:grid-cols-2">
                   <Button asChild size="sm" variant="outline">
                     <Link href={`/contacts/${contact.id}`}>Open detail</Link>

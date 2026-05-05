@@ -53,12 +53,14 @@ export default async function ContactsPage({
       description="Filter, assign, message, and track visitors through the care pathway."
       actions={
         <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline">
-            <Link href="#add-contact">
-              <UserPlus className="h-4 w-4" />
-              Add contact
-            </Link>
-          </Button>
+          {userCanManageContacts ? (
+            <Button asChild variant="outline">
+              <Link href="#add-contact">
+                <UserPlus className="h-4 w-4" />
+                Add contact
+              </Link>
+            </Button>
+          ) : null}
           {userCanExportContacts ? (
             <Button asChild variant="outline">
               <Link href={exportHref()}>
@@ -114,7 +116,7 @@ export default async function ContactsPage({
               </CardContent>
             </Card>
 
-            <QuickContactForm events={events} />
+            {userCanManageContacts ? <QuickContactForm events={events} /> : null}
           </div>
         </section>
       </CinematicSection>

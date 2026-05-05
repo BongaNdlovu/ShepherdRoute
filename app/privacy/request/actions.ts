@@ -14,6 +14,20 @@ const schema = z.object({
   website: z.string().optional(), // honeypot field
 });
 
+function privacyRequestPath(churchSlug: string, params: Record<string, string>) {
+  const searchParams = new URLSearchParams();
+
+  if (churchSlug) {
+    searchParams.set("church", churchSlug);
+  }
+
+  Object.entries(params).forEach(([key, value]) => {
+    searchParams.set(key, value);
+  });
+
+  return `?${searchParams.toString()}`;
+}
+
 export async function submitPublicDataRequestAction(formData: FormData) {
   const parsed = schema.safeParse({
     churchSlug: formData.get("churchSlug"),
@@ -25,19 +39,20 @@ export async function submitPublicDataRequestAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    redirect(`?error=${encodeURIComponent(parsed.error.errors[0].message)}`);
+    const churchSlug = typeof formData.get("churchSlug") === "string" ? String(formData.get("churchSlug")) : "";
+    redirect(privacyRequestPath(churchSlug, { error: parsed.error.errors[0].message }));
   }
 
   const { churchSlug, requestType, requesterName, requesterContact, notes, website } = parsed.data;
 
   // Honeypot check: if website field is filled, it's likely a bot
   if (website && website.trim().length > 0) {
-    redirect(`?submitted=true`);
+    redirect(privacyRequestPath(churchSlug, { submitted: "true" }));
   }
 
   const church = await getPublicChurch(churchSlug);
   if (!church) {
-    redirect(`?error=${encodeURIComponent("Invalid church")}`);
+    redirect(privacyRequestPath(churchSlug, { error: "Invalid church" }));
   }
 
   const supabase = await createClient();
@@ -50,8 +65,8 @@ export async function submitPublicDataRequestAction(formData: FormData) {
   });
 
   if (error) {
-    redirect(`?error=${encodeURIComponent(error.message)}`);
+    redirect(privacyRequestPath(churchSlug, { error: error.message }));
   }
 
-  redirect(`?submitted=true`);
+  redirect(privacyRequestPath(churchSlug, { submitted: "true" }));
 }

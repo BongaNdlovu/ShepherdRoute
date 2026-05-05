@@ -126,6 +126,7 @@ export type Database = {
           id: string
           name: string
           onboarding_dismissed_at: string | null
+          slug: string
           status_change_reason: string | null
           status_changed_at: string | null
           status_changed_by: string | null
@@ -139,6 +140,7 @@ export type Database = {
           id?: string
           name: string
           onboarding_dismissed_at?: string | null
+          slug?: string
           status_change_reason?: string | null
           status_changed_at?: string | null
           status_changed_by?: string | null
@@ -152,6 +154,7 @@ export type Database = {
           id?: string
           name?: string
           onboarding_dismissed_at?: string | null
+          slug?: string
           status_change_reason?: string | null
           status_changed_at?: string | null
           status_changed_by?: string | null
@@ -934,6 +937,61 @@ export type Database = {
           },
         ]
       }
+      message_open_events: {
+        Row: {
+          channel: Database["public"]["Enums"]["message_channel"]
+          church_id: string
+          contact_id: string
+          created_at: string
+          generated_message_id: string | null
+          id: string
+          opened_by: string | null
+          opened_url: string | null
+        }
+        Insert: {
+          channel: Database["public"]["Enums"]["message_channel"]
+          church_id: string
+          contact_id: string
+          created_at?: string
+          generated_message_id?: string | null
+          id?: string
+          opened_by?: string | null
+          opened_url?: string | null
+        }
+        Update: {
+          channel?: Database["public"]["Enums"]["message_channel"]
+          church_id?: string
+          contact_id?: string
+          created_at?: string
+          generated_message_id?: string | null
+          id?: string
+          opened_by?: string | null
+          opened_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_open_events_church_id_fkey"
+            columns: ["church_id"]
+            isOneToOne: false
+            referencedRelation: "churches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_open_events_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_open_events_generated_message_id_fkey"
+            columns: ["generated_message_id"]
+            isOneToOne: false
+            referencedRelation: "generated_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people: {
         Row: {
           archived_at: string | null
@@ -1364,6 +1422,7 @@ export type Database = {
           language: string
           person_id: string
           phone: string
+          preferred_contact_methods: string[]
           recommended_assigned_role: string
           status: Database["public"]["Enums"]["follow_up_status"]
           total_count: number
@@ -1640,6 +1699,7 @@ export type Database = {
           language: string
           person_id: string
           phone: string
+          preferred_contact_methods: string[]
           recommended_assigned_role: string
           status: Database["public"]["Enums"]["follow_up_status"]
           total_count: number

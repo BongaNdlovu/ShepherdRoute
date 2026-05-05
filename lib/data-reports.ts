@@ -49,9 +49,13 @@ export type EventReportExportContact = {
   id: string;
   full_name: string;
   phone: string;
+  email: string | null;
   area: string | null;
+  language: string | null;
+  best_time_to_contact: string | null;
   status: FollowUpStatus;
   urgency: "low" | "medium" | "high";
+  assigned_name: string | null;
   created_at: string;
   contact_interests: Array<{ interest: Interest }>;
 };
@@ -322,7 +326,7 @@ export async function getEventReportContacts(churchId: string, id: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("contacts")
-    .select("id, full_name, phone, area, status, urgency, created_at, contact_interests(interest)")
+    .select("id, full_name, phone, email, area, language, best_time_to_contact, status, urgency, created_at, team_members(display_name), contact_interests(interest)")
     .eq("church_id", churchId)
     .eq("event_id", id)
     .is("deleted_at", null)
@@ -356,7 +360,7 @@ export async function getEventReportContactsPage(churchId: string, id: string, o
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("contacts")
-    .select("id, full_name, phone, area, status, urgency, created_at, contact_interests(interest)")
+    .select("id, full_name, phone, email, area, language, best_time_to_contact, status, urgency, created_at, team_members(display_name), contact_interests(interest)")
     .eq("church_id", churchId)
     .eq("event_id", id)
     .is("deleted_at", null)
@@ -368,5 +372,12 @@ export async function getEventReportContactsPage(churchId: string, id: string, o
     throw new Error(error.message);
   }
 
-  return (data ?? []) as unknown as EventReportExportContact[];
+  return (data ?? []).map((contact) => {
+    const teamMember = Array.isArray(contact.team_members) ? contact.team_members[0] ?? null : contact.team_members;
+
+    return {
+      ...contact,
+      assigned_name: teamMember?.display_name ?? null
+    };
+  }) as unknown as EventReportExportContact[];
 }
