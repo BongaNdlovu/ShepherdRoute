@@ -140,13 +140,14 @@ export async function getCurrentUserEventAssignment(params: {
     .select('*')
     .eq('event_id', params.eventId)
     .eq('team_member_id', teamMember.id)
-    .maybeSingle();
+    .order('created_at', { ascending: false })
+    .limit(1);
 
   if (error) {
     throw new Error(`Failed to load event assignment: ${error.message}`);
   }
 
-  return data ?? null;
+  return data?.[0] ?? null;
 }
 
 export async function getResolvedEventPermissions(params: {

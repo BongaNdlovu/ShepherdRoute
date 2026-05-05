@@ -166,24 +166,39 @@ export async function assignTeamMemberToEvent(input: {
     throw new Error('This team member does not belong to the event church.');
   }
 
-  const { error } = await supabase.from('event_assignments').upsert(
-    {
-      church_id: churchId,
-      event_id: input.eventId,
-      team_member_id: input.teamMemberId,
-      invitee_email: null,
-      invitation_token_hash: null,
-      status: 'accepted',
-      accepted_at: new Date().toISOString(),
-      revoked_at: null,
-      revoked_by: null,
-      invited_by: user.id,
-      ...permissions,
-    },
-    {
-      onConflict: 'church_id,event_id,team_member_id',
-    }
-  );
+  const assignmentPayload = {
+    church_id: churchId,
+    event_id: input.eventId,
+    team_member_id: input.teamMemberId,
+    invitee_email: null,
+    invitation_token_hash: null,
+    status: 'accepted' as const,
+    accepted_at: new Date().toISOString(),
+    revoked_at: null,
+    revoked_by: null,
+    invited_by: user.id,
+    ...permissions,
+  };
+
+  const { data: existingAssignments, error: existingError } = await supabase
+    .from('event_assignments')
+    .select('id')
+    .eq('church_id', churchId)
+    .eq('event_id', input.eventId)
+    .eq('team_member_id', input.teamMemberId)
+    .limit(1);
+
+  if (existingError) {
+    throw new Error(`Failed to check existing assignment: ${existingError.message}`);
+  }
+
+  const existingAssignmentId = existingAssignments?.[0]?.id;
+  const { error } = existingAssignmentId
+    ? await supabase
+        .from('event_assignments')
+        .update(assignmentPayload)
+        .eq('id', existingAssignmentId)
+    : await supabase.from('event_assignments').insert(assignmentPayload);
 
   if (error) {
     throw new Error(`Failed to assign team member: ${error.message}`);
@@ -216,28 +231,43 @@ export async function inviteToEventByEmail(input: {
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   const permissions = sanitizeEventPermissions(input.permissions);
 
-  const { error, data: upserted } = await supabase.from('event_assignments').upsert(
-    {
-      church_id: churchId,
-      event_id: input.eventId,
-      team_member_id: null,
-      invitee_email: email,
-      invitation_token_hash: tokenHash,
-      status: 'pending',
-      invitation_expires_at: expiresAt,
-      invited_by: user.id,
-      accepted_at: null,
-      revoked_at: null,
-      revoked_by: null,
-      ...permissions,
-    },
-    {
-      onConflict: 'church_id,event_id,invitee_email',
-    }
-  );
+  const assignmentPayload = {
+    church_id: churchId,
+    event_id: input.eventId,
+    team_member_id: null,
+    invitee_email: email,
+    invitation_token_hash: tokenHash,
+    status: 'pending' as const,
+    invitation_expires_at: expiresAt,
+    invited_by: user.id,
+    accepted_at: null,
+    revoked_at: null,
+    revoked_by: null,
+    ...permissions,
+  };
+
+  const { data: existingAssignments, error: existingError } = await supabase
+    .from('event_assignments')
+    .select('id')
+    .eq('church_id', churchId)
+    .eq('event_id', input.eventId)
+    .eq('invitee_email', email)
+    .limit(1);
+
+  if (existingError) {
+    throw new Error(`Failed to check existing invitation: ${existingError.message}`);
+  }
+
+  const existingAssignmentId = existingAssignments?.[0]?.id;
+  const { error } = existingAssignmentId
+    ? await supabase
+        .from('event_assignments')
+        .update(assignmentPayload)
+        .eq('id', existingAssignmentId)
+    : await supabase.from('event_assignments').insert(assignmentPayload);
 
   if (error) {
-    console.error('Event invitation upsert error:', {
+    console.error('Event invitation write error:', {
       error,
       code: error.code,
       message: error.message,

@@ -371,6 +371,10 @@ create table if not exists public.event_assignments (
 );
 
 create index if not exists event_assignments_event_idx on public.event_assignments(event_id);
+create unique index if not exists event_assignments_church_event_team_member
+on public.event_assignments (church_id, event_id, team_member_id);
+create unique index if not exists event_assignments_church_event_invitee_email
+on public.event_assignments (church_id, event_id, invitee_email);
 create index if not exists event_assignments_team_member_idx on public.event_assignments(team_member_id) where team_member_id is not null;
 create index if not exists event_assignments_invitee_email_idx on public.event_assignments(invitee_email) where invitee_email is not null;
 create index if not exists event_assignments_church_idx on public.event_assignments(church_id);
