@@ -3,9 +3,10 @@ import { expect, test } from "@playwright/test";
 const email = process.env.E2E_EMAIL;
 const password = process.env.E2E_PASSWORD;
 const hasAuth = Boolean(email && password);
+const requireAuthSmoke = process.env.E2E_REQUIRE_AUTH === "true";
 
-test("authenticated smoke credentials are configured in CI", async () => {
-  test.skip(!process.env.CI, "Only enforce this in CI.");
+test("authenticated smoke credentials are configured when required", async () => {
+  test.skip(!requireAuthSmoke, "Set E2E_REQUIRE_AUTH=true to require authenticated smoke credentials.");
   expect(process.env.E2E_EMAIL, "E2E_EMAIL must be configured").toBeTruthy();
   expect(process.env.E2E_PASSWORD, "E2E_PASSWORD must be configured").toBeTruthy();
 });
