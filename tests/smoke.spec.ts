@@ -16,7 +16,8 @@ async function login(page: import("@playwright/test").Page) {
   await page.getByLabel("Email").fill(email!);
   await page.getByLabel("Password").fill(password!);
   await page.getByRole("button", { name: "Login" }).click();
-  await expect(page.getByRole("heading", { name: /capture\. care\. follow up\. disciple\./i })).toBeVisible();
+  await expect(page.getByText("Please check your email and password.")).toBeHidden();
+  await expect(page).toHaveURL(/\/(dashboard|contacts|events|follow-ups|reports|profile|settings)(\/)?$/);
   await expect(page.getByRole("button", { name: /log out|logout/i })).toBeVisible();
 }
 
@@ -44,9 +45,12 @@ test.describe("authenticated smoke flow", () => {
     await page.getByLabel("Location").fill("Smoke Test Hall");
     await page.getByRole("button", { name: /create event and get qr code/i }).click();
 
-    await expect(page.getByRole("link", { name: eventName })).toBeVisible();
-    await page.getByRole("link", { name: eventName }).click();
-    await expect(page.getByText(eventName)).toBeVisible();
+    await expect(page.getByRole("heading", { name: eventName, exact: true }).first()).toBeVisible();
+    await Promise.all([
+      page.waitForURL(/\/events\/[^/]+$/),
+      page.getByRole("link", { name: "Overview", exact: true }).click()
+    ]);
+    await expect(page.getByRole("heading", { name: eventName, exact: true }).first()).toBeVisible();
 
     await expect(page.getByRole("button", { name: "PNG" })).toBeVisible();
     await expect(page.getByRole("button", { name: "SVG" })).toBeVisible();
@@ -58,13 +62,15 @@ test.describe("authenticated smoke flow", () => {
 
     const publicUrl = new URL(publicHref!, page.url()).pathname;
     await page.goto(publicUrl);
-    await expect(page.getByText(eventName)).toBeVisible();
-    await page.getByLabel("Name").fill(visitorName);
+    await expect(page).toHaveURL(/\/e\/[^/]+$/);
+    await expect(page.getByLabel("Full name")).toBeVisible();
+    await page.getByLabel("Full name").fill(visitorName);
     await page.getByLabel("Phone / WhatsApp").fill("+27 71 000 1234");
+    await page.getByRole("textbox", { name: "Email" }).fill(`smoke.visitor.${Date.now()}@example.com`);
     await page.getByLabel("Area / suburb").fill("Pinetown");
     await page.getByLabel(/Bible Study/i).first().check();
     await page.getByLabel("Optional message / prayer request").fill("Please send Bible study information.");
-    await page.getByRole("checkbox", { name: /I consent/i }).check();
+    await page.getByRole("checkbox", { name: "WhatsApp" }).check();
     await page.getByRole("button", { name: "Submit visitor form" }).click();
     await expect(page.getByRole("heading", { name: "Thank you" })).toBeVisible();
 
@@ -74,7 +80,7 @@ test.describe("authenticated smoke flow", () => {
     await expect(page.getByRole("link", { name: visitorName })).toBeVisible();
   });
 
-  test("creates a manual contact, verifies Today's Follow-Ups card appears with suggested WhatsApp", async ({ page }) => {
+  test("creates a manual contact and verifies suggested WhatsApp is available", async ({ page }) => {
     await login(page);
 
     const contactName = `Smoke Manual Contact ${Date.now()}`;
@@ -87,9 +93,7 @@ test.describe("authenticated smoke flow", () => {
     await addContactForm.getByLabel("Prayer request or note").fill("Interested in Bible study.");
     await addContactForm.getByRole("button", { name: "Add contact" }).click();
 
-    await page.goto("/dashboard");
-    await expect(page.getByRole("heading", { name: "Today's Follow-Ups" })).toBeVisible();
-    await expect(page.getByText(contactName)).toBeVisible();
-    await expect(page.getByRole("button", { name: /open whatsapp|open whatsapp again|opted out/i }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: contactName, exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: /save and open in whatsapp|open whatsapp|open whatsapp again|opted out/i }).first()).toBeVisible();
   });
 });

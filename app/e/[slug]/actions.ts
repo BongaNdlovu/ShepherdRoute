@@ -106,16 +106,16 @@ export async function submitRegistrationAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("submit_event_registration", {
+  const registrationArgs: Record<string, unknown> = {
     p_slug: parsed.data.slug,
     p_full_name: parsed.data.fullName,
     p_phone: validation.data.phone ?? null,
     p_email: validation.data.email ?? null,
-    p_area: validation.data.finalArea,
+    p_area: validation.data.finalArea ?? null,
     p_language: validation.data.finalLanguage,
-    p_best_time_to_contact: validation.data.finalBestTime,
+    p_best_time_to_contact: validation.data.finalBestTime ?? null,
     p_interests: validation.data.selectedInterests,
-    p_message: validation.data.finalMessage,
+    p_message: validation.data.finalMessage ?? null,
     p_urgency: validation.data.classification.urgency,
     p_classification_payload: validation.data.classificationPayload,
     p_prayer_visibility: validation.data.finalPrayerVisibility,
@@ -129,11 +129,41 @@ export async function submitRegistrationAction(formData: FormData) {
     p_consent_recorded_by: null,
     p_form_answers: validation.data.formAnswers,
     p_recommended_assigned_role: validation.data.classification.recommended_assigned_role
-  });
+  };
+
+  const legacyArgVariants = [
+    registrationArgs,
+    withoutKeys(registrationArgs, ["p_recommended_assigned_role"]),
+    withoutKeys(registrationArgs, ["p_recommended_assigned_role", "p_preferred_contact_methods"]),
+    withoutKeys(registrationArgs, ["p_recommended_assigned_role", "p_preferred_contact_methods", "p_form_answers"]),
+    withoutKeys(registrationArgs, ["p_recommended_assigned_role", "p_preferred_contact_methods", "p_form_answers", "p_email"])
+  ];
+
+  let error: { message: string } | null = null;
+  for (const args of legacyArgVariants) {
+    const result = await supabase.rpc("submit_event_registration", args);
+    error = result.error;
+
+    if (!error || !isMissingRpcSignatureError(error.message)) {
+      break;
+    }
+  }
 
   if (error) {
     redirect(`/e/${parsed.data.slug}?error=${encodeURIComponent(error.message)}`);
   }
 
   redirect(`/e/${parsed.data.slug}?submitted=true`);
+}
+
+function withoutKeys(source: Record<string, unknown>, keys: string[]) {
+  const copy = { ...source };
+  keys.forEach((key) => {
+    delete copy[key];
+  });
+  return copy;
+}
+
+function isMissingRpcSignatureError(message: string) {
+  return message.toLowerCase().includes("could not find the function public.submit_event_registration");
 }

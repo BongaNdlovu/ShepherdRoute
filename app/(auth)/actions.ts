@@ -243,9 +243,9 @@ function withAuthInvite(
 }
 
 function safeNextPath(value: FormDataEntryValue | null | undefined) {
-  if (typeof value !== "string") return null;
-  if (!value.startsWith("/")) return null;
-  if (value.startsWith("//")) return null;
+  if (typeof value !== "string") return undefined;
+  if (!value.startsWith("/")) return undefined;
+  if (value.startsWith("//")) return undefined;
 
   try {
     const url = new URL(value, "http://localhost");
@@ -265,9 +265,9 @@ function safeNextPath(value: FormDataEntryValue | null | undefined) {
 
     return allowedPrefixes.some((prefix) => url.pathname.startsWith(prefix))
       ? `${url.pathname}${url.search}${url.hash}`
-      : null;
+      : undefined;
   } catch {
-    return null;
+    return undefined;
   }
 }
 

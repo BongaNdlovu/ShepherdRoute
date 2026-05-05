@@ -179,6 +179,11 @@ export default async function PublicEventPage({
               </div>
             ) : (
               <form action={submitRegistrationAction} className="mobile-safe-container grid gap-5">
+                {query.error ? (
+                  <div className="mobile-safe-text rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+                    {query.error}
+                  </div>
+                ) : null}
                 <input type="hidden" name="slug" value={event.slug} />
                 <input type="hidden" name="visitorType" value={event.event_type} />
                 <input type="hidden" name="templateType" value={event.event_type} />
