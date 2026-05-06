@@ -210,17 +210,22 @@ export async function updateEventArchiveAction(formData: FormData) {
   } catch {
     redirect(`/events/${parsed.data.eventId}?error=You%20do%20not%20have%20permission%20to%20edit%20this%20event.`);
   }
-  const { error } = await supabase
+  const { data: updatedEvents, error } = await supabase
     .from("events")
     .update({
       archived_at: isArchiving ? new Date().toISOString() : null,
       is_active: isArchiving ? false : true
     })
+    .select("id")
     .eq("church_id", context.churchId)
     .eq("id", parsed.data.eventId);
 
   if (error) {
     redirect(`/events/${parsed.data.eventId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  if (!updatedEvents?.length) {
+    redirect(`/events/${parsed.data.eventId}?error=Event%20was%20not%20updated.%20Please%20refresh%20and%20try%20again.`);
   }
 
   revalidatePath("/dashboard");
@@ -256,15 +261,20 @@ export async function deleteEventAction(formData: FormData) {
     redirect(`/events/${parsed.data.eventId}/settings?error=You%20do%20not%20have%20permission%20to%20delete%20this%20event.`);
   }
 
-  const { error } = await supabase
+  const { data: deletedEvents, error } = await supabase
     .from("events")
     .delete()
+    .select("id")
     .eq("church_id", context.churchId)
     .eq("id", parsed.data.eventId)
     .eq("name", parsed.data.eventName);
 
   if (error) {
     redirect(`/events/${parsed.data.eventId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  if (!deletedEvents?.length) {
+    redirect(`/events/${parsed.data.eventId}/settings?error=Event%20was%20not%20deleted.%20Please%20refresh%20and%20try%20again.`);
   }
 
   revalidatePath("/dashboard");
@@ -298,14 +308,19 @@ export async function bulkCloseEventsAction(formData: FormData) {
     }
   }
 
-  const { error } = await supabase
+  const { data: updatedEvents, error } = await supabase
     .from("events")
     .update({ is_active: false })
+    .select("id")
     .eq("church_id", context.churchId)
     .in("id", parsed.data.eventIds);
 
   if (error) {
     redirect(`/events?error=${encodeURIComponent(error.message)}`);
+  }
+
+  if ((updatedEvents?.length ?? 0) !== parsed.data.eventIds.length) {
+    redirect("/events?error=Some%20selected%20events%20were%20not%20closed.%20Please%20refresh%20and%20try%20again.");
   }
 
   revalidatePath("/dashboard");
@@ -342,14 +357,19 @@ export async function bulkDeleteEventsAction(formData: FormData) {
     }
   }
 
-  const { error } = await supabase
+  const { data: deletedEvents, error } = await supabase
     .from("events")
     .delete()
+    .select("id")
     .eq("church_id", context.churchId)
     .in("id", parsed.data.eventIds);
 
   if (error) {
     redirect(`/events?error=${encodeURIComponent(error.message)}`);
+  }
+
+  if ((deletedEvents?.length ?? 0) !== parsed.data.eventIds.length) {
+    redirect("/events?error=Some%20selected%20events%20were%20not%20deleted.%20Please%20refresh%20and%20try%20again.");
   }
 
   revalidatePath("/dashboard");

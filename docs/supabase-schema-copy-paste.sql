@@ -1618,10 +1618,28 @@ as $$
   select exists (
     select 1
     from public.church_memberships
-    where church_id = target_church_id
-      and user_id = auth.uid()
-      and status = 'active'
-      and role = any(allowed_roles)
+    left join public.team_members
+      on team_members.membership_id = church_memberships.id
+     and team_members.church_id = church_memberships.church_id
+     and team_members.is_active = true
+    where church_memberships.church_id = target_church_id
+      and church_memberships.user_id = auth.uid()
+      and church_memberships.status = 'active'
+      and (
+        church_memberships.role = any(allowed_roles)
+        or (
+          team_members.app_role = 'admin'
+          and 'admin'::public.team_role = any(allowed_roles)
+        )
+        or (
+          team_members.app_role = 'coordinator'
+          and 'pastor'::public.team_role = any(allowed_roles)
+        )
+        or (
+          team_members.app_role = 'viewer'
+          and 'viewer'::public.team_role = any(allowed_roles)
+        )
+      )
   );
 $$;
 
@@ -1643,10 +1661,15 @@ as $$
      and tm.church_id = e.church_id
     left join public.app_admins aa on aa.user_id = auth.uid()
     where e.id = target_event_id
-      and cm.status = 'active'
       and (
         aa.role in ('owner', 'support_admin')
-        or tm.role in ('admin', 'pastor')
+        or (
+          cm.status = 'active'
+          and (
+            tm.role in ('admin', 'pastor')
+            or tm.app_role in ('admin', 'coordinator')
+          )
+        )
       )
   );
 $$;

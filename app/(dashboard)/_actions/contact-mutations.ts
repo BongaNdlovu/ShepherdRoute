@@ -159,6 +159,7 @@ export async function updateContactLifecycleAction(formData: FormData) {
     .select("id, person_id")
     .eq("church_id", context.churchId)
     .eq("id", parsed.data.contactId)
+    .is("deleted_at", null)
     .single();
 
   if (contactError || !contact) {
@@ -172,14 +173,19 @@ export async function updateContactLifecycleAction(formData: FormData) {
         ? { archived_at: now, status: "closed" as const }
         : { deleted_at: now, do_not_contact: true, do_not_contact_at: now, status: "closed" as const };
 
-  const { error } = await supabase
+  const { data: updatedContacts, error } = await supabase
     .from("contacts")
     .update(update)
+    .select("id")
     .eq("church_id", context.churchId)
     .eq("id", parsed.data.contactId);
 
   if (error) {
     redirect(`/contacts/${parsed.data.contactId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  if (!updatedContacts?.length) {
+    redirect(`/contacts/${parsed.data.contactId}?error=Contact%20was%20not%20deleted.%20Please%20refresh%20and%20try%20again.`);
   }
 
   if (contact.person_id) {
@@ -582,14 +588,19 @@ export async function bulkUpdateContactsLifecycleAction(formData: FormData) {
         ? { archived_at: now, status: "closed" as const }
         : { deleted_at: now, do_not_contact: true, do_not_contact_at: now, status: "closed" as const };
 
-  const { error: updateError } = await supabase
+  const { data: updatedContacts, error: updateError } = await supabase
     .from("contacts")
     .update(update)
+    .select("id")
     .eq("church_id", context.churchId)
     .in("id", validContactIds);
 
   if (updateError) {
     redirect(`${returnTo}?error=${actionError(updateError, "Could not update selected contacts.")}`);
+  }
+
+  if ((updatedContacts?.length ?? 0) !== validContactIds.length) {
+    redirect(`${returnTo}?error=Some%20selected%20contacts%20were%20not%20deleted.%20Please%20refresh%20and%20try%20again.`);
   }
 
   const personIds = Array.from(new Set(validContacts.map((contact) => contact.person_id).filter(Boolean)));
