@@ -85,10 +85,15 @@ test.describe("team invitation workflow", () => {
   });
 
   test("normal signup requires a private platform signup code", () => {
+    expect(signupPage).toContain("name=\"workspaceType\"");
+    expect(signupPage).toContain("<option value=\"church\">Church</option>");
+    expect(signupPage).toContain("<option value=\"ministry\">Ministry</option>");
     expect(signupPage).toContain("name=\"platformSignupCode\"");
     expect(signupPage).toContain("Signup code");
     expect(authActions).toContain("platformSignupCode: formData.get(\"platformSignupCode\")");
     expect(authActions).toContain("SHEPHERDROUTE_SIGNUP_CODE");
+    expect(authActions).toContain("SHEPHERDROUTE_MINISTRY_SIGNUP_CODE");
+    expect(authActions).toContain("normalizeWorkspaceType(parsed.data.workspaceType)");
     expect(authActions).toContain("timingSafeEqual");
     expect(authActions).toContain("The signup code is not correct.");
   });
@@ -103,8 +108,11 @@ test.describe("team invitation workflow", () => {
 
   test("signup code is documented as a server-only environment variable", () => {
     expect(envExample).toContain("SHEPHERDROUTE_SIGNUP_CODE=");
+    expect(envExample).toContain("SHEPHERDROUTE_MINISTRY_SIGNUP_CODE=");
     expect(deploymentDocs).toContain("SHEPHERDROUTE_SIGNUP_CODE");
+    expect(deploymentDocs).toContain("SHEPHERDROUTE_MINISTRY_SIGNUP_CODE");
     expect(deploymentDocs).toContain("Do not prefix it with `NEXT_PUBLIC_`");
     expect(setupDocs).toContain("SHEPHERDROUTE_SIGNUP_CODE");
+    expect(setupDocs).toContain("SHEPHERDROUTE_MINISTRY_SIGNUP_CODE");
   });
 });

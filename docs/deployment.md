@@ -26,6 +26,7 @@ NEXT_PUBLIC_SITE_URL
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 SHEPHERDROUTE_SIGNUP_CODE
+SHEPHERDROUTE_MINISTRY_SIGNUP_CODE
 ```
 
 Use the production domain for `NEXT_PUBLIC_SITE_URL`, for example:
@@ -34,7 +35,7 @@ Use the production domain for `NEXT_PUBLIC_SITE_URL`, for example:
 https://shepherdroute.com
 ```
 
-`SHEPHERDROUTE_SIGNUP_CODE` is server-only. Do not prefix it with `NEXT_PUBLIC_`. Rotate it in Vercel if it is shared too widely.
+`SHEPHERDROUTE_SIGNUP_CODE` protects church workspace creation. `SHEPHERDROUTE_MINISTRY_SIGNUP_CODE` protects ministry workspace creation. Both are server-only. Do not prefix it with `NEXT_PUBLIC_` for either code. Rotate them in Vercel if they are shared too widely.
 
 In Supabase Auth URL settings, add the Vercel production domain and preview domain pattern you use.
 

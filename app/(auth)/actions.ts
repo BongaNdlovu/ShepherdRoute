@@ -61,7 +61,7 @@ const signupSchema = loginSchema.extend({
     });
   }
 
-  if (!hasValidPlatformSignupCode(value.platformSignupCode)) {
+  if (!hasValidPlatformSignupCode(value.workspaceType, value.platformSignupCode)) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       message: "The signup code is not correct.",
@@ -200,10 +200,13 @@ function normalizeInviteToken(value: FormDataEntryValue | null) {
   return trimmed === "" ? undefined : trimmed;
 }
 
-function hasValidPlatformSignupCode(submittedCode: string | undefined) {
-  const configuredCode =
-    process.env.SHEPHERDROUTE_SIGNUP_CODE?.trim() ||
-    process.env.SHEPARDROUTE_SIGNUP_CODE?.trim();
+function hasValidPlatformSignupCode(workspaceType: "church" | "ministry", submittedCode: string | undefined) {
+  const configuredCode = workspaceType === "ministry"
+    ? process.env.SHEPHERDROUTE_MINISTRY_SIGNUP_CODE?.trim()
+    : (
+        process.env.SHEPHERDROUTE_SIGNUP_CODE?.trim() ||
+        process.env.SHEPARDROUTE_SIGNUP_CODE?.trim()
+      );
 
   if (!configuredCode || !submittedCode) {
     return false;

@@ -40,7 +40,7 @@ export default async function SignupPage({
           <BrandLogo className="mx-auto mb-3 h-20 w-auto object-contain" priority />
           <CardTitle className="text-2xl">{isInviteSignup ? "Create your team account" : "Start ShepherdRoute"}</CardTitle>
           <CardDescription>
-            {isInviteSignup ? "Use the invited email address to accept this invitation." : "Create your church workspace with the private platform signup code."}
+            {isInviteSignup ? "Use the invited email address to accept this invitation." : "Create your church or ministry workspace with the private platform signup code."}
           </CardDescription>
         </div>
         <div className="mt-4">
@@ -55,8 +55,21 @@ export default async function SignupPage({
             {!isInviteSignup ? (
               <>
                 <div className="grid gap-2">
-                  <Label htmlFor="churchName">Church name</Label>
-                  <Input id="churchName" name="churchName" placeholder="Pinetown SDA Church" required />
+                  <Label htmlFor="workspaceType">Workspace type</Label>
+                  <select
+                    id="workspaceType"
+                    name="workspaceType"
+                    defaultValue="church"
+                    className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring"
+                    required
+                  >
+                    <option value="church">Church</option>
+                    <option value="ministry">Ministry</option>
+                  </select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="churchName">Workspace name</Label>
+                  <Input id="churchName" name="churchName" placeholder="Pinetown SDA Church or Health Ministry" required />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="platformSignupCode">Signup code</Label>

@@ -17,6 +17,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SHEPHERDROUTE_SIGNUP_CODE=choose-a-long-private-code
+SHEPHERDROUTE_MINISTRY_SIGNUP_CODE=choose-a-different-long-private-code
 ```
 
 6. Add auth redirect URLs for local and deployed dashboard/invite routes:
@@ -29,7 +30,7 @@ http://127.0.0.1:3000/invite/*
 https://your-vercel-domain.vercel.app/dashboard
 https://your-vercel-domain.vercel.app/invite/*
 ```
-`SHEPHERDROUTE_SIGNUP_CODE` protects public new-church workspace creation. It is server-only and must not use the `NEXT_PUBLIC_` prefix.
+`SHEPHERDROUTE_SIGNUP_CODE` protects public new-church workspace creation. `SHEPHERDROUTE_MINISTRY_SIGNUP_CODE` protects public new-ministry workspace creation. Both are server-only and must not use the `NEXT_PUBLIC_` prefix.
 
 
 ## What The Schema Creates
