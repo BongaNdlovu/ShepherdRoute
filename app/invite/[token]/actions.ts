@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { friendlyInviteError } from "@/lib/app-errors";
 
 const acceptInviteSchema = z.object({
   token: z.string().min(20).max(200)
@@ -33,7 +34,7 @@ export async function acceptTeamInvitationAction(formData: FormData) {
   });
 
   if (error || !churchId) {
-    redirect(`/invite/${encodeURIComponent(token)}?error=${encodeURIComponent(error?.message ?? "Could not accept this invitation.")}`);
+    redirect(`/invite/${encodeURIComponent(token)}?error=${encodeURIComponent(friendlyInviteError(error?.message))}`);
   }
 
   const cookieStore = await cookies();

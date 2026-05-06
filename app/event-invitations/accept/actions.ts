@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { friendlyInviteError } from "@/lib/app-errors";
 
 const acceptEventInviteSchema = z.object({
   token: z.string().min(20).max(200)
@@ -35,7 +36,7 @@ export async function acceptEventInvitationAction(formData: FormData) {
   });
 
   if (error || !eventId) {
-    redirect(`/event-invitations/accept?token=${encodeURIComponent(token)}&error=${encodeURIComponent(error?.message ?? "Could not accept this invitation.")}`);
+    redirect(`/event-invitations/accept?token=${encodeURIComponent(token)}&error=${encodeURIComponent(friendlyInviteError(error?.message))}`);
   }
 
   const { data: event } = await supabase

@@ -65,7 +65,8 @@ export async function submitPublicDataRequestAction(formData: FormData) {
   });
 
   if (error) {
-    redirect(privacyRequestPath(churchSlug, { error: error.message }));
+    console.error("Public data request RPC error:", error);
+    redirect(privacyRequestPath(churchSlug, { error: "Could not submit this request. Please try again." }));
   }
 
   redirect(privacyRequestPath(churchSlug, { submitted: "true" }));

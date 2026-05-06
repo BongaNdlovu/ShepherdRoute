@@ -36,7 +36,8 @@ export async function resetContactDataAction(formData: FormData) {
     });
 
     if (error) {
-      resetError = error.message;
+      console.error("Reset contact data RPC error:", error);
+      resetError = "Could not reset contact data.";
     }
   } catch (error) {
     resetError = getResetContactDataErrorMessage(error);
@@ -59,7 +60,8 @@ export async function resetContactDataAction(formData: FormData) {
 
 function getResetContactDataErrorMessage(error: unknown) {
   if (error instanceof Error) {
-    return error.message;
+    console.error("Reset contact data error:", error);
+    return "Could not reset contact data.";
   }
 
   if (
@@ -68,7 +70,8 @@ function getResetContactDataErrorMessage(error: unknown) {
     "message" in error &&
     typeof (error as { message?: unknown }).message === "string"
   ) {
-    return (error as { message: string }).message;
+    console.error("Reset contact data error:", error);
+    return "Could not reset contact data.";
   }
 
   return "Failed to reset contact data";

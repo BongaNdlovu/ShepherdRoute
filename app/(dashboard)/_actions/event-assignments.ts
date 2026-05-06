@@ -10,6 +10,7 @@ import {
 import { requireEventPermission } from '@/lib/data-event-assignments';
 import type { AppAdminRole } from '@/lib/permissions';
 import { gmailComposeUrl, mailtoUrl, eventInviteTemplate } from '@/lib/invite-email';
+import { friendlyInviteError } from '@/lib/app-errors';
 
 function hashToken(token: string) {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -96,7 +97,8 @@ async function getCurrentTeamRoleForChurch(params: {
     .maybeSingle();
 
   if (error) {
-    throw new Error(`Could not load team role: ${error.message}`);
+    console.error('Could not load team role:', error);
+    throw new Error('Could not check your event team permissions.');
   }
 
   return data?.role ?? null;
@@ -112,7 +114,8 @@ async function getAppAdminRole(userId: string): Promise<AppAdminRole | null> {
     .maybeSingle();
 
   if (error) {
-    throw new Error(`Could not load app admin role: ${error.message}`);
+    console.error('Could not load app admin role:', error);
+    throw new Error('Could not check your event team permissions.');
   }
 
   return (data?.role as AppAdminRole) ?? null;
@@ -200,7 +203,8 @@ export async function assignTeamMemberToEvent(input: {
     .limit(1);
 
   if (existingError) {
-    throw new Error(`Failed to check existing assignment: ${existingError.message}`);
+    console.error('Event assignment lookup error:', existingError);
+    throw new Error('Could not check the existing event assignment.');
   }
 
   const existingAssignmentId = existingAssignments?.[0]?.id;
@@ -212,7 +216,8 @@ export async function assignTeamMemberToEvent(input: {
     : await supabase.from('event_assignments').insert(assignmentPayload);
 
   if (error) {
-    throw new Error(`Failed to assign team member: ${error.message}`);
+    console.error('Event assignment write error:', error);
+    throw new Error('Could not assign this team member to the event.');
   }
 
   revalidatePath(`/events/${input.eventId}/team`);
@@ -266,7 +271,8 @@ export async function inviteToEventByEmail(input: {
     .limit(1);
 
   if (existingError) {
-    throw new Error(`Failed to check existing invitation: ${existingError.message}`);
+    console.error('Event invitation lookup error:', existingError);
+    throw new Error('Could not check the existing event invitation.');
   }
 
   const existingAssignmentId = existingAssignments?.[0]?.id;
@@ -292,7 +298,7 @@ export async function inviteToEventByEmail(input: {
       eventId: input.eventId,
       email
     });
-    throw new Error(`Failed to create invitation: ${error.message} (Code: ${error.code})`);
+    throw new Error('Could not create this event invitation.');
   }
 
   const inviteLink = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/event-invitations/accept?token=${rawToken}`;
@@ -342,7 +348,8 @@ export async function updateEventAssignmentPermissions(input: {
     .eq('event_id', input.eventId);
 
   if (error) {
-    throw new Error(`Failed to update permissions: ${error.message}`);
+    console.error('Event assignment permissions update error:', error);
+    throw new Error('Could not update event team permissions.');
   }
 
   revalidatePath(`/events/${input.eventId}/team`);
@@ -372,7 +379,8 @@ export async function revokeEventAssignment(input: {
     .eq('event_id', input.eventId);
 
   if (error) {
-    throw new Error(`Failed to revoke assignment: ${error.message}`);
+    console.error('Event assignment revoke error:', error);
+    throw new Error('Could not revoke this event assignment.');
   }
 
   revalidatePath(`/events/${input.eventId}/team`);
@@ -398,7 +406,7 @@ export async function acceptEventInvitation(input: {
   });
 
   if (error || !eventId) {
-    throw new Error(error?.message ?? 'Failed to accept invitation.');
+    throw new Error(friendlyInviteError(error?.message));
   }
 
   revalidatePath(`/events/${eventId}/team`);

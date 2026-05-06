@@ -2,6 +2,7 @@
 
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { friendlyDataError } from "@/lib/app-errors";
 
 export default function GlobalError({
   error,
@@ -25,7 +26,7 @@ export default function GlobalError({
               </div>
             </div>
             <div className="mt-5 rounded-md bg-muted p-3 text-sm text-muted-foreground">
-              {error.message || "No extra error detail was provided by the server."}
+              {error.message ? friendlyDataError(error.message) : "No extra error detail was provided by the server."}
               {error.digest ? <span className="block pt-1 text-xs">Digest: {error.digest}</span> : null}
             </div>
             <Button onClick={reset} className="mt-5">Try again</Button>

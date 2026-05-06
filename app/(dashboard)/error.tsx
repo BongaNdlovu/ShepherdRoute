@@ -4,6 +4,7 @@ import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { friendlyDataError } from "@/lib/app-errors";
 
 export default function DashboardError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
@@ -19,7 +20,7 @@ export default function DashboardError({ error, reset }: { error: Error & { dige
           ShepherdRoute could not load this workspace view. Check that the Supabase schema has been run, then try again.
         </p>
         <div className="mt-4 rounded-md bg-muted p-3 text-sm text-muted-foreground">
-          {error.message || "No extra error detail was provided by the server."}
+          {error.message ? friendlyDataError(error.message) : "No extra error detail was provided by the server."}
           {error.digest ? <span className="block pt-1 text-xs">Digest: {error.digest}</span> : null}
         </div>
         <div className="mt-4 flex flex-wrap gap-2">

@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { timingSafeEqual } from "node:crypto";
-import { friendlyAuthError } from "@/lib/app-errors";
+import { friendlyAuthError, friendlyInviteError } from "@/lib/app-errors";
 import { createClient } from "@/lib/supabase/server";
 import { absoluteUrl } from "@/lib/utils";
 import { getPreferredDashboardPathForUser } from "@/lib/data-profile";
@@ -110,7 +110,7 @@ export async function loginAction(formData: FormData) {
     });
 
     if (invitationError || !churchId) {
-      redirect(`/invite/${encodeURIComponent(parsed.data.inviteToken)}?error=${encodeURIComponent(invitationError?.message ?? "Could not accept this invitation.")}`);
+      redirect(`/invite/${encodeURIComponent(parsed.data.inviteToken)}?error=${encodeURIComponent(friendlyInviteError(invitationError?.message))}`);
     }
 
     await setSelectedChurchCookie(churchId);
