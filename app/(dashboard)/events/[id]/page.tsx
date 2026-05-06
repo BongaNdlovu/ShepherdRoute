@@ -268,9 +268,16 @@ export default async function EventDetailPage({
       <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
         <Card>
           <CardHeader>
-            <CardTitle>Recent Contacts</CardTitle>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle>Recent Contacts</CardTitle>
+              {permissions.can_view_contacts ? (
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/events/${event.id}/contacts`}>View all</Link>
+                </Button>
+              ) : null}
+            </div>
             <CardDescription>
-              Latest people captured from this event.
+              Latest people captured from this event. Use the dedicated contacts page for long saved lists.
             </CardDescription>
           </CardHeader>
           <CardContent>

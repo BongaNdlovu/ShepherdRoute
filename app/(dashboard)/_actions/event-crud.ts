@@ -256,24 +256,6 @@ export async function deleteEventAction(formData: FormData) {
     redirect(`/events/${parsed.data.eventId}/settings?error=You%20do%20not%20have%20permission%20to%20delete%20this%20event.`);
   }
 
-  const { count: contactCount, error: contactCountError } = await supabase
-    .from("contacts")
-    .select("id", { count: "exact", head: true })
-    .eq("church_id", context.churchId)
-    .eq("event_id", parsed.data.eventId);
-
-  if (contactCountError) {
-    redirect(`/events/${parsed.data.eventId}/settings?error=${encodeURIComponent(contactCountError.message)}`);
-  }
-
-  if ((contactCount ?? 0) > 0) {
-    redirect(
-      `/events/${parsed.data.eventId}/settings?error=${encodeURIComponent(
-        "This event has contact history and cannot be deleted. Archive or close it instead."
-      )}`
-    );
-  }
-
   const { error } = await supabase
     .from("events")
     .delete()
@@ -358,25 +340,6 @@ export async function bulkDeleteEventsAction(formData: FormData) {
     } catch {
       redirect("/events?error=You%20do%20not%20have%20permission%20to%20delete%20one%20or%20more%20selected%20events.");
     }
-  }
-
-  const { data: contactRows, error: contactError } = await supabase
-    .from("contacts")
-    .select("event_id")
-    .eq("church_id", context.churchId)
-    .in("event_id", parsed.data.eventIds)
-    .limit(1);
-
-  if (contactError) {
-    redirect(`/events?error=${encodeURIComponent(contactError.message)}`);
-  }
-
-  if ((contactRows ?? []).length > 0) {
-    redirect(
-      `/events?error=${encodeURIComponent(
-        "One or more selected events has contact history and cannot be deleted. Close or archive those events instead."
-      )}`
-    );
   }
 
   const { error } = await supabase

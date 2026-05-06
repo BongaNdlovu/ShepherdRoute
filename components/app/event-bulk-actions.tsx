@@ -36,7 +36,7 @@ export function EventBulkActions({ events, origin, canManageEvents }: EventBulkA
   );
   const hasSelection = selectedEventIds.length > 0;
   const allSelected = events.length > 0 && selectedEventIds.length === events.length;
-  const selectedWithContacts = selectedEvents.filter((event) => event.contact_count > 0);
+  const selectedContactCount = selectedEvents.reduce((total, event) => total + event.contact_count, 0);
 
   function toggleEvent(eventId: string) {
     setSelectedEventIds((current) =>
@@ -55,12 +55,13 @@ export function EventBulkActions({ events, origin, canManageEvents }: EventBulkA
   }
 
   function confirmDelete() {
-    if (selectedWithContacts.length > 0) {
-      window.alert("One or more selected events has contact history. Close or archive those events instead.");
-      return false;
-    }
+    const contactLine = selectedContactCount > 0
+      ? ` This will also delete ${selectedContactCount} saved contact${selectedContactCount === 1 ? "" : "s"} captured by those events.`
+      : "";
 
-    return window.confirm(`Permanently delete ${selectedEventIds.length} selected event${selectedEventIds.length === 1 ? "" : "s"}?`);
+    return window.confirm(
+      `Permanently delete ${selectedEventIds.length} selected event${selectedEventIds.length === 1 ? "" : "s"}?${contactLine}`
+    );
   }
 
   return (

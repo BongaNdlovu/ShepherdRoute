@@ -171,7 +171,7 @@ export default async function EventSettingsPage({
           <CardHeader>
             <CardTitle className="text-rose-700">Delete event</CardTitle>
             <CardDescription>
-              Only empty test events can be deleted. Events with contacts must be archived or closed so registration history and reports remain safe.
+              Permanently deletes this event and any contacts, answers, follow-ups, prayer requests, and generated messages captured through it.
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -156,12 +156,13 @@ test.describe("workflow helpers", () => {
     expect(eventCrud).toContain("parseBulkEventIds");
     expect(eventCrud).toContain('permission: "can_edit_event_settings"');
     expect(eventCrud).toContain('permission: "can_delete_event"');
-    expect(eventCrud).toContain("One or more selected events has contact history and cannot be deleted");
+    expect(eventCrud).not.toContain("contact history and cannot be deleted");
     expect(eventCrud).toContain(".delete()");
     expect(eventsPage).toContain("EventBulkActions");
     expect(eventBulkActions).toContain("Select all events");
     expect(eventBulkActions).toContain("Close selected");
     expect(eventBulkActions).toContain("Delete selected");
+    expect(eventBulkActions).toContain("This will also delete");
     expect(eventBulkActions).toContain("bulkCloseEventsAction");
     expect(eventBulkActions).toContain("bulkDeleteEventsAction");
     expect(eventDetailPage).toContain("Archive event");

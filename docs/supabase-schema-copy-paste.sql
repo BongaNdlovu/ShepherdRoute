@@ -5216,13 +5216,9 @@ begin
 
   -- Insert form answers if provided
   if jsonb_array_length(coalesce(p_form_answers, '[]'::jsonb)) > 0 then
-    for form_answer in select * from jsonb_to_recordset(coalesce(p_form_answers, '[]'::jsonb)) as x(
-      question_name text,
-      question_label text,
-      question_type text,
-      answer_value jsonb,
-      answer_display jsonb
-    )
+    for form_answer in
+      select value
+      from jsonb_array_elements(coalesce(p_form_answers, '[]'::jsonb)) as answers(value)
     loop
       insert into public.contact_form_answers (
         church_id,
@@ -5238,11 +5234,11 @@ begin
         target_event.church_id,
         new_contact_id,
         target_event.id,
-        form_answer.question_name,
-        form_answer.question_label,
-        form_answer.question_type,
-        form_answer.answer_value,
-        form_answer.answer_display
+        form_answer->>'question_name',
+        form_answer->>'question_label',
+        form_answer->>'question_type',
+        coalesce(form_answer->'answer_value', 'null'::jsonb),
+        coalesce(form_answer->'answer_display', 'null'::jsonb)
       );
     end loop;
   end if;
