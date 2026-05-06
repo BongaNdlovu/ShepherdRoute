@@ -1586,8 +1586,10 @@ security definer
 set search_path = public
 as $$
   select exists (
-    select 1 from public.app_admins
+    select 1
+    from public.app_admins
     where user_id = auth.uid()
+      and role in ('owner', 'support_admin')
   );
 $$;
 
@@ -1690,6 +1692,57 @@ as $$
   limit 1;
 $$;
 
+create or replace function private.current_user_has_event_permission(
+  target_event_id uuid,
+  permission_key text
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.events e
+    left join public.church_memberships cm
+      on cm.user_id = auth.uid()
+     and cm.church_id = e.church_id
+     and cm.status = 'active'
+    left join public.team_members tm
+      on tm.membership_id = cm.id
+     and tm.church_id = e.church_id
+     and tm.is_active = true
+    left join public.event_assignments ea
+      on ea.event_id = e.id
+     and ea.team_member_id = tm.id
+     and ea.status = 'accepted'
+     and ea.revoked_at is null
+    left join public.app_admins aa
+      on aa.user_id = auth.uid()
+    where e.id = target_event_id
+      and (
+        aa.role in ('owner', 'support_admin')
+        or cm.role in ('admin', 'pastor')
+        or tm.app_role in ('admin', 'coordinator')
+        or (
+          ea.id is not null
+          and case permission_key
+            when 'can_view_contacts' then ea.can_view_contacts
+            when 'can_assign_contacts' then ea.can_assign_contacts
+            when 'can_view_reports' then ea.can_view_reports
+            when 'can_export_reports' then ea.can_export_reports
+            when 'can_edit_event_settings' then ea.can_edit_event_settings
+            when 'can_manage_event_team' then ea.can_manage_event_team
+            when 'can_view_prayer_requests' then ea.can_view_prayer_requests
+            when 'can_delete_event' then ea.can_delete_event
+            else false
+          end
+        )
+      )
+  );
+$$;
+
 create or replace function private.require_app_admin(
   p_allowed_roles public.app_admin_role[] default array['owner','support_admin']::public.app_admin_role[]
 )
@@ -1743,6 +1796,7 @@ revoke all on function private.is_app_owner() from public, anon, authenticated;
 revoke all on function private.has_church_role(uuid, public.team_role[]) from public, anon, authenticated;
 revoke all on function private.current_user_can_manage_event_assignments(uuid) from public, anon, authenticated;
 revoke all on function private.current_user_team_member_id_for_event(uuid) from public, anon, authenticated;
+revoke all on function private.current_user_has_event_permission(uuid, text) from public, anon, authenticated;
 revoke all on function private.hash_invite_token(text) from public, anon, authenticated;
 revoke all on function private.accept_team_invitation_for_user(text, uuid, text) from public, anon, authenticated;
 revoke all on function private.accept_event_invitation_for_user(text, uuid, text) from public, anon, authenticated;
@@ -1754,6 +1808,7 @@ grant execute on function private.is_app_owner() to anon, authenticated;
 grant execute on function private.has_church_role(uuid, public.team_role[]) to anon, authenticated;
 grant execute on function private.current_user_can_manage_event_assignments(uuid) to authenticated;
 grant execute on function private.current_user_team_member_id_for_event(uuid) to authenticated;
+grant execute on function private.current_user_has_event_permission(uuid, text) to authenticated;
 grant execute on function private.require_app_admin(public.app_admin_role[]) to authenticated;
 grant execute on function private.require_protected_owner() to authenticated;
 
@@ -2022,7 +2077,15 @@ with check (private.is_church_member(church_id));
 drop policy if exists "Members can view church contacts" on public.contacts;
 create policy "Members can view church contacts"
 on public.contacts for select
-using (private.is_church_member(church_id) or private.is_app_admin());
+using (
+  private.is_app_admin()
+  or private.has_church_role(church_id, array['admin','pastor','elder','bible_worker','health_leader','youth_leader']::public.team_role[])
+  or assigned_to = private.current_user_team_member_id_for_event(event_id)
+  or (
+    event_id is not null
+    and private.current_user_has_event_permission(event_id, 'can_view_contacts')
+  )
+);
 
 drop policy if exists "Members can create church contacts" on public.contacts;
 create policy "Members can create church contacts"
@@ -2047,7 +2110,15 @@ with check (
 drop policy if exists "Members can view contact interests" on public.contact_interests;
 create policy "Members can view contact interests"
 on public.contact_interests for select
-using (private.is_church_member(church_id) or private.is_app_admin());
+using (
+  private.is_app_admin()
+  or exists (
+    select 1
+    from public.contacts
+    where contacts.id = contact_interests.contact_id
+      and contacts.church_id = contact_interests.church_id
+  )
+);
 
 drop policy if exists "Members can create contact interests" on public.contact_interests;
 create policy "Members can create contact interests"
@@ -2063,7 +2134,15 @@ with check (private.is_church_member(church_id));
 drop policy if exists "Members can view contact journeys" on public.contact_journey_events;
 create policy "Members can view contact journeys"
 on public.contact_journey_events for select
-using (private.is_church_member(church_id) or private.is_app_admin());
+using (
+  private.is_app_admin()
+  or exists (
+    select 1
+    from public.contacts
+    where contacts.id = contact_journey_events.contact_id
+      and contacts.church_id = contact_journey_events.church_id
+  )
+);
 
 drop policy if exists "Members can create contact journeys" on public.contact_journey_events;
 create policy "Members can create contact journeys"
@@ -2079,7 +2158,15 @@ with check (private.is_church_member(church_id));
 drop policy if exists "Members can view follow ups" on public.follow_ups;
 create policy "Members can view follow ups"
 on public.follow_ups for select
-using (private.is_church_member(church_id) or private.is_app_admin());
+using (
+  private.is_app_admin()
+  or exists (
+    select 1
+    from public.contacts
+    where contacts.id = follow_ups.contact_id
+      and contacts.church_id = follow_ups.church_id
+  )
+);
 
 drop policy if exists "Members can create follow ups" on public.follow_ups;
 create policy "Members can create follow ups"
@@ -2138,7 +2225,15 @@ with check (private.has_church_role(church_id, array['admin','pastor']::public.t
 drop policy if exists "Members can view generated messages" on public.generated_messages;
 create policy "Members can view generated messages"
 on public.generated_messages for select
-using (private.is_church_member(church_id) or private.is_app_admin());
+using (
+  private.is_app_admin()
+  or exists (
+    select 1
+    from public.contacts
+    where contacts.id = generated_messages.contact_id
+      and contacts.church_id = generated_messages.church_id
+  )
+);
 
 drop policy if exists "Members can create generated messages" on public.generated_messages;
 create policy "Members can create generated messages"
@@ -2148,14 +2243,38 @@ with check (private.is_church_member(church_id));
 drop policy if exists "Members can update generated messages" on public.generated_messages;
 create policy "Members can update generated messages"
 on public.generated_messages for update
-using (private.is_church_member(church_id) or private.is_app_admin())
-with check (private.is_church_member(church_id) or private.is_app_admin());
+using (
+  private.is_app_admin()
+  or exists (
+    select 1
+    from public.contacts
+    where contacts.id = generated_messages.contact_id
+      and contacts.church_id = generated_messages.church_id
+  )
+)
+with check (
+  private.is_app_admin()
+  or exists (
+    select 1
+    from public.contacts
+    where contacts.id = generated_messages.contact_id
+      and contacts.church_id = generated_messages.church_id
+  )
+);
 
 -- Contact form answers RLS policies
 drop policy if exists "Members can view contact form answers" on public.contact_form_answers;
 create policy "Members can view contact form answers"
 on public.contact_form_answers for select
-using (private.is_church_member(church_id) or private.is_app_admin());
+using (
+  private.is_app_admin()
+  or exists (
+    select 1
+    from public.contacts
+    where contacts.id = contact_form_answers.contact_id
+      and contacts.church_id = contact_form_answers.church_id
+  )
+);
 
 drop policy if exists "Members can create contact form answers" on public.contact_form_answers;
 create policy "Members can create contact form answers"
@@ -5825,6 +5944,119 @@ $$;
 
 revoke all on function public.today_follow_ups(uuid, integer) from public, anon, authenticated;
 grant execute on function public.today_follow_ups(uuid, integer) to authenticated;
+
+drop function if exists public.escalate_overdue_follow_ups(uuid, integer);
+drop function if exists private.escalate_overdue_follow_ups_impl(uuid, integer);
+
+create or replace function private.escalate_overdue_follow_ups_impl(
+  p_church_id uuid,
+  p_limit integer default 100
+)
+returns integer
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+declare
+  escalated_count integer := 0;
+begin
+  if auth.uid() is null then
+    raise exception 'Login is required.';
+  end if;
+
+  if not (
+    private.is_app_admin()
+    or private.has_church_role(
+      p_church_id,
+      array['admin','pastor','elder','bible_worker','health_leader','youth_leader']::public.team_role[]
+    )
+  ) then
+    raise exception 'You do not have permission to escalate follow-ups.';
+  end if;
+
+  with overdue_contacts as (
+    select distinct c.id
+    from public.contacts c
+    join public.follow_ups f
+      on f.contact_id = c.id
+     and f.church_id = c.church_id
+    where c.church_id = p_church_id
+      and c.deleted_at is null
+      and c.archived_at is null
+      and c.status <> 'closed'
+      and c.urgency <> 'high'
+      and f.completed_at is null
+      and f.status <> 'closed'
+      and f.due_at is not null
+      and f.due_at < now()
+    order by c.id
+    limit greatest(1, least(coalesce(p_limit, 100), 500))
+  ),
+  escalated as (
+    update public.contacts
+    set urgency = 'high',
+        classification_payload = jsonb_set(
+          coalesce(classification_payload, '{}'::jsonb),
+          '{manual_escalation}',
+          jsonb_build_object(
+            'reason', 'overdue_follow_up',
+            'escalated_at', now(),
+            'escalated_by', auth.uid()
+          ),
+          true
+        ),
+        updated_at = now()
+    where church_id = p_church_id
+      and id in (select id from overdue_contacts)
+    returning id, assigned_to, assigned_handling_role
+  )
+  insert into public.follow_ups (
+    church_id,
+    contact_id,
+    assigned_to,
+    assigned_handling_role,
+    author_id,
+    channel,
+    status,
+    notes,
+    next_action,
+    due_at
+  )
+  select
+    p_church_id,
+    escalated.id,
+    escalated.assigned_to,
+    escalated.assigned_handling_role,
+    auth.uid(),
+    'note',
+    'assigned',
+    'Overdue follow-up escalated to high urgency.',
+    'Make same-day human follow-up and arrange support from the appropriate leader.',
+    private.default_follow_up_due_at('high'::public.urgency_level, '{}'::jsonb)
+  from escalated;
+
+  get diagnostics escalated_count = row_count;
+  return escalated_count;
+end;
+$$;
+
+revoke all on function private.escalate_overdue_follow_ups_impl(uuid, integer) from public, anon, authenticated;
+grant execute on function private.escalate_overdue_follow_ups_impl(uuid, integer) to authenticated;
+
+create or replace function public.escalate_overdue_follow_ups(
+  p_church_id uuid,
+  p_limit integer default 100
+)
+returns integer
+language sql
+security invoker
+set search_path = public, private
+as $$
+  select private.escalate_overdue_follow_ups_impl(p_church_id, p_limit);
+$$;
+
+revoke all on function public.escalate_overdue_follow_ups(uuid, integer) from public, anon, authenticated;
+grant execute on function public.escalate_overdue_follow_ups(uuid, integer) to authenticated;
 
 create or replace function public.event_team_summary(
   p_church_id uuid,

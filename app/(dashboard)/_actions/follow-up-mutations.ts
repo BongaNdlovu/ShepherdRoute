@@ -32,6 +32,10 @@ const followUpStatusActionSchema = z.object({
   returnTo: z.string().optional()
 });
 
+const escalateOverdueSchema = z.object({
+  returnTo: z.string().optional()
+});
+
 export async function addFollowUpNoteAction(formData: FormData) {
   const context = await getChurchContext();
   const parsed = followUpNoteSchema.safeParse({
@@ -227,4 +231,29 @@ export async function markFollowUpWaitingAction(formData: FormData) {
   revalidatePath("/contacts");
   revalidatePath(`/contacts/${parsed.data.contactId}`);
   redirect(returnTo);
+}
+
+export async function escalateOverdueFollowUpsAction(formData: FormData) {
+  const context = await getChurchContext();
+  const parsed = escalateOverdueSchema.safeParse({
+    returnTo: formData.get("returnTo") || undefined
+  });
+  const returnTo = safeReturnTo(parsed.success ? parsed.data.returnTo : undefined, "/follow-ups");
+  const supabase = await createClient();
+
+  await requireFollowUpAssigner(context, supabase);
+
+  const { data, error } = await supabase.rpc("escalate_overdue_follow_ups", {
+    p_church_id: context.churchId,
+    p_limit: 100
+  });
+
+  if (error) {
+    redirect(`${returnTo}?error=${actionError(error, "Could not escalate overdue follow-ups.")}`);
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/follow-ups");
+  revalidatePath("/contacts");
+  redirect(`${returnTo}?success=${encodeURIComponent(`${data ?? 0} overdue follow-up${data === 1 ? "" : "s"} escalated.`)}`);
 }

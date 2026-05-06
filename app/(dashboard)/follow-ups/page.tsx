@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ClipboardList } from "lucide-react";
+import { escalateOverdueFollowUpsAction } from "@/app/(dashboard)/actions";
 import { FollowUpsFilterForm } from "@/components/app/follow-ups-filter-form";
 import { FollowUpsPagination } from "@/components/app/follow-ups-pagination";
 import { FollowUpsQueueList } from "@/components/app/follow-ups-queue-list";
@@ -17,7 +18,7 @@ export const metadata = {
 export default async function FollowUpsPage({
   searchParams
 }: {
-  searchParams: Promise<{ q?: string; status?: string; assignedTo?: string; dueState?: string; page?: string; pageSize?: string; error?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; assignedTo?: string; dueState?: string; page?: string; pageSize?: string; error?: string; success?: string }>;
 }) {
   const params = await searchParams;
   const context = await getChurchContext();
@@ -49,6 +50,13 @@ export default async function FollowUpsPage({
           </CardHeader>
           <CardContent>
             {params.error ? <p className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">{params.error}</p> : null}
+            {params.success ? <p className="mb-4 rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">{params.success}</p> : null}
+            <form action={escalateOverdueFollowUpsAction} className="mb-4 flex justify-end">
+              <input type="hidden" name="returnTo" value="/follow-ups" />
+              <Button type="submit" variant="outline" size="sm">
+                Escalate overdue
+              </Button>
+            </form>
             <FollowUpsFilterForm params={params} team={team} />
             <FollowUpsPagination
               params={params}

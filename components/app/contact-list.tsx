@@ -8,7 +8,7 @@ import { InterestPills } from "@/components/app/interest-pills";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { statusLabels, statusOptions, contactMethodLabels, assignmentRoleLabels, assignmentRoleOptions } from "@/lib/constants";
+import { statusLabels, statusOptions, contactMethodLabels, assignmentRoleLabels, assignmentRoleOptions, urgencyOptions } from "@/lib/constants";
 import type { ContactListItem } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { generateMessage, createWhatsappLink } from "@/lib/whatsapp";
@@ -120,6 +120,7 @@ export function ContactList({ churchName, contacts, team, compactLists = false, 
                         <input type="hidden" name="contactId" value={contact.id} />
                         <input type="hidden" name="status" value={contact.status} />
                         <input type="hidden" name="assignedHandlingRole" value={contact.assigned_handling_role ?? ""} />
+                        <input type="hidden" name="urgency" value={contact.urgency} />
                         <select name="assignedTo" defaultValue={contact.assigned_to ?? "unassigned"} className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-ring">
                           <option value="unassigned">Unassigned</option>
                           {team.map((member) => (
@@ -132,6 +133,7 @@ export function ContactList({ churchName, contacts, team, compactLists = false, 
                         <input type="hidden" name="contactId" value={contact.id} />
                         <input type="hidden" name="assignedTo" value={contact.assigned_to ?? "unassigned"} />
                         <input type="hidden" name="status" value={contact.status} />
+                        <input type="hidden" name="urgency" value={contact.urgency} />
                         <select name="assignedHandlingRole" defaultValue={contact.assigned_handling_role ?? ""} className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-ring">
                           <option value="">No role</option>
                           {assignmentRoleOptions.map((role) => (
@@ -146,12 +148,25 @@ export function ContactList({ churchName, contacts, team, compactLists = false, 
                         <input type="hidden" name="contactId" value={contact.id} />
                         <input type="hidden" name="assignedTo" value={contact.assigned_to ?? "unassigned"} />
                         <input type="hidden" name="assignedHandlingRole" value={contact.assigned_handling_role ?? ""} />
+                        <input type="hidden" name="urgency" value={contact.urgency} />
                         <select name="status" defaultValue={contact.status} className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-ring">
                           {statusOptions.map((status) => (
                             <option key={status} value={status}>{statusLabels[status]}</option>
                           ))}
                         </select>
                         <Button type="submit" size="sm" variant="outline">Save Status</Button>
+                      </form>
+                      <form action={updateContactAction} className="flex gap-2">
+                        <input type="hidden" name="contactId" value={contact.id} />
+                        <input type="hidden" name="assignedTo" value={contact.assigned_to ?? "unassigned"} />
+                        <input type="hidden" name="assignedHandlingRole" value={contact.assigned_handling_role ?? ""} />
+                        <input type="hidden" name="status" value={contact.status} />
+                        <select name="urgency" defaultValue={contact.urgency} className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-ring">
+                          {urgencyOptions.map((urgency) => (
+                            <option key={urgency} value={urgency}>{urgency}</option>
+                          ))}
+                        </select>
+                        <Button type="submit" size="sm" variant="outline">Set Urgency</Button>
                       </form>
                     </div>
                   </>

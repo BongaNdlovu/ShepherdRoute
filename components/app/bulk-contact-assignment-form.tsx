@@ -5,7 +5,7 @@ import { Check, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { assignmentRoleOptions, statusOptions } from "@/lib/constants";
+import { assignmentRoleOptions, statusOptions, urgencyOptions } from "@/lib/constants";
 import { bulkAssignContactsAction } from "@/app/(dashboard)/actions";
 
 type TeamMember = {
@@ -25,6 +25,7 @@ export function BulkContactAssignmentForm({ selectedContactIds, team, onClearSel
   const [assignedTo, setAssignedTo] = useState<string>("unassigned");
   const [assignedHandlingRole, setAssignedHandlingRole] = useState<string>("no_change");
   const [status, setStatus] = useState<string>("no_change");
+  const [urgency, setUrgency] = useState<string>("no_change");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(formData: FormData) {
@@ -59,7 +60,7 @@ export function BulkContactAssignmentForm({ selectedContactIds, team, onClearSel
         ))}
         <input type="hidden" name="returnTo" value={returnTo} />
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-4">
           <div className="space-y-2">
             <Label htmlFor="assignedTo">Assign to</Label>
             <Select name="assignedTo" value={assignedTo} onValueChange={setAssignedTo}>
@@ -105,6 +106,23 @@ export function BulkContactAssignmentForm({ selectedContactIds, team, onClearSel
                 {statusOptions.map((s) => (
                   <SelectItem key={s} value={s}>
                     {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="urgency">Urgency</Label>
+            <Select name="urgency" value={urgency} onValueChange={setUrgency}>
+              <SelectTrigger id="urgency">
+                <SelectValue placeholder="Optional" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="no_change">No change</SelectItem>
+                {urgencyOptions.map((level) => (
+                  <SelectItem key={level} value={level}>
+                    {level}
                   </SelectItem>
                 ))}
               </SelectContent>

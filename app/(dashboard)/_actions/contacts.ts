@@ -5,4 +5,9 @@ export {
   updateContactAction,
   updateContactLifecycleAction
 } from './contact-mutations';
-export { addFollowUpNoteAction, markFollowUpContactedAction, markFollowUpWaitingAction } from './follow-up-mutations';
+export {
+  addFollowUpNoteAction,
+  escalateOverdueFollowUpsAction,
+  markFollowUpContactedAction,
+  markFollowUpWaitingAction
+} from './follow-up-mutations';

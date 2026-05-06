@@ -144,6 +144,8 @@ test.describe("workflow helpers", () => {
 
   test("protected owner membership management is blocked by helpers", () => {
     expect(canManageMembershipStatus({ role: "owner", isProtectedOwner: false }, { role: "admin" })).toBe(true);
+    expect(canManageMembershipStatus({ role: "support_admin", isProtectedOwner: false }, { role: "admin" })).toBe(true);
+    expect(canManageMembershipStatus({ role: "billing_admin", isProtectedOwner: false }, { role: "admin" })).toBe(false);
     expect(canManageMembershipStatus({ role: "owner", isProtectedOwner: false }, { role: "admin", isProtectedOwner: true })).toBe(false);
   });
 
@@ -231,6 +233,21 @@ test.describe("workflow helpers", () => {
     const medium = defaultDueDate("medium").getTime();
 
     expect(high).toBeLessThan(medium);
+  });
+
+  test("role RLS uses platform admin and event permission helpers for sensitive contact data", () => {
+    expect(schema).toContain("create or replace function private.current_user_has_event_permission");
+    expect(schema).toContain("role in ('owner', 'support_admin')");
+    expect(schema).toContain("private.current_user_has_event_permission(event_id, 'can_view_contacts')");
+    expect(schema).not.toContain("on public.contacts for select\nusing (private.is_church_member(church_id) or private.is_app_admin())");
+  });
+
+  test("manual urgency override and overdue escalation are wired", () => {
+    expect(contactMutations).toContain("urgency: z.enum(urgencyOptions).optional()");
+    expect(contactMutations).toContain("Urgency set to");
+    expect(schema).toContain("create or replace function public.escalate_overdue_follow_ups");
+    expect(schema).toContain("Overdue follow-up escalated to high urgency.");
+    expect(schema).toContain("manual_escalation");
   });
 
   test("WhatsApp messages do not append robotic STOP copy", () => {

@@ -1667,6 +1667,10 @@ export type Database = {
         Args: { p_church_id: string }
         Returns: undefined
       }
+      escalate_overdue_follow_ups: {
+        Args: { p_church_id: string; p_limit?: number }
+        Returns: number
+      }
       search_contacts: {
         Args: {
           p_assigned_to?: string

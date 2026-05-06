@@ -221,7 +221,7 @@ export function canManageMembershipStatus(
   actor: AppAdminPermissionContext,
   target: MembershipPermissionContext
 ) {
-  if (!canManageOwnerAdmin(actor)) {
+  if (!actor.isProtectedOwner && !isOwnerLevelAppRole(actor.role)) {
     return false;
   }
 

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { chooseWorkflowOwner, saveSuggestedWhatsappMessage } from "@/lib/contactWorkflow";
 import { classifyContact } from "@/lib/classifyContact";
-import { interestOptions, statusOptions, assignmentRoleOptions } from "@/lib/constants";
+import { interestOptions, statusOptions, assignmentRoleOptions, urgencyOptions } from "@/lib/constants";
 import { getChurchContext } from "@/lib/data";
 import { defaultDueDate, prayerVisibilityOptions } from "@/lib/followUp";
 import { createClient } from "@/lib/supabase/server";
@@ -16,7 +16,8 @@ const contactUpdateSchema = z.object({
   contactId: z.string().uuid(),
   assignedTo: z.string().uuid().or(z.literal("unassigned")),
   assignedHandlingRole: z.enum(assignmentRoleOptions).or(z.literal("")).optional(),
-  status: z.enum(statusOptions)
+  status: z.enum(statusOptions),
+  urgency: z.enum(urgencyOptions).optional()
 });
 
 const quickContactSchema = z.object({
@@ -42,7 +43,8 @@ const bulkAssignmentSchema = z.object({
   contactIds: z.array(z.string().uuid()).min(1),
   assignedTo: z.string().uuid().or(z.literal("unassigned")),
   assignedHandlingRole: z.enum(assignmentRoleOptions).or(z.literal("")).optional(),
-  status: z.enum(statusOptions).optional()
+  status: z.enum(statusOptions).optional(),
+  urgency: z.enum(urgencyOptions).optional()
 });
 
 const bulkLifecycleSchema = z.object({
@@ -71,7 +73,8 @@ export async function updateContactAction(formData: FormData) {
     assignedHandlingRole: formData.has("assignedHandlingRole")
       ? formData.get("assignedHandlingRole") || ""
       : undefined,
-    status: formData.get("status")
+    status: formData.get("status"),
+    urgency: formData.has("urgency") ? formData.get("urgency") || undefined : undefined
   });
 
   if (!parsed.success) {
@@ -94,6 +97,7 @@ export async function updateContactAction(formData: FormData) {
     assigned_to: string | null;
     status: typeof parsed.data.status;
     assigned_handling_role?: string | null;
+    urgency?: typeof parsed.data.urgency;
   } = {
     assigned_to: assignedTo,
     status: parsed.data.status
@@ -101,6 +105,9 @@ export async function updateContactAction(formData: FormData) {
 
   if (assignedHandlingRole !== undefined) {
     contactUpdate.assigned_handling_role = assignedHandlingRole;
+  }
+  if (parsed.data.urgency !== undefined) {
+    contactUpdate.urgency = parsed.data.urgency;
   }
 
   const { error } = await supabase
@@ -115,10 +122,14 @@ export async function updateContactAction(formData: FormData) {
 
   const { data: updatedContact } = await supabase
     .from("contacts")
-    .select("assigned_handling_role")
+    .select("assigned_handling_role, urgency")
     .eq("church_id", context.churchId)
     .eq("id", parsed.data.contactId)
     .single();
+
+  const nextDueAt = parsed.data.urgency
+    ? defaultDueDate(parsed.data.urgency, updatedContact?.assigned_handling_role ?? assignedHandlingRole ?? undefined).toISOString()
+    : undefined;
 
   const { error: followUpError } = await supabase.from("follow_ups").insert({
     church_id: context.churchId,
@@ -128,8 +139,9 @@ export async function updateContactAction(formData: FormData) {
     author_id: context.userId,
     channel: "note",
     status: parsed.data.status,
-    notes: "Follow-up tracker updated.",
-    next_action: parsed.data.status === "closed" ? "No further action needed." : "Continue follow-up pathway."
+    notes: parsed.data.urgency ? `Follow-up tracker updated. Urgency set to ${parsed.data.urgency}.` : "Follow-up tracker updated.",
+    next_action: parsed.data.status === "closed" ? "No further action needed." : "Continue follow-up pathway.",
+    due_at: nextDueAt
   });
 
   if (followUpError) {
@@ -452,6 +464,11 @@ export async function bulkAssignContactsAction(formData: FormData) {
       ? undefined
       : formData.has("status")
         ? formData.get("status") || undefined
+        : undefined,
+    urgency: formData.get("urgency") === "no_change"
+      ? undefined
+      : formData.has("urgency")
+        ? formData.get("urgency") || undefined
         : undefined
   });
 
@@ -489,6 +506,7 @@ export async function bulkAssignContactsAction(formData: FormData) {
     assigned_to: string | null;
     status?: typeof parsed.data.status;
     assigned_handling_role?: string | null;
+    urgency?: typeof parsed.data.urgency;
   } = {
     assigned_to: assignedTo
   };
@@ -499,6 +517,9 @@ export async function bulkAssignContactsAction(formData: FormData) {
 
   if (assignedHandlingRole !== undefined) {
     contactUpdate.assigned_handling_role = assignedHandlingRole;
+  }
+  if (parsed.data.urgency !== undefined) {
+    contactUpdate.urgency = parsed.data.urgency;
   }
 
   const { error: updateError } = await supabase
@@ -513,7 +534,7 @@ export async function bulkAssignContactsAction(formData: FormData) {
 
   const { data: updatedContacts, error: updatedContactsError } = await supabase
     .from("contacts")
-    .select("id, assigned_handling_role")
+    .select("id, assigned_handling_role, urgency")
     .eq("church_id", context.churchId)
     .in("id", validContactIds);
 
@@ -530,8 +551,11 @@ export async function bulkAssignContactsAction(formData: FormData) {
       author_id: context.userId,
       channel: "note",
       status: parsed.data.status ?? "assigned",
-      notes: "Bulk assignment updated.",
-      next_action: parsed.data.status === "closed" ? "No further action needed." : "Continue follow-up pathway."
+      notes: parsed.data.urgency ? `Bulk assignment updated. Urgency set to ${parsed.data.urgency}.` : "Bulk assignment updated.",
+      next_action: parsed.data.status === "closed" ? "No further action needed." : "Continue follow-up pathway.",
+      due_at: parsed.data.urgency
+        ? defaultDueDate(parsed.data.urgency, contact.assigned_handling_role ?? undefined).toISOString()
+        : undefined
     }))
   );
 
