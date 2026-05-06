@@ -565,8 +565,9 @@ create index if not exists data_requests_church_status_idx
 on public.data_requests(church_id, status, created_at desc);
 
 drop function if exists public.submit_public_data_request(uuid, public.data_request_type, text, text, text);
+drop function if exists private.submit_public_data_request_impl(uuid, public.data_request_type, text, text, text);
 
-create or replace function public.submit_public_data_request(
+create or replace function private.submit_public_data_request_impl(
   p_church_id uuid,
   p_request_type public.data_request_type,
   p_requester_name text,
@@ -623,6 +624,30 @@ begin
 
   return new_request_id;
 end;
+$$;
+
+revoke all on function private.submit_public_data_request_impl(uuid, public.data_request_type, text, text, text) from public, anon, authenticated;
+grant execute on function private.submit_public_data_request_impl(uuid, public.data_request_type, text, text, text) to anon, authenticated;
+
+create or replace function public.submit_public_data_request(
+  p_church_id uuid,
+  p_request_type public.data_request_type,
+  p_requester_name text,
+  p_requester_contact text,
+  p_notes text default null
+)
+returns uuid
+language sql
+security invoker
+set search_path = public, private
+as $$
+  select private.submit_public_data_request_impl(
+    p_church_id,
+    p_request_type,
+    p_requester_name,
+    p_requester_contact,
+    p_notes
+  );
 $$;
 
 revoke all on function public.submit_public_data_request(uuid, public.data_request_type, text, text, text) from public, anon, authenticated;

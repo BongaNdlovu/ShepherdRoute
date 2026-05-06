@@ -328,6 +328,11 @@ test.describe("workflow helpers", () => {
     expect(schema).toContain("Requester name is too long.");
     expect(schema).toContain("Requester contact is too long.");
     expect(schema).toContain("Notes must be 2000 characters or fewer.");
+    expect(schema).toContain("create or replace function private.submit_public_data_request_impl");
+    expect(schema).toContain("create or replace function public.submit_public_data_request");
+    expect(schema).toMatch(
+      /security invoker\s+set search_path = public, private\s+as \$\$\s+select private\.submit_public_data_request_impl/
+    );
   });
 
   test("contact and follow-up mutations validate current-workspace assignees", () => {
