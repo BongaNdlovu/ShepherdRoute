@@ -13,7 +13,16 @@ export {
   revokeEventAssignmentAction,
   deleteEventAssignmentAction
 } from "@/app/(dashboard)/_actions/admin";
-export { addQuickContactAction, addFollowUpNoteAction, markFollowUpContactedAction, markFollowUpWaitingAction, updateContactAction, updateContactLifecycleAction, bulkAssignContactsAction } from "@/app/(dashboard)/_actions/contacts";
+export {
+  addQuickContactAction,
+  addFollowUpNoteAction,
+  bulkAssignContactsAction,
+  bulkUpdateContactsLifecycleAction,
+  markFollowUpContactedAction,
+  markFollowUpWaitingAction,
+  updateContactAction,
+  updateContactLifecycleAction
+} from "@/app/(dashboard)/_actions/contacts";
 export { switchChurchAction } from "@/app/(dashboard)/_actions/context";
 export {
   bulkCloseEventsAction,

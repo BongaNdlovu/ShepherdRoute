@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Download, UserPlus } from "lucide-react";
-import { ContactList } from "@/components/app/contact-list";
+import { ContactBulkActions } from "@/components/app/contact-bulk-actions";
 import { ContactsFilterForm } from "@/components/app/contacts-filter-form";
 import { ContactsPagination } from "@/components/app/contacts-pagination";
 import { CinematicSection } from "@/components/ui/cinematic-section";
@@ -19,7 +19,7 @@ export const metadata = {
 export default async function ContactsPage({
   searchParams
 }: {
-  searchParams: Promise<{ q?: string; status?: string; interest?: string; event?: string; assignedTo?: string; page?: string; pageSize?: string; error?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; interest?: string; event?: string; assignedTo?: string; page?: string; pageSize?: string; error?: string; success?: string }>;
 }) {
   const params = await searchParams;
   const context = await getChurchContext();
@@ -81,7 +81,23 @@ export default async function ContactsPage({
 
           <div className="overflow-hidden rounded-3xl border border-slate-200/75 bg-white/90 shadow-sm backdrop-blur">
             <div className="p-6 space-y-4">
-              <ContactList churchName={context.churchName} contacts={contacts} team={team} compactLists={preferences.compactLists} canManageContacts={userCanManageContacts} />
+              {params.error ? (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+                  {params.error}
+                </div>
+              ) : null}
+              {params.success ? (
+                <div className="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-sm font-medium text-success">
+                  {params.success}
+                </div>
+              ) : null}
+              <ContactBulkActions
+                churchName={context.churchName}
+                contacts={contacts}
+                team={team}
+                compactLists={preferences.compactLists}
+                canManageContacts={userCanManageContacts}
+              />
               <ContactsPagination
                 page={page}
                 pageCount={pageCount}

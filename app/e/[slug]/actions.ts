@@ -45,11 +45,14 @@ async function getClientIP(): Promise<string> {
 
 async function reserveRateLimitSlot(slug: string): Promise<boolean> {
   const ip = await getClientIP();
-  const salt = process.env.PUBLIC_FORM_RATE_LIMIT_SALT || "development-rate-limit-salt";
+  const salt =
+    process.env.PUBLIC_FORM_RATE_LIMIT_SALT ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.VERCEL_URL ||
+    "development-rate-limit-salt";
 
   if (!process.env.PUBLIC_FORM_RATE_LIMIT_SALT && process.env.NODE_ENV === "production") {
-    console.error("PUBLIC_FORM_RATE_LIMIT_SALT is required in production.");
-    return false;
+    console.warn("PUBLIC_FORM_RATE_LIMIT_SALT is missing in production. Falling back to app-derived public form rate-limit salt.");
   }
 
   const ipHash = await hashIP(ip, salt);

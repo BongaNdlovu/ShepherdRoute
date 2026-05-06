@@ -45,6 +45,24 @@ const bulkAssignmentSchema = z.object({
   status: z.enum(statusOptions).optional()
 });
 
+const bulkLifecycleSchema = z.object({
+  contactIds: z.array(z.string().uuid()).min(1).max(100),
+  intent: z.enum(["do_not_contact", "archive", "delete"])
+});
+
+function parseContactIds(formData: FormData) {
+  return formData
+    .getAll("contactIds")
+    .flatMap((value) => String(value).split(","))
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function safeReturnTo(formData: FormData, fallback = "/contacts") {
+  const value = String(formData.get("returnTo") ?? "");
+  return value.startsWith("/") && !value.startsWith("//") ? value : fallback;
+}
+
 export async function updateContactAction(formData: FormData) {
   const context = await getChurchContext();
   const parsed = contactUpdateSchema.safeParse({
@@ -412,18 +430,25 @@ export async function addQuickContactAction(formData: FormData) {
 
 export async function bulkAssignContactsAction(formData: FormData) {
   const context = await getChurchContext();
-  const contactIds = formData.getAll("contactIds").map(String);
+  const returnTo = safeReturnTo(formData);
+  const contactIds = parseContactIds(formData);
   const parsed = bulkAssignmentSchema.safeParse({
     contactIds,
     assignedTo: formData.get("assignedTo"),
     assignedHandlingRole: formData.has("assignedHandlingRole")
-      ? formData.get("assignedHandlingRole") || ""
+      ? formData.get("assignedHandlingRole") === "no_change"
+        ? ""
+        : formData.get("assignedHandlingRole") || ""
       : undefined,
-    status: formData.has("status") ? formData.get("status") || undefined : undefined
+    status: formData.get("status") === "no_change"
+      ? undefined
+      : formData.has("status")
+        ? formData.get("status") || undefined
+        : undefined
   });
 
   if (!parsed.success) {
-    redirect("/contacts?error=Could%20not%20bulk%20assign%20contacts.");
+    redirect(`${returnTo}?error=Could%20not%20bulk%20assign%20contacts.`);
   }
 
   const assignedTo = parsed.data.assignedTo === "unassigned" ? null : parsed.data.assignedTo;
@@ -440,14 +465,14 @@ export async function bulkAssignContactsAction(formData: FormData) {
 
   const { data: validContacts } = await supabase
     .from("contacts")
-    .select("id")
+    .select("id, event_id")
     .eq("church_id", context.churchId)
     .in("id", parsed.data.contactIds)
     .is("deleted_at", null)
     .is("archived_at", null);
 
   if (!validContacts || validContacts.length === 0) {
-    redirect("/contacts?error=No%20valid%20contacts%20found%20to%20assign.");
+    redirect(`${returnTo}?error=No%20valid%20contacts%20found%20to%20assign.`);
   }
 
   const validContactIds = validContacts.map((c) => c.id);
@@ -475,27 +500,159 @@ export async function bulkAssignContactsAction(formData: FormData) {
     .in("id", validContactIds);
 
   if (updateError) {
-    redirect(`/contacts?error=${actionError(updateError, "Could not bulk assign contacts.")}`);
+    redirect(`${returnTo}?error=${actionError(updateError, "Could not bulk assign contacts.")}`);
   }
 
-  for (const contactId of validContactIds) {
-    const { error: followUpError } = await supabase.from("follow_ups").insert({
+  const { data: updatedContacts, error: updatedContactsError } = await supabase
+    .from("contacts")
+    .select("id, assigned_handling_role")
+    .eq("church_id", context.churchId)
+    .in("id", validContactIds);
+
+  if (updatedContactsError) {
+    redirect(`${returnTo}?error=${actionError(updatedContactsError, "Contacts updated, but follow-up history could not be prepared.")}`);
+  }
+
+  const { error: followUpError } = await supabase.from("follow_ups").insert(
+    (updatedContacts ?? []).map((contact) => ({
       church_id: context.churchId,
-      contact_id: contactId,
+      contact_id: contact.id,
       assigned_to: assignedTo,
-      assigned_handling_role: assignedHandlingRole ?? null,
+      assigned_handling_role: contact.assigned_handling_role ?? null,
       author_id: context.userId,
       channel: "note",
       status: parsed.data.status ?? "assigned",
       notes: "Bulk assignment updated.",
       next_action: parsed.data.status === "closed" ? "No further action needed." : "Continue follow-up pathway."
-    });
+    }))
+  );
 
-    if (followUpError) {
-      redirect(`/contacts?error=${actionError(followUpError, "Contacts updated, but follow-up history could not be saved for some contacts.")}`);
+  if (followUpError) {
+    redirect(`${returnTo}?error=${actionError(followUpError, "Contacts updated, but follow-up history could not be saved.")}`);
+  }
+
+  const eventIds = Array.from(new Set(validContacts.map((contact) => contact.event_id).filter(Boolean)));
+
+  revalidatePath("/contacts");
+  revalidatePath("/dashboard");
+  revalidatePath("/follow-ups");
+  for (const eventId of eventIds) {
+    revalidatePath(`/events/${eventId}`);
+    revalidatePath(`/events/${eventId}/contacts`);
+  }
+  redirect(`${returnTo}?success=Bulk%20assignment%20completed.`);
+}
+
+export async function bulkUpdateContactsLifecycleAction(formData: FormData) {
+  const context = await getChurchContext();
+  const returnTo = safeReturnTo(formData);
+  const parsed = bulkLifecycleSchema.safeParse({
+    contactIds: parseContactIds(formData),
+    intent: formData.get("intent")
+  });
+
+  if (!parsed.success) {
+    redirect(`${returnTo}?error=Could%20not%20update%20selected%20contacts.`);
+  }
+
+  const now = new Date().toISOString();
+  const supabase = await createClient();
+  await requireContactManager(context, supabase);
+
+  const { data: validContacts, error: validContactsError } = await supabase
+    .from("contacts")
+    .select("id, person_id, event_id")
+    .eq("church_id", context.churchId)
+    .in("id", parsed.data.contactIds)
+    .is("deleted_at", null);
+
+  if (validContactsError) {
+    redirect(`${returnTo}?error=${actionError(validContactsError, "Could not find selected contacts.")}`);
+  }
+
+  if (!validContacts || validContacts.length === 0) {
+    redirect(`${returnTo}?error=No%20valid%20contacts%20found.`);
+  }
+
+  const validContactIds = validContacts.map((contact) => contact.id);
+  const update =
+    parsed.data.intent === "do_not_contact"
+      ? { do_not_contact: true, do_not_contact_at: now }
+      : parsed.data.intent === "archive"
+        ? { archived_at: now, status: "closed" as const }
+        : { deleted_at: now, do_not_contact: true, do_not_contact_at: now, status: "closed" as const };
+
+  const { error: updateError } = await supabase
+    .from("contacts")
+    .update(update)
+    .eq("church_id", context.churchId)
+    .in("id", validContactIds);
+
+  if (updateError) {
+    redirect(`${returnTo}?error=${actionError(updateError, "Could not update selected contacts.")}`);
+  }
+
+  const personIds = Array.from(new Set(validContacts.map((contact) => contact.person_id).filter(Boolean)));
+  if (personIds.length > 0) {
+    const personUpdate =
+      parsed.data.intent === "do_not_contact"
+        ? { do_not_contact: true, do_not_contact_at: now }
+        : parsed.data.intent === "archive"
+          ? { archived_at: now }
+          : { deleted_at: now, do_not_contact: true, do_not_contact_at: now };
+
+    const { error: personUpdateError } = await supabase
+      .from("people")
+      .update(personUpdate)
+      .eq("church_id", context.churchId)
+      .in("id", personIds);
+
+    if (personUpdateError) {
+      redirect(`${returnTo}?error=${actionError(personUpdateError, "Contacts updated, but linked person records could not be updated.")}`);
     }
   }
 
+  const lifecycleLabel =
+    parsed.data.intent === "do_not_contact"
+      ? "Bulk marked do not contact."
+      : parsed.data.intent === "archive"
+        ? "Bulk archived."
+        : "Bulk soft-deleted and marked do not contact.";
+
+  const { error: followUpError } = await supabase.from("follow_ups").insert(
+    validContactIds.map((contactId) => ({
+      church_id: context.churchId,
+      contact_id: contactId,
+      author_id: context.userId,
+      channel: "note",
+      status: "closed",
+      notes: lifecycleLabel,
+      completed_at: now
+    }))
+  );
+
+  if (followUpError) {
+    redirect(`${returnTo}?error=${actionError(followUpError, "Contacts updated, but lifecycle notes could not be saved.")}`);
+  }
+
+  const eventIds = Array.from(new Set(validContacts.map((contact) => contact.event_id).filter(Boolean)));
+
   revalidatePath("/contacts");
-  redirect("/contacts?success=Bulk%20assignment%20completed.");
+  revalidatePath("/dashboard");
+  revalidatePath("/follow-ups");
+  revalidatePath("/reports");
+  for (const eventId of eventIds) {
+    revalidatePath(`/events/${eventId}`);
+    revalidatePath(`/events/${eventId}/contacts`);
+    revalidatePath(`/events/${eventId}/reports`);
+  }
+
+  const success =
+    parsed.data.intent === "do_not_contact"
+      ? "Selected%20contacts%20marked%20do%20not%20contact."
+      : parsed.data.intent === "archive"
+        ? "Selected%20contacts%20archived."
+        : "Selected%20contacts%20deleted.";
+
+  redirect(`${returnTo}?success=${success}`);
 }

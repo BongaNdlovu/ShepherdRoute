@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
-export async function getPublicEvent(slug: string) {
+export const getPublicEvent = cache(async function getPublicEvent(slug: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("public_events")
@@ -19,7 +20,7 @@ export async function getPublicEvent(slug: string) {
   }
 
   return data;
-}
+});
 
 export async function getPublicChurch(slug: string) {
   const supabase = await createClient();

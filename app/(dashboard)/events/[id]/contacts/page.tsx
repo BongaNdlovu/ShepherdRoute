@@ -2,13 +2,14 @@ import Link from "next/link";
 import { getChurchContext, getTeamMembers } from "@/lib/data";
 import { getEventContactsPage, type EventContactsParams } from "@/lib/data-events";
 import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
+import { ContactBulkActions } from "@/components/app/contact-bulk-actions";
 import { EventContactsFilters } from "@/components/app/event-contacts-filters";
 import { CinematicSection } from "@/components/ui/cinematic-section";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
-import { InterestPills } from "@/components/app/interest-pills";
-import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { canManageContacts } from "@/lib/permissions";
+import type { AppRole } from "@/lib/constants";
 
 export const metadata = {
   title: "Event Contacts"
@@ -19,7 +20,7 @@ export default async function EventContactsPage({
   searchParams
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<EventContactsParams>;
+  searchParams: Promise<EventContactsParams & { error?: string; success?: string }>;
 }) {
   const { id } = await params;
   const query = await searchParams;
@@ -51,6 +52,36 @@ export default async function EventContactsPage({
 
   const team = await getTeamMembers(context.churchId);
   const { contacts, totalCount, page, pageSize } = await getEventContactsPage(context.churchId, id, query);
+  const userCanManageContacts = canManageContacts(
+    context.role as "admin" | "pastor" | "elder" | "bible_worker" | "health_leader" | "prayer_team" | "youth_leader" | "viewer",
+    context.appRole as AppRole | null
+  );
+  const contactItems = contacts.map((contact) => ({
+    id: contact.id,
+    person_id: null,
+    full_name: contact.full_name,
+    phone: contact.phone,
+    email: contact.email,
+    area: contact.area,
+    language: null,
+    best_time_to_contact: null,
+    status: contact.status,
+    urgency: contact.urgency,
+    assigned_to: contact.assigned_to,
+    assigned_handling_role: null,
+    recommended_assigned_role: null,
+    do_not_contact: false,
+    duplicate_of_contact_id: null,
+    duplicate_match_confidence: null,
+    duplicate_match_reason: null,
+    created_at: contact.created_at,
+    event_id: id,
+    event_name: "This event",
+    assigned_name: contact.assigned_name,
+    interests: contact.interests,
+    preferred_contact_methods: null,
+    total_count: totalCount
+  }));
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
@@ -78,36 +109,24 @@ export default async function EventContactsPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-hidden rounded-lg border">
-            <div className="hidden grid-cols-[1.5fr_1fr_1fr_0.8fr_0.8fr_0.8fr] bg-muted px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground md:grid">
-              <span>Contact</span>
-              <span>Interest</span>
-              <span>Urgency</span>
-              <span>Status</span>
-              <span>Assigned</span>
-              <span>Date</span>
-            </div>
-            <div className="divide-y">
-              {contacts.map((contact) => (
-                <Link key={contact.id} href={`/contacts/${contact.id}`} className="grid gap-3 px-4 py-4 hover:bg-amber-50 md:grid-cols-[1.5fr_1fr_1fr_0.8fr_0.8fr_0.8fr] md:items-center">
-                  <div>
-                    <p className="font-bold">{contact.full_name}</p>
-                    <p className="text-sm text-muted-foreground">{contact.phone} {contact.area ? `- ${contact.area}` : ""}</p>
-                  </div>
-                  <InterestPills interests={contact.interests} />
-                  <UrgencyBadge urgency={contact.urgency} />
-                  <StatusBadge status={contact.status} />
-                  <p className="text-sm text-muted-foreground">{contact.assigned_name ?? "Unassigned"}</p>
-                  <p className="text-sm text-muted-foreground">{new Date(contact.created_at).toLocaleDateString()}</p>
-                </Link>
-              ))}
-              {!contacts.length ? (
-                <div className="p-8 text-center">
-                  <p className="font-bold">No contacts yet</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Share the public form or QR code to start capturing contacts.</p>
-                </div>
-              ) : null}
-            </div>
+          <div className="space-y-4">
+            {query.error ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+                {query.error}
+              </div>
+            ) : null}
+            {query.success ? (
+              <div className="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-sm font-medium text-success">
+                {query.success}
+              </div>
+            ) : null}
+            <ContactBulkActions
+              churchName={context.churchName}
+              contacts={contactItems}
+              team={team}
+              canManageContacts={userCanManageContacts}
+              returnTo={`/events/${id}/contacts`}
+            />
           </div>
 
           {totalPages > 1 && (

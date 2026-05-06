@@ -18,12 +18,13 @@ interface BulkContactAssignmentFormProps {
   selectedContactIds: string[];
   team: TeamMember[];
   onClearSelection: () => void;
+  returnTo?: string;
 }
 
-export function BulkContactAssignmentForm({ selectedContactIds, team, onClearSelection }: BulkContactAssignmentFormProps) {
+export function BulkContactAssignmentForm({ selectedContactIds, team, onClearSelection, returnTo = "/contacts" }: BulkContactAssignmentFormProps) {
   const [assignedTo, setAssignedTo] = useState<string>("unassigned");
-  const [assignedHandlingRole, setAssignedHandlingRole] = useState<string>("");
-  const [status, setStatus] = useState<string>("");
+  const [assignedHandlingRole, setAssignedHandlingRole] = useState<string>("no_change");
+  const [status, setStatus] = useState<string>("no_change");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(formData: FormData) {
@@ -53,10 +54,10 @@ export function BulkContactAssignmentForm({ selectedContactIds, team, onClearSel
       </div>
 
       <form action={handleSubmit} className="space-y-4">
-        <input type="hidden" name="contactIds" value={selectedContactIds.join(",")} />
         {selectedContactIds.map((id) => (
           <input key={id} type="hidden" name="contactIds" value={id} />
         ))}
+        <input type="hidden" name="returnTo" value={returnTo} />
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
@@ -83,7 +84,7 @@ export function BulkContactAssignmentForm({ selectedContactIds, team, onClearSel
                 <SelectValue placeholder="Optional" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No change</SelectItem>
+                <SelectItem value="no_change">No change</SelectItem>
                 {assignmentRoleOptions.map((role) => (
                   <SelectItem key={role} value={role}>
                     {role}
@@ -100,7 +101,7 @@ export function BulkContactAssignmentForm({ selectedContactIds, team, onClearSel
                 <SelectValue placeholder="Optional" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No change</SelectItem>
+                <SelectItem value="no_change">No change</SelectItem>
                 {statusOptions.map((s) => (
                   <SelectItem key={s} value={s}>
                     {s}

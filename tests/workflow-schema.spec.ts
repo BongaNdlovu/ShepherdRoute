@@ -17,6 +17,7 @@ const contactMutations = readFileSync("app/(dashboard)/_actions/contact-mutation
 const followUpMutations = readFileSync("app/(dashboard)/_actions/follow-up-mutations.ts", "utf8");
 const contactGuards = readFileSync("app/(dashboard)/_actions/contact-guards.ts", "utf8");
 const eventBulkActions = readFileSync("components/app/event-bulk-actions.tsx", "utf8");
+const contactBulkActions = readFileSync("components/app/contact-bulk-actions.tsx", "utf8");
 const publicValidation = readFileSync("lib/public-events/validation.ts", "utf8");
 const publicActions = readFileSync("app/e/[slug]/actions.ts", "utf8");
 const privacyRequestActions = readFileSync("app/privacy/request/actions.ts", "utf8");
@@ -192,6 +193,8 @@ test.describe("workflow helpers", () => {
     expect(publicActions).toContain('publicFormLimit("PUBLIC_FORM_RATE_LIMIT_HOURLY"');
     expect(publicActions).toContain('publicFormLimit("PUBLIC_FORM_RATE_LIMIT_DAILY"');
     expect(publicActions).toContain('supabase.rpc("reserve_public_form_submission_slot"');
+    expect(publicActions).toContain("Falling back to app-derived public form rate-limit salt");
+    expect(publicActions).not.toContain("PUBLIC_FORM_RATE_LIMIT_SALT is required");
     expect(schema).toContain("create or replace function public.reserve_public_form_submission_slot");
     expect(schema).toContain("pg_advisory_xact_lock");
     expect(schema).toContain("p_hourly_limit integer default 50");
@@ -199,6 +202,20 @@ test.describe("workflow helpers", () => {
     expect(publicActions.indexOf("const validation = await validatePublicEventRegistration")).toBeLessThan(
       publicActions.indexOf("reserveRateLimitSlot(parsed.data.slug)")
     );
+  });
+
+  test("contact bulk lifecycle workflow exposes safe selection and soft-delete actions", () => {
+    expect(contactMutations).toContain("bulkUpdateContactsLifecycleAction");
+    expect(contactMutations).toContain("parseContactIds");
+    expect(contactMutations).toContain('intent: z.enum(["do_not_contact", "archive", "delete"])');
+    expect(contactMutations).toContain("deleted_at: now");
+    expect(contactMutations).toContain("Bulk soft-deleted and marked do not contact.");
+    expect(contactMutations).toContain("safeReturnTo");
+    expect(contactBulkActions).toContain("Select all visible contacts");
+    expect(contactBulkActions).toContain("Delete selected");
+    expect(contactBulkActions).toContain("Archive selected");
+    expect(contactBulkActions).toContain("Do not contact");
+    expect(contactBulkActions).toContain("bulkUpdateContactsLifecycleAction");
   });
 
   test("best time options do not include channel-only preferences", () => {
