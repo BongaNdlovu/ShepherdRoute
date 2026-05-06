@@ -42,6 +42,22 @@ const deleteEventSchema = z.object({
   confirmation: z.string().min(2)
 });
 
+const bulkEventIdsSchema = z.object({
+  eventIds: z.array(z.string().uuid()).min(1).max(100)
+});
+
+function parseBulkEventIds(formData: FormData) {
+  const eventIds = formData
+    .getAll("eventIds")
+    .flatMap((value) => String(value).split(","))
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return bulkEventIdsSchema.safeParse({
+    eventIds: Array.from(new Set(eventIds))
+  });
+}
+
 export async function createEventAction(formData: FormData) {
   const context = await getChurchContext();
   const parsed = eventSchema.safeParse({
@@ -273,4 +289,109 @@ export async function deleteEventAction(formData: FormData) {
   revalidatePath("/events");
   revalidatePath("/contacts");
   redirect("/events");
+}
+
+export async function bulkCloseEventsAction(formData: FormData) {
+  const context = await getChurchContext();
+  if (context.workspaceStatus === "inactive" && !context.isAppAdmin) {
+    redirect("/events?error=This%20workspace%20is%20inactive.");
+  }
+
+  const parsed = parseBulkEventIds(formData);
+  if (!parsed.success) {
+    redirect("/events?error=Select%20at%20least%20one%20event%20to%20close.");
+  }
+
+  const supabase = await createClient();
+
+  for (const eventId of parsed.data.eventIds) {
+    try {
+      await requireCurrentUserEventPermission({
+        churchId: context.churchId,
+        eventId,
+        permission: "can_edit_event_settings"
+      });
+    } catch {
+      redirect("/events?error=You%20do%20not%20have%20permission%20to%20close%20one%20or%20more%20selected%20events.");
+    }
+  }
+
+  const { error } = await supabase
+    .from("events")
+    .update({ is_active: false })
+    .eq("church_id", context.churchId)
+    .in("id", parsed.data.eventIds);
+
+  if (error) {
+    redirect(`/events?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/events");
+  for (const eventId of parsed.data.eventIds) {
+    revalidatePath(`/events/${eventId}`);
+  }
+
+  redirect(`/events?success=${encodeURIComponent(`Closed ${parsed.data.eventIds.length} selected event${parsed.data.eventIds.length === 1 ? "" : "s"}.`)}`);
+}
+
+export async function bulkDeleteEventsAction(formData: FormData) {
+  const context = await getChurchContext();
+  if (context.workspaceStatus === "inactive" && !context.isAppAdmin) {
+    redirect("/events?error=This%20workspace%20is%20inactive.");
+  }
+
+  const parsed = parseBulkEventIds(formData);
+  if (!parsed.success) {
+    redirect("/events?error=Select%20at%20least%20one%20event%20to%20delete.");
+  }
+
+  const supabase = await createClient();
+
+  for (const eventId of parsed.data.eventIds) {
+    try {
+      await requireCurrentUserEventPermission({
+        churchId: context.churchId,
+        eventId,
+        permission: "can_delete_event"
+      });
+    } catch {
+      redirect("/events?error=You%20do%20not%20have%20permission%20to%20delete%20one%20or%20more%20selected%20events.");
+    }
+  }
+
+  const { data: contactRows, error: contactError } = await supabase
+    .from("contacts")
+    .select("event_id")
+    .eq("church_id", context.churchId)
+    .in("event_id", parsed.data.eventIds)
+    .limit(1);
+
+  if (contactError) {
+    redirect(`/events?error=${encodeURIComponent(contactError.message)}`);
+  }
+
+  if ((contactRows ?? []).length > 0) {
+    redirect(
+      `/events?error=${encodeURIComponent(
+        "One or more selected events has contact history and cannot be deleted. Close or archive those events instead."
+      )}`
+    );
+  }
+
+  const { error } = await supabase
+    .from("events")
+    .delete()
+    .eq("church_id", context.churchId)
+    .in("id", parsed.data.eventIds);
+
+  if (error) {
+    redirect(`/events?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/events");
+  revalidatePath("/contacts");
+
+  redirect(`/events?success=${encodeURIComponent(`Deleted ${parsed.data.eventIds.length} selected event${parsed.data.eventIds.length === 1 ? "" : "s"}.`)}`);
 }

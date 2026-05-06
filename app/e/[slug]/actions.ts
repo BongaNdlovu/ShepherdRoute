@@ -81,8 +81,6 @@ export async function submitRegistrationAction(formData: FormData) {
     redirect(`/e/${formData.get("slug")}?submitted=true`);
   }
 
-  const slug = String(formData.get("slug"));
-
   const parsed = registrationSchema.safeParse({
     slug: formData.get("slug"),
     fullName: formData.get("fullName"),
