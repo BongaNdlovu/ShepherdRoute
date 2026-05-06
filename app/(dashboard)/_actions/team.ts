@@ -89,7 +89,8 @@ export async function addTeamMemberAction(formData: FormData) {
       role: parsed.data.role,
       app_role: appRole,
       phone: parsed.data.phone ?? null,
-      email: parsed.data.email ?? null
+      email: parsed.data.email ?? null,
+      is_active: !parsed.data.inviteLogin
     })
     .select("id")
     .single();
@@ -224,7 +225,7 @@ export async function revokeTeamInvitationAction(formData: FormData) {
 
   const { data: invitation } = await supabase
     .from("team_invitations")
-    .select("id, email, role")
+    .select("id, email, role, team_member_id")
     .eq("id", parsed.data.invitationId)
     .eq("church_id", context.churchId)
     .single();
@@ -236,6 +237,15 @@ export async function revokeTeamInvitationAction(formData: FormData) {
 
   if (error) {
     redirect(`/settings/team?error=${encodeURIComponent(error.message)}`);
+  }
+
+  if (invitation?.team_member_id) {
+    await supabase
+      .from("team_members")
+      .update({ is_active: false })
+      .eq("id", invitation.team_member_id)
+      .eq("church_id", context.churchId)
+      .is("membership_id", null);
   }
 
   await supabase.from("audit_logs").insert({

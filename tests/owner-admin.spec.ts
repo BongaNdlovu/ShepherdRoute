@@ -32,6 +32,11 @@ test.describe("owner admin account controls", () => {
     expect(schema).toContain("invitation.workspace_reset");
     expect(schema).toContain("invitation.event_reset");
     expect(schema).toContain("invitation_token_hash = null");
+    expect(schema).toContain("join target_invitations on target_invitations.team_member_id = team_members.id");
+    expect(schema).toContain("linked_team_members.membership_id");
+    expect(schema).toContain("join target_assignments on target_assignments.team_member_id = team_members.id");
+    expect(schema).toContain("target_assignments.invitee_email is not null");
+    expect(schema).toContain("other_team_members.membership_id = church_memberships.id");
     expect(adminActions).toContain("resetWorkspaceInvitesAction");
     expect(adminActions).toContain("resetEventInvitesAction");
     expect(adminActions).toContain("owner_reset_workspace_invites");
@@ -50,6 +55,9 @@ test.describe("owner admin account controls", () => {
     expect(schema).toContain("team_member.deleted");
     expect(schema).toContain("event_assignment.revoked");
     expect(schema).toContain("event_assignment.deleted");
+    expect(schema).toContain("if target_assignment.team_member_id is not null");
+    expect(schema).toContain("linked_event_invite_member");
+    expect(schema).toContain("other_assignments.id <> p_assignment_id");
     expect(adminActions).toContain("disableWorkspaceTeamMemberAction");
     expect(adminActions).toContain("removeWorkspaceTeamMemberAction");
     expect(adminActions).toContain("deleteWorkspaceTeamMemberAction");

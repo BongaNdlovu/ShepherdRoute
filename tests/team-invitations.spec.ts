@@ -41,6 +41,7 @@ test.describe("team invitation workflow", () => {
     expect(teamAction).toContain("randomBytes(32)");
     expect(teamAction).toContain("createHash(\"sha256\")");
     expect(teamAction).toContain("team_invitations");
+    expect(teamAction).toContain("is_active: !parsed.data.inviteLogin");
     expect(teamAction).toContain("redirect(`/settings/team?invite=");
   });
 
@@ -49,6 +50,16 @@ test.describe("team invitation workflow", () => {
     expect(teamAction).not.toContain("/team-invitations/accept");
     expect(teamPage).toContain("Open Gmail draft");
     expect(teamPage).toContain("Open email draft");
+  });
+
+  test("pending workspace invitees are not shown as active login users", () => {
+    expect(teamPage).toContain("pendingInvitationByTeamMemberId");
+    expect(teamPage).toContain("Pending login");
+    expect(teamPage).toContain("Assignable");
+    expect(teamPage).toContain("A shareable invite link is created only when this is checked.");
+    expect(teamAction).toContain(".select(\"id, email, role, team_member_id\")");
+    expect(teamAction).toContain(".is(\"membership_id\", null)");
+    expect(teamAction).toContain(".update({ is_active: false })");
   });
 
   test("event email invites return draft links to the visible modal", () => {

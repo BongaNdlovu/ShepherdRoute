@@ -36,6 +36,11 @@ export default async function TeamPage({
     ? await getWorkspaceInviteEmailDraft(params.invite, context.fullName || "A team member")
     : null;
   const pendingInvitations = invitations.filter((invitation) => invitation.status === "pending");
+  const pendingInvitationByTeamMemberId = new Map(
+    pendingInvitations
+      .filter((invitation) => invitation.team_member_id)
+      .map((invitation) => [invitation.team_member_id, invitation])
+  );
   const userCanManageTeam = canManageTeam(context.role as TeamRole, context.appRole as AppRole | null);
 
   return (
@@ -69,10 +74,14 @@ export default async function TeamPage({
                       </div>
                     </div>
                     <div className="grid justify-items-end gap-2">
-                      <Badge variant={member.is_active ? "success" : "muted"}>
-                        {member.is_active ? "Active" : "Inactive"}
-                      </Badge>
-                      {member.membership_id ? <Badge variant="accent">Login</Badge> : null}
+                      {pendingInvitationByTeamMemberId.has(member.id) ? (
+                        <Badge variant="secondary">Pending login</Badge>
+                      ) : (
+                        <Badge variant={member.is_active ? "success" : "muted"}>
+                          {member.is_active ? "Assignable" : "Inactive"}
+                        </Badge>
+                      )}
+                      {member.membership_id ? <Badge variant="accent">Login active</Badge> : null}
                     </div>
                   </div>
                 ))}
@@ -213,7 +222,12 @@ export default async function TeamPage({
               </div>
               <label className="flex items-start gap-3 rounded-xl border border-border/70 bg-muted/50 p-3 text-sm font-medium transition hover:bg-accent/5">
                 <input name="inviteLogin" type="checkbox" className="mt-1 h-4 w-4 rounded border-input" />
-                <span>Invite to create a login account</span>
+                <span>
+                  Invite to create a login account
+                  <span className="block text-xs font-normal text-muted-foreground">
+                    A shareable invite link is created only when this is checked. Invited people become assignable after they accept.
+                  </span>
+                </span>
               </label>
               <Button type="submit">
                 <CheckCircle2 className="h-4 w-4" />

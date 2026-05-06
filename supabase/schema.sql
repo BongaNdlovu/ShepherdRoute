@@ -2818,35 +2818,43 @@ as $$
 begin
   perform private.require_app_admin();
 
-  update public.team_invitations
-  set status = 'revoked',
-      updated_at = now()
-  where church_id = p_church_id
-    and status in ('pending', 'expired', 'revoked');
-
-  update public.church_memberships
-  set status = 'disabled',
-      updated_at = now()
-  where church_id = p_church_id
-    and status = 'active'
-    and id in (
-      select distinct team_invitations.team_member_id
-      from public.team_invitations
-      where team_invitations.church_id = p_church_id
-        and team_invitations.status = 'accepted'
-        and team_invitations.team_member_id is not null
-    );
-
+  with target_invitations as (
+    select team_invitations.id, team_invitations.team_member_id
+    from public.team_invitations
+    where team_invitations.church_id = p_church_id
+      and team_invitations.status in ('pending', 'expired', 'revoked', 'accepted')
+  ),
+  linked_team_members as (
+    select team_members.id as team_member_id, team_members.membership_id
+    from public.team_members
+    join target_invitations on target_invitations.team_member_id = team_members.id
+    where team_members.church_id = p_church_id
+  ),
+  revoked_invitations as (
+    update public.team_invitations
+    set status = 'revoked',
+        updated_at = now()
+    where id in (select target_invitations.id from target_invitations)
+    returning id
+  ),
+  disabled_memberships as (
+    update public.church_memberships
+    set status = 'disabled',
+        updated_at = now()
+    where church_id = p_church_id
+      and status = 'active'
+      and id in (
+        select linked_team_members.membership_id
+        from linked_team_members
+        where linked_team_members.membership_id is not null
+      )
+    returning id
+  )
   update public.team_members
   set is_active = false,
       updated_at = now()
   where church_id = p_church_id
-    and membership_id in (
-      select distinct church_memberships.id
-      from public.church_memberships
-      where church_memberships.church_id = p_church_id
-        and church_memberships.status = 'disabled'
-    );
+    and id in (select linked_team_members.team_member_id from linked_team_members);
 
   insert into public.audit_logs (church_id, actor_user_id, target_type, target_id, action, metadata)
   select
@@ -2888,51 +2896,62 @@ as $$
 begin
   perform private.require_app_admin();
 
-  update public.event_assignments
-  set status = 'revoked',
-      revoked_at = now(),
-      invitation_token_hash = null,
-      updated_at = now()
-  where church_id = p_church_id
-    and (p_event_id is null or event_id = p_event_id)
-    and status in ('pending', 'accepted');
-
-  update public.church_memberships
-  set status = 'disabled',
-      updated_at = now()
-  where church_id = p_church_id
-    and status = 'active'
-    and id in (
-      select distinct event_assignments.team_member_id
-      from public.event_assignments
-      join public.team_members on team_members.id = event_assignments.team_member_id
-      where event_assignments.church_id = p_church_id
-        and (p_event_id is null or event_assignments.event_id = p_event_id)
-        and event_assignments.status = 'revoked'
-        and event_assignments.team_member_id is not null
-        and team_members.membership_id is not null
-        and not exists (
-          select 1
-          from public.church_memberships as other_memberships
-          where other_memberships.user_id = (
-            select user_id from public.church_memberships where id = team_members.membership_id
-          )
-            and other_memberships.church_id = p_church_id
-            and other_memberships.status = 'active'
-            and other_memberships.id <> team_members.membership_id
-        )
-    );
-
+  with target_assignments as (
+    select
+      event_assignments.id,
+      event_assignments.team_member_id,
+      event_assignments.invitee_email
+    from public.event_assignments
+    where event_assignments.church_id = p_church_id
+      and (p_event_id is null or event_assignments.event_id = p_event_id)
+      and event_assignments.status in ('pending', 'accepted', 'expired', 'revoked')
+  ),
+  linked_event_invite_members as (
+    select team_members.id as team_member_id, team_members.membership_id
+    from public.team_members
+    join target_assignments on target_assignments.team_member_id = team_members.id
+    where team_members.church_id = p_church_id
+      and target_assignments.invitee_email is not null
+      and team_members.membership_id is not null
+  ),
+  revoked_assignments as (
+    update public.event_assignments
+    set status = 'revoked',
+        revoked_at = coalesce(revoked_at, now()),
+        invitation_token_hash = null,
+        updated_at = now()
+    where id in (select target_assignments.id from target_assignments)
+    returning id
+  ),
+  disabled_memberships as (
+    update public.church_memberships
+    set status = 'disabled',
+        updated_at = now()
+    where church_id = p_church_id
+      and status = 'active'
+      and id in (
+        select linked_event_invite_members.membership_id
+        from linked_event_invite_members
+      )
+      and not exists (
+        select 1
+        from public.team_members as other_team_members
+        join public.event_assignments as other_assignments
+          on other_assignments.team_member_id = other_team_members.id
+        where other_team_members.membership_id = church_memberships.id
+          and other_assignments.church_id = p_church_id
+          and other_assignments.status = 'accepted'
+          and other_assignments.revoked_at is null
+          and other_assignments.id not in (select target_assignments.id from target_assignments)
+      )
+    returning id
+  )
   update public.team_members
   set is_active = false,
       updated_at = now()
   where church_id = p_church_id
-    and membership_id in (
-      select distinct church_memberships.id
-      from public.church_memberships
-      where church_memberships.church_id = p_church_id
-        and church_memberships.status = 'disabled'
-    );
+    and id in (select linked_event_invite_members.team_member_id from linked_event_invite_members)
+    and membership_id in (select disabled_memberships.id from disabled_memberships);
 
   insert into public.audit_logs (church_id, actor_user_id, target_type, target_id, action, metadata)
   select
@@ -3357,6 +3376,46 @@ begin
       revoked_by = auth.uid(),
       updated_at = now()
   where id = p_assignment_id;
+
+  if target_assignment.team_member_id is not null
+    and target_assignment.invitee_email is not null then
+    with linked_event_invite_member as (
+      select team_members.id as team_member_id, team_members.membership_id
+      from public.team_members
+      where team_members.id = target_assignment.team_member_id
+        and team_members.church_id = target_assignment.church_id
+        and team_members.membership_id is not null
+    ),
+    disabled_memberships as (
+      update public.church_memberships
+      set status = 'disabled',
+          updated_at = now()
+      where church_id = target_assignment.church_id
+        and status = 'active'
+        and id in (
+          select linked_event_invite_member.membership_id
+          from linked_event_invite_member
+        )
+        and not exists (
+          select 1
+          from public.team_members as other_team_members
+          join public.event_assignments as other_assignments
+            on other_assignments.team_member_id = other_team_members.id
+          where other_team_members.membership_id = church_memberships.id
+            and other_assignments.church_id = target_assignment.church_id
+            and other_assignments.status = 'accepted'
+            and other_assignments.revoked_at is null
+            and other_assignments.id <> p_assignment_id
+        )
+      returning id
+    )
+    update public.team_members
+    set is_active = false,
+        updated_at = now()
+    where church_id = target_assignment.church_id
+      and id in (select linked_event_invite_member.team_member_id from linked_event_invite_member)
+      and membership_id in (select disabled_memberships.id from disabled_memberships);
+  end if;
 
   insert into public.audit_logs (church_id, actor_user_id, target_type, target_id, action, metadata)
   values (
