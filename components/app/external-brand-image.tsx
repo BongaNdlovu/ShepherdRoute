@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 /* eslint-disable @next/next/no-img-element */
 
 type ExternalBrandImageProps = {
@@ -5,6 +7,9 @@ type ExternalBrandImageProps = {
   alt: string;
   className?: string;
   loading?: "lazy" | "eager";
+  height?: number;
+  width?: number;
+  style?: CSSProperties;
 };
 
 function isSafeImageUrl(src: string) {
@@ -31,7 +36,10 @@ export function ExternalBrandImage({
   src,
   alt,
   className,
-  loading = "lazy"
+  loading = "lazy",
+  height,
+  width,
+  style
 }: ExternalBrandImageProps) {
   if (!isSafeImageUrl(src)) {
     return null;
@@ -42,7 +50,10 @@ export function ExternalBrandImage({
       src={src}
       alt={alt}
       className={className}
+      height={height}
       loading={loading}
+      style={style}
+      width={width}
       decoding="async"
       referrerPolicy="no-referrer"
     />

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { NavigationHistoryControls } from "@/components/app/navigation-history-controls";
 import { InactiveWorkspaceNotice } from "@/components/app/inactive-workspace-notice";
 import { MobileBottomNav } from "@/components/app/mobile-bottom-nav";
-import { DeepSeekChatWidget } from "@/components/app/deepseek-chat-widget";
+import { DeepSeekChatWidgetLazy } from "@/components/app/deepseek-chat-widget-lazy";
 import { roleLabels } from "@/lib/constants";
 import { getChurchContext } from "@/lib/data";
 
@@ -153,7 +153,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </footer>
         </main>
         <MobileBottomNav />
-        {process.env.DEEPSEEK_API_KEY ? <DeepSeekChatWidget /> : null}
+        {process.env.DEEPSEEK_API_KEY ? <DeepSeekChatWidgetLazy /> : null}
       </div>
     </div>
   );

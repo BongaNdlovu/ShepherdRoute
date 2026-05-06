@@ -139,7 +139,10 @@ export default async function PublicEventPage({
               src={brandingConfig.cover_image_url}
               alt={`${event.name} cover`}
               className="h-48 w-full rounded-2xl object-cover"
+              width={1200}
+              height={360}
               loading="eager"
+              style={{ aspectRatio: "10 / 3" }}
             />
           ) : null}
           <header className="py-6 text-center">
@@ -148,6 +151,9 @@ export default async function PublicEventPage({
                 src={brandingConfig.logo_url}
                 alt={`${event.church_name} logo`}
                 className="mx-auto h-24 w-auto object-contain"
+                width={192}
+                height={96}
+                style={{ aspectRatio: "2 / 1" }}
               />
             ) : publicInfo.show_logo ? (
               <BrandLogo className="mx-auto h-24 w-auto object-contain" priority />

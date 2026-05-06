@@ -525,16 +525,16 @@ test.describe("workflow helpers", () => {
     expect(card).not.toContain("/contacts?status=assigned");
   });
 
-  test("contacts export uses collect-first approach, event report export uses streaming", () => {
+  test("contacts and event report exports use streaming", () => {
     const contactsExport = readFileSync("app/(dashboard)/contacts/export/route.ts", "utf8");
     const eventExport = readFileSync("app/(dashboard)/events/[id]/reports/export/route.ts", "utf8");
     const csv = readFileSync("lib/csv.ts", "utf8");
     expect(csv).toContain("streamCsvResponse");
     expect(csv).toContain("ReadableStream");
-    expect(contactsExport).toContain("csvResponse");
-    expect(contactsExport).toContain("toCsv");
-    expect(contactsExport).toContain("collectContactRows");
-    expect(contactsExport).not.toContain("streamCsvResponse");
+    expect(contactsExport).toContain("streamCsvResponse");
+    expect(contactsExport).toContain("streamContactRows");
+    expect(contactsExport).toContain("inspectContactExportShape");
+    expect(contactsExport).not.toContain("toCsv");
     expect(contactsExport).toContain("getContactsPage");
     expect(contactsExport).not.toContain("getContacts(");
     expect(eventExport).toContain("streamCsvResponse");
@@ -940,8 +940,11 @@ test.describe("workflow helpers", () => {
 
   test("DeepSeek widget is conditionally mounted based on DEEPSEEK_API_KEY", () => {
     const dashboardLayout = readFileSync("app/(dashboard)/layout.tsx", "utf8");
+    const chatWidgetLazy = readFileSync("components/app/deepseek-chat-widget-lazy.tsx", "utf8");
     expect(dashboardLayout).toContain("process.env.DEEPSEEK_API_KEY");
-    expect(dashboardLayout).toContain("? <DeepSeekChatWidget /> : null");
+    expect(dashboardLayout).toContain("? <DeepSeekChatWidgetLazy /> : null");
+    expect(chatWidgetLazy).toContain("dynamic(");
+    expect(chatWidgetLazy).toContain("ssr: false");
   });
 
   test("diagnostic logs are gated behind server env flags", () => {

@@ -1,5 +1,5 @@
 import { getChurchContext, getContactsPage } from "@/lib/data";
-import { csvResponse, toCsv } from "@/lib/csv";
+import { streamCsvResponse } from "@/lib/csv";
 import { assignmentRoleLabels, interestLabels, statusLabels, type FollowUpStatus } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
@@ -84,10 +84,10 @@ export async function GET(request: Request) {
     assignedTo: url.searchParams.get("assignedTo") ?? undefined
   };
 
-  const { rows, questionLabels } = await collectContactRows(context.churchId, filters);
+  const exportShape = await inspectContactExportShape(context.churchId, filters);
 
   // Build dynamic headers
-  const headers = [...BASE_CONTACT_HEADERS, ...questionLabels];
+  const headers = [...BASE_CONTACT_HEADERS, ...exportShape.questionLabels];
 
   // Audit log
   const supabase = await createClient();
@@ -99,31 +99,35 @@ export async function GET(request: Request) {
     action: "export",
     metadata: {
       filters,
-      row_count: rows.length
+      row_count: exportShape.rowCount
     }
   });
 
-  const csv = toCsv(headers, rows);
   const fileName = createContactExportFileName();
 
   if (process.env.SHEPHERDROUTE_DEBUG_EXPORTS === "true") {
     console.log("CSV export rows", {
       churchId: context.churchId,
       filters,
-      rowCount: rows.length
+      rowCount: exportShape.rowCount
     });
   }
 
-  return csvResponse(fileName, csv);
+  return streamCsvResponse(
+    fileName,
+    headers,
+    streamContactRows(context.churchId, filters, exportShape.questionNames)
+  );
 }
 
-async function collectContactRows(
+async function inspectContactExportShape(
   churchId: string,
   filters: ContactExportFilters
 ) {
-  const rows: Array<Array<unknown>> = [];
-  const contactIds: string[] = [];
+  const questionOrder = new Map<string, string>();
+  let rowCount = 0;
   let page = 1;
+  const supabase = await createClient();
 
   while (true) {
     const result = await getContactsPage(churchId, {
@@ -132,39 +136,13 @@ async function collectContactRows(
       pageSize: String(EXPORT_BATCH_SIZE)
     });
 
-    for (const contact of result.contacts) {
-      contactIds.push(contact.id);
-      const interests = (contact.interests ?? [])
-        .map((interest) => interestLabels[interest] ?? interest)
-        .join("; ");
-
-      const handlingRole = contact.assigned_handling_role
-        ? assignmentRoleLabels[contact.assigned_handling_role as keyof typeof assignmentRoleLabels] ?? contact.assigned_handling_role
-        : "";
-
-      const recommendedRole = contact.recommended_assigned_role
-        ? assignmentRoleLabels[contact.recommended_assigned_role as keyof typeof assignmentRoleLabels] ?? contact.recommended_assigned_role
-        : "";
-
-      rows.push([
-        contact.full_name,
-        contact.phone ?? "",
-        contact.email ?? "",
-        contact.area ?? "",
-        contact.language ?? "",
-        contact.event_name ?? "Manual contact",
-        interests,
-        statusLabels[contact.status as FollowUpStatus] ?? contact.status,
-        contact.urgency,
-        handlingRole,
-        recommendedRole,
-        contact.assigned_name ?? "",
-        contact.do_not_contact ? "Yes" : "No",
-        contact.duplicate_of_contact_id ? "Yes" : "No",
-        contact.best_time_to_contact ?? "",
-        contact.created_at
-      ]);
-    }
+    rowCount += result.contacts.length;
+    await collectQuestionOrderForContacts(
+      supabase,
+      churchId,
+      result.contacts.map((contact) => contact.id),
+      questionOrder
+    );
 
     if (!result.contacts.length || page >= result.pageCount) {
       break;
@@ -173,14 +151,26 @@ async function collectContactRows(
     page += 1;
   }
 
-  // Fetch form answers for all contacts in chunks
-  const supabase = await createClient();
-  const formAnswers = [];
+  const questionNames = Array.from(questionOrder.keys());
+  const questionLabels = questionNames.map((name) => questionOrder.get(name) ?? name);
 
+  return { rowCount, questionNames, questionLabels };
+}
+
+async function collectQuestionOrderForContacts(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  churchId: string,
+  contactIds: string[],
+  questionOrder: Map<string, string>
+) {
   for (const chunk of chunkArray(contactIds, FORM_ANSWER_LOOKUP_CHUNK_SIZE)) {
+    if (!chunk.length) {
+      continue;
+    }
+
     const { data, error } = await supabase
       .from("contact_form_answers")
-      .select("contact_id, question_name, question_label, answer_display")
+      .select("question_name, question_label")
       .eq("church_id", churchId)
       .in("contact_id", chunk);
 
@@ -188,38 +178,115 @@ async function collectContactRows(
       throw new Error(error.message);
     }
 
-    formAnswers.push(...(data ?? []));
-  }
-
-  // Build a map of contact_id to answers and collect all unique question names in order
-  const answersMap = new Map<string, Map<string, unknown>>();
-  const questionOrder = new Map<string, string>();
-  if (formAnswers) {
-    for (const answer of formAnswers) {
-      if (!answersMap.has(answer.contact_id)) {
-        answersMap.set(answer.contact_id, new Map());
-      }
-      answersMap.get(answer.contact_id)!.set(answer.question_name, answer.answer_display);
+    for (const answer of data ?? []) {
       if (!questionOrder.has(answer.question_name)) {
         questionOrder.set(answer.question_name, answer.question_label);
       }
     }
   }
+}
 
-  const questionNames = Array.from(questionOrder.keys());
-  const questionLabels = questionNames.map((name) => questionOrder.get(name) ?? name);
+async function* streamContactRows(
+  churchId: string,
+  filters: ContactExportFilters,
+  questionNames: string[]
+) {
+  let page = 1;
+  const supabase = await createClient();
 
-  // Merge answers into rows with deterministic column ordering
-  const rowsWithAnswers = rows.map((row, index) => {
-    const contactId = contactIds[index];
-    const contactAnswers = answersMap.get(contactId) || new Map<string, unknown>();
-    return [
-      ...row,
-      ...questionNames.map((name) => normalizeCsvAnswer(contactAnswers.get(name)))
-    ];
-  });
+  while (true) {
+    const result = await getContactsPage(churchId, {
+      ...filters,
+      page: String(page),
+      pageSize: String(EXPORT_BATCH_SIZE)
+    });
 
-  return { rows: rowsWithAnswers, questionLabels: Array.from(questionLabels) };
+    const answersMap = await getAnswerMapForContacts(
+      supabase,
+      churchId,
+      result.contacts.map((contact) => contact.id)
+    );
+
+    for (const contact of result.contacts) {
+      const contactAnswers = answersMap.get(contact.id) || new Map<string, unknown>();
+      yield [
+        ...contactToCsvRow(contact),
+        ...questionNames.map((name) => normalizeCsvAnswer(contactAnswers.get(name)))
+      ];
+    }
+
+    if (!result.contacts.length || page >= result.pageCount) {
+      break;
+    }
+
+    page += 1;
+  }
+}
+
+async function getAnswerMapForContacts(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  churchId: string,
+  contactIds: string[]
+) {
+  const answersMap = new Map<string, Map<string, unknown>>();
+
+  for (const chunk of chunkArray(contactIds, FORM_ANSWER_LOOKUP_CHUNK_SIZE)) {
+    if (!chunk.length) {
+      continue;
+    }
+
+    const { data, error } = await supabase
+      .from("contact_form_answers")
+      .select("contact_id, question_name, answer_display")
+      .eq("church_id", churchId)
+      .in("contact_id", chunk);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    for (const answer of data ?? []) {
+      if (!answersMap.has(answer.contact_id)) {
+        answersMap.set(answer.contact_id, new Map());
+      }
+      answersMap.get(answer.contact_id)!.set(answer.question_name, answer.answer_display);
+    }
+  }
+
+  return answersMap;
+}
+
+function contactToCsvRow(contact: Awaited<ReturnType<typeof getContactsPage>>["contacts"][number]) {
+  const interests = (contact.interests ?? [])
+    .map((interest) => interestLabels[interest] ?? interest)
+    .join("; ");
+
+  const handlingRole = contact.assigned_handling_role
+    ? assignmentRoleLabels[contact.assigned_handling_role as keyof typeof assignmentRoleLabels] ?? contact.assigned_handling_role
+    : "";
+
+  const recommendedRole = contact.recommended_assigned_role
+    ? assignmentRoleLabels[contact.recommended_assigned_role as keyof typeof assignmentRoleLabels] ?? contact.recommended_assigned_role
+    : "";
+
+  return [
+    contact.full_name,
+    contact.phone ?? "",
+    contact.email ?? "",
+    contact.area ?? "",
+    contact.language ?? "",
+    contact.event_name ?? "Manual contact",
+    interests,
+    statusLabels[contact.status as FollowUpStatus] ?? contact.status,
+    contact.urgency,
+    handlingRole,
+    recommendedRole,
+    contact.assigned_name ?? "",
+    contact.do_not_contact ? "Yes" : "No",
+    contact.duplicate_of_contact_id ? "Yes" : "No",
+    contact.best_time_to_contact ?? "",
+    contact.created_at
+  ];
 }
 
 function createContactExportFileName() {
