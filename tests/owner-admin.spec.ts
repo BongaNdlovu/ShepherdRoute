@@ -4,6 +4,7 @@ import { expect, test } from "@playwright/test";
 const schema = readFileSync("supabase/schema.sql", "utf8");
 const adminActions = readFileSync("app/(dashboard)/_actions/admin.ts", "utf8");
 const adminUsersPage = readFileSync("app/(dashboard)/admin/users/page.tsx", "utf8");
+const adminChurchTeamPage = readFileSync("app/(dashboard)/admin/churches/[churchId]/team/page.tsx", "utf8");
 
 test.describe("owner admin account controls", () => {
   test("schema exposes owner-only account rows", () => {
@@ -61,6 +62,9 @@ test.describe("owner admin account controls", () => {
     expect(adminActions).toContain("disableWorkspaceTeamMemberAction");
     expect(adminActions).toContain("removeWorkspaceTeamMemberAction");
     expect(adminActions).toContain("deleteWorkspaceTeamMemberAction");
+    expect(adminActions).toContain("const returnTo = safeOwnerReturnTo(parsed.returnTo)");
+    expect(adminChurchTeamPage).toContain('name="returnTo" value={returnTo}');
+    expect(adminChurchTeamPage).toContain("{paramsQuery.success");
     expect(adminActions).toContain("revokeEventAssignmentAction");
     expect(adminActions).toContain("deleteEventAssignmentAction");
   });

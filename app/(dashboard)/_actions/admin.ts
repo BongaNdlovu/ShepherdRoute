@@ -286,18 +286,21 @@ export async function disableWorkspaceTeamMemberAction(formData: FormData) {
   await requireOwnerAdminContext();
   const parsed = parseOwnerAction(z.object({
     teamMemberId: z.string().uuid(),
-    reason: z.string().max(500).optional()
+    reason: z.string().max(500).optional(),
+    returnTo: z.string().optional()
   }), {
     teamMemberId: formData.get("teamMemberId"),
-    reason: formData.get("reason") || undefined
+    reason: formData.get("reason") || undefined,
+    returnTo: formData.get("returnTo") || undefined
   }, "/admin/users?error=Invalid%20request");
+  const returnTo = safeOwnerReturnTo(parsed.returnTo);
 
   await runOwnerRpcAction({
     rpc: "owner_disable_workspace_team_member",
     args: { p_team_member_id: parsed.teamMemberId, p_reason: parsed.reason },
-    errorRedirect: "/admin/users",
-    revalidate: ["/admin/users"],
-    successRedirect: "/admin/users?success=Team%20member%20disabled"
+    errorRedirect: returnTo,
+    revalidate: ["/admin/users", returnTo],
+    successRedirect: `${returnTo}?success=Team%20member%20disabled`
   });
 }
 
@@ -305,18 +308,21 @@ export async function removeWorkspaceTeamMemberAction(formData: FormData) {
   await requireOwnerAdminContext();
   const parsed = parseOwnerAction(z.object({
     teamMemberId: z.string().uuid(),
-    reason: z.string().max(500).optional()
+    reason: z.string().max(500).optional(),
+    returnTo: z.string().optional()
   }), {
     teamMemberId: formData.get("teamMemberId"),
-    reason: formData.get("reason") || undefined
+    reason: formData.get("reason") || undefined,
+    returnTo: formData.get("returnTo") || undefined
   }, "/admin/users?error=Invalid%20request");
+  const returnTo = safeOwnerReturnTo(parsed.returnTo);
 
   await runOwnerRpcAction({
     rpc: "owner_remove_workspace_team_member",
     args: { p_team_member_id: parsed.teamMemberId, p_reason: parsed.reason },
-    errorRedirect: "/admin/users",
-    revalidate: ["/admin/users"],
-    successRedirect: "/admin/users?success=Team%20member%20removed"
+    errorRedirect: returnTo,
+    revalidate: ["/admin/users", returnTo],
+    successRedirect: `${returnTo}?success=Team%20member%20removed`
   });
 }
 
@@ -324,18 +330,21 @@ export async function deleteWorkspaceTeamMemberAction(formData: FormData) {
   await requireOwnerAdminContext();
   const parsed = parseOwnerAction(z.object({
     teamMemberId: z.string().uuid(),
-    reason: z.string().max(500).optional()
+    reason: z.string().max(500).optional(),
+    returnTo: z.string().optional()
   }), {
     teamMemberId: formData.get("teamMemberId"),
-    reason: formData.get("reason") || undefined
+    reason: formData.get("reason") || undefined,
+    returnTo: formData.get("returnTo") || undefined
   }, "/admin/users?error=Invalid%20request");
+  const returnTo = safeOwnerReturnTo(parsed.returnTo);
 
   await runOwnerRpcAction({
     rpc: "owner_delete_workspace_team_member",
     args: { p_team_member_id: parsed.teamMemberId, p_reason: parsed.reason },
-    errorRedirect: "/admin/users",
-    revalidate: ["/admin/users"],
-    successRedirect: "/admin/users?success=Team%20member%20deleted"
+    errorRedirect: returnTo,
+    revalidate: ["/admin/users", returnTo],
+    successRedirect: `${returnTo}?success=Team%20member%20deleted`
   });
 }
 

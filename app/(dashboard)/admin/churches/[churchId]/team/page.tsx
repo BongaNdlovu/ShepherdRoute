@@ -17,7 +17,7 @@ export default async function OwnerChurchTeamPage({
   searchParams
 }: {
   params: Promise<{ churchId: string }>;
-  searchParams: Promise<{ q?: string; page?: string; pageSize?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; pageSize?: string; error?: string; success?: string }>;
 }) {
   await requireOwnerAdmin();
   const { churchId } = await params;
@@ -26,6 +26,7 @@ export default async function OwnerChurchTeamPage({
     getOwnerChurchDetail(churchId),
     getOwnerChurchTeamPage(churchId, paramsQuery)
   ]);
+  const returnTo = `/admin/churches/${church.id}/team`;
 
   return (
     <section className="space-y-4">
@@ -42,6 +43,8 @@ export default async function OwnerChurchTeamPage({
           <CardDescription>Assignable ministry workers for this church.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {paramsQuery.error ? <p className="rounded-md bg-rose-50 p-3 text-sm text-rose-700">{paramsQuery.error}</p> : null}
+          {paramsQuery.success ? <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">{paramsQuery.success}</p> : null}
           <OwnerSearchForm placeholder="Search team..." defaultValue={paramsQuery.q ?? ""} />
           <OwnerPagination
             page={teamPage.page}
@@ -80,18 +83,21 @@ export default async function OwnerChurchTeamPage({
                       <div className="flex flex-wrap gap-2">
                         <form action={disableWorkspaceTeamMemberAction}>
                           <input type="hidden" name="teamMemberId" value={member.id} />
+                          <input type="hidden" name="returnTo" value={returnTo} />
                           <Button type="submit" size="sm" variant="outline" disabled={!member.is_active}>
                             Disable
                           </Button>
                         </form>
                         <form action={removeWorkspaceTeamMemberAction}>
                           <input type="hidden" name="teamMemberId" value={member.id} />
+                          <input type="hidden" name="returnTo" value={returnTo} />
                           <Button type="submit" size="sm" variant="destructive">
                             Remove
                           </Button>
                         </form>
                         <form action={deleteWorkspaceTeamMemberAction}>
                           <input type="hidden" name="teamMemberId" value={member.id} />
+                          <input type="hidden" name="returnTo" value={returnTo} />
                           <Button type="submit" size="sm" variant="destructive">
                             Delete
                           </Button>
