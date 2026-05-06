@@ -729,10 +729,12 @@ on public.message_open_events(contact_id, created_at desc);
 
 alter table public.message_open_events enable row level security;
 
+drop policy if exists "Members can view message open events" on public.message_open_events;
 create policy "Members can view message open events"
 on public.message_open_events for select
 using (private.is_church_member(church_id) or private.is_app_admin());
 
+drop policy if exists "Members can create message open events" on public.message_open_events;
 create policy "Members can create message open events"
 on public.message_open_events for insert
 with check (private.is_church_member(church_id) or private.is_app_admin());
