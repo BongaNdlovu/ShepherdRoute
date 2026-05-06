@@ -10,8 +10,8 @@ export function BrandLogo({ className, priority = false }: BrandLogoProps) {
     <Image
       src="/shepherd-logo.svg"
       alt="ShepherdRoute logo"
-      width={1280}
-      height={1024}
+      width={320}
+      height={120}
       priority={priority}
       className={className}
     />

@@ -87,6 +87,37 @@ export type TodayFollowUpItem = {
   } | null;
 };
 
+type RpcError = { message: string };
+type TodayFollowUpsRpcRow = {
+  id: string;
+  contact_id: string;
+  assigned_to: string | null;
+  status: FollowUpStatus;
+  next_action: string | null;
+  due_at: string | null;
+  contact_id_value: string;
+  contact_full_name: string;
+  contact_phone: string;
+  contact_status: FollowUpStatus;
+  contact_urgency: "low" | "medium" | "high";
+  contact_assigned_to: string | null;
+  contact_do_not_contact: boolean;
+  event_name: string | null;
+  interests: Interest[] | null;
+  assigned_name: string | null;
+  suggested_message_id: string | null;
+  suggested_message_text: string | null;
+  suggested_wa_link: string | null;
+  suggested_opened_at: string | null;
+};
+
+type ReportsPerformanceRpcClient = {
+  rpc(
+    name: "today_follow_ups",
+    params: { p_church_id: string; p_limit: number }
+  ): Promise<{ data: TodayFollowUpsRpcRow[] | null; error: RpcError | null }>;
+};
+
 const emptyOutreachSummary: OutreachReportSummary = {
   total_contacts: 0,
   followed_up_count: 0,
@@ -175,8 +206,9 @@ function parseEventSummary(row: Partial<EventReportSummary> | null | undefined):
 
 export async function getTodayFollowUps(churchId: string): Promise<TodayFollowUpItem[]> {
   const supabase = await createClient();
+  const rpcClient = supabase as unknown as ReportsPerformanceRpcClient;
   // The RPC keeps the former purpose === "suggested_whatsapp" filter in SQL.
-  const { data, error } = await (supabase as any).rpc("today_follow_ups", {
+  const { data, error } = await rpcClient.rpc("today_follow_ups", {
     p_church_id: churchId,
     p_limit: 12
   });
@@ -185,28 +217,7 @@ export async function getTodayFollowUps(churchId: string): Promise<TodayFollowUp
     throw new Error(error.message);
   }
 
-  return (data ?? []).map((row: {
-    id: string;
-    contact_id: string;
-    assigned_to: string | null;
-    status: FollowUpStatus;
-    next_action: string | null;
-    due_at: string | null;
-    contact_id_value: string;
-    contact_full_name: string;
-    contact_phone: string;
-    contact_status: FollowUpStatus;
-    contact_urgency: "low" | "medium" | "high";
-    contact_assigned_to: string | null;
-    contact_do_not_contact: boolean;
-    event_name: string | null;
-    interests: Interest[] | null;
-    assigned_name: string | null;
-    suggested_message_id: string | null;
-    suggested_message_text: string | null;
-    suggested_wa_link: string | null;
-    suggested_opened_at: string | null;
-  }) => ({
+  return (data ?? []).map((row) => ({
     id: row.id,
     contact_id: row.contact_id,
     assigned_to: row.assigned_to,

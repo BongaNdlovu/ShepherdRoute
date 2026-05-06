@@ -4,6 +4,52 @@ import { createClient } from "@/lib/supabase/server";
 
 const EVENT_CONTACT_LIMIT = 100;
 
+type RpcError = { message: string };
+type EventWorkspaceSummaryRpcRow = {
+  event: unknown;
+  total_contacts: number | string | null;
+  new_contacts: number | string | null;
+  assigned_contacts: number | string | null;
+  pending_follow_ups: number | string | null;
+  completed_follow_ups: number | string | null;
+  overdue_follow_ups: number | string | null;
+  high_urgency_contacts: number | string | null;
+  prayer_requests: number | string | null;
+  bible_study_interests: number | string | null;
+  baptism_interests: number | string | null;
+  health_interests: number | string | null;
+  recent_contacts: unknown[] | null;
+  due_follow_ups: unknown[] | null;
+  team_snapshot: Array<{
+    team_member_id: string;
+    display_name: string;
+    role: string | null;
+    assigned_contact_count: number | string | null;
+  }> | null;
+};
+
+type EventTeamSummaryRpcRow = {
+  team_member_id: string;
+  display_name: string;
+  role: string | null;
+  assigned_contact_count: number | string | null;
+  pending_count: number | string | null;
+  completed_count: number | string | null;
+  overdue_count: number | string | null;
+  last_activity_at: string | null;
+};
+
+type EventPerformanceRpcClient = {
+  rpc(
+    name: "event_workspace_summary",
+    params: { p_church_id: string; p_event_id: string }
+  ): Promise<{ data: EventWorkspaceSummaryRpcRow[] | EventWorkspaceSummaryRpcRow | null; error: RpcError | null }>;
+  rpc(
+    name: "event_team_summary",
+    params: { p_church_id: string; p_event_id: string }
+  ): Promise<{ data: EventTeamSummaryRpcRow[] | null; error: RpcError | null }>;
+};
+
 export type EventContactListItem = {
   id: string;
   full_name: string;
@@ -130,7 +176,8 @@ export type EventWorkspaceSummary = {
 
 export async function getEventWorkspaceSummary(churchId: string, eventId: string): Promise<EventWorkspaceSummary> {
   const supabase = await createClient();
-  const { data, error } = await (supabase as any).rpc("event_workspace_summary", {
+  const rpcClient = supabase as unknown as EventPerformanceRpcClient;
+  const { data, error } = await rpcClient.rpc("event_workspace_summary", {
     p_church_id: churchId,
     p_event_id: eventId
   });
@@ -162,12 +209,7 @@ export async function getEventWorkspaceSummary(churchId: string, eventId: string
     },
     recentContacts: (row.recent_contacts ?? []) as EventContactListItem[],
     dueFollowUps: (row.due_follow_ups ?? []) as EventWorkspaceSummary["dueFollowUps"],
-    teamSnapshot: (row.team_snapshot ?? []).map((member: {
-      team_member_id: string;
-      display_name: string;
-      role: string | null;
-      assigned_contact_count: number;
-    }) => ({
+    teamSnapshot: (row.team_snapshot ?? []).map((member) => ({
       teamMemberId: member.team_member_id,
       displayName: member.display_name,
       role: member.role,
@@ -372,7 +414,8 @@ export type EventTeamMemberSummary = {
 
 export async function getEventTeam(churchId: string, eventId: string): Promise<EventTeamMemberSummary[]> {
   const supabase = await createClient();
-  const { data, error } = await (supabase as any).rpc("event_team_summary", {
+  const rpcClient = supabase as unknown as EventPerformanceRpcClient;
+  const { data, error } = await rpcClient.rpc("event_team_summary", {
     p_church_id: churchId,
     p_event_id: eventId
   });
@@ -381,16 +424,7 @@ export async function getEventTeam(churchId: string, eventId: string): Promise<E
     throw new Error(error.message);
   }
 
-  return (data ?? []).map((row: {
-    team_member_id: string;
-    display_name: string;
-    role: string | null;
-    assigned_contact_count: number;
-    pending_count: number;
-    completed_count: number;
-    overdue_count: number;
-    last_activity_at: string | null;
-  }) => ({
+  return (data ?? []).map((row) => ({
     teamMemberId: row.team_member_id,
     displayName: row.display_name,
     role: row.role,

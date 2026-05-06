@@ -17,6 +17,14 @@ function sameOriginUrl(request: NextRequest, pathname: string) {
 
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const isRouterPrefetch =
+    request.headers.get("next-router-prefetch") === "1" ||
+    request.headers.get("purpose") === "prefetch";
+
+  if (isRouterPrefetch) {
+    return NextResponse.next({ request });
+  }
+
   const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup");
   const protectedPrefixes = [
     "/dashboard",
