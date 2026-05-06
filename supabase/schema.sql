@@ -589,6 +589,18 @@ begin
     raise exception 'Requester contact is required.';
   end if;
 
+  if length(trim(coalesce(p_requester_name, ''))) > 140 then
+    raise exception 'Requester name is too long.';
+  end if;
+
+  if length(trim(coalesce(p_requester_contact, ''))) > 180 then
+    raise exception 'Requester contact is too long.';
+  end if;
+
+  if length(trim(coalesce(p_notes, ''))) > 2000 then
+    raise exception 'Notes must be 2000 characters or fewer.';
+  end if;
+
   insert into public.data_requests (
     church_id,
     request_type,
@@ -625,6 +637,18 @@ create table if not exists public.public_form_submissions (
 
 create index if not exists public_form_submissions_slug_ip_created_idx
 on public.public_form_submissions(slug, ip_hash, created_at desc);
+
+alter table public.public_form_submissions enable row level security;
+
+drop policy if exists "Public can read rate limit submissions" on public.public_form_submissions;
+create policy "Public can read rate limit submissions"
+on public.public_form_submissions for select
+using (true);
+
+drop policy if exists "Public can create rate limit submissions" on public.public_form_submissions;
+create policy "Public can create rate limit submissions"
+on public.public_form_submissions for insert
+with check (slug is not null and ip_hash is not null);
 
 create table if not exists public.contact_journey_events (
   id uuid primary key default gen_random_uuid(),

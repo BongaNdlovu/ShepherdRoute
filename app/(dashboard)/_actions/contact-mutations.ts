@@ -10,7 +10,7 @@ import { getChurchContext } from "@/lib/data";
 import { defaultDueDate, prayerVisibilityOptions } from "@/lib/followUp";
 import { createClient } from "@/lib/supabase/server";
 import { generateMessage } from "@/lib/whatsapp";
-import { requireContactManager, actionError } from "./contact-guards";
+import { requireActiveTeamMemberInChurch, requireContactManager, actionError } from "./contact-guards";
 
 const contactUpdateSchema = z.object({
   contactId: z.string().uuid(),
@@ -70,6 +70,7 @@ export async function updateContactAction(formData: FormData) {
 
   const supabase = await createClient();
   await requireContactManager(context, supabase);
+  await requireActiveTeamMemberInChurch(supabase, context.churchId, assignedTo);
 
   const contactUpdate: {
     assigned_to: string | null;
@@ -238,6 +239,20 @@ export async function addQuickContactAction(formData: FormData) {
 
   const supabase = await createClient();
   await requireContactManager(context, supabase);
+
+  if (parsed.data.eventId) {
+    const { data: event, error: eventError } = await supabase
+      .from("events")
+      .select("id")
+      .eq("church_id", context.churchId)
+      .eq("id", parsed.data.eventId)
+      .maybeSingle();
+
+    if (eventError || !event) {
+      redirect("/contacts?error=Invalid%20event%20selected.");
+    }
+  }
+
   const classification = classifyContact({
     selectedInterests: parsed.data.interests,
     message: parsed.data.prayerRequest,
@@ -421,6 +436,7 @@ export async function bulkAssignContactsAction(formData: FormData) {
 
   const supabase = await createClient();
   await requireContactManager(context, supabase);
+  await requireActiveTeamMemberInChurch(supabase, context.churchId, assignedTo);
 
   const { data: validContacts } = await supabase
     .from("contacts")

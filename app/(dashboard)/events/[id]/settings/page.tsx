@@ -9,7 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { getChurchContext, getEvent } from "@/lib/data";
 import { absoluteRequestUrl } from "@/lib/server-url";
-import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
+import { getResolvedEventPermissions, requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
+import type { AppAdminRole } from "@/lib/permissions";
+import type { TeamRole } from "@/lib/constants";
 
 export const metadata = {
   title: "Event Settings"
@@ -48,13 +50,19 @@ export default async function EventSettingsPage({
   }
 
   const { event } = await getEvent(context.churchId, id);
+  const permissions = await getResolvedEventPermissions({
+    userId: context.userId,
+    eventId: id,
+    appRole: context.appAdminRole as AppAdminRole | null,
+    teamRole: context.role as TeamRole
+  });
   const publicUrl = await absoluteRequestUrl(`/e/${event.slug}`);
   const isArchived = Boolean(event.archived_at);
 
   return (
     <CinematicSection className="cinematic-fade-up">
       <section className="space-y-4">
-        <EventWorkspaceTabs eventId={event.id} />
+        <EventWorkspaceTabs eventId={event.id} permissions={permissions} />
 
       <Card>
         <CardHeader>
@@ -158,35 +166,37 @@ export default async function EventSettingsPage({
         </CardContent>
       </Card>
 
-      <Card className="border-rose-200">
-        <CardHeader>
-          <CardTitle className="text-rose-700">Delete event</CardTitle>
-          <CardDescription>
-            Only empty test events can be deleted. Events with contacts must be archived or closed so registration history and reports remain safe.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form action={deleteEventAction} className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-            <input type="hidden" name="eventId" value={event.id} />
-            <input type="hidden" name="eventName" value={event.name} />
-            <div className="grid gap-2">
-              <label htmlFor="confirmation" className="text-sm font-bold">
-                Type the event name to delete
-              </label>
-              <input
-                id="confirmation"
-                name="confirmation"
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring"
-                placeholder={event.name}
-              />
-            </div>
-            <Button type="submit" variant="destructive">
-              <Trash2 className="h-4 w-4" />
-              Delete event
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      {permissions.can_delete_event ? (
+        <Card className="border-rose-200">
+          <CardHeader>
+            <CardTitle className="text-rose-700">Delete event</CardTitle>
+            <CardDescription>
+              Only empty test events can be deleted. Events with contacts must be archived or closed so registration history and reports remain safe.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action={deleteEventAction} className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+              <input type="hidden" name="eventId" value={event.id} />
+              <input type="hidden" name="eventName" value={event.name} />
+              <div className="grid gap-2">
+                <label htmlFor="confirmation" className="text-sm font-bold">
+                  Type the event name to delete
+                </label>
+                <input
+                  id="confirmation"
+                  name="confirmation"
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-ring"
+                  placeholder={event.name}
+                />
+              </div>
+              <Button type="submit" variant="destructive">
+                <Trash2 className="h-4 w-4" />
+                Delete event
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      ) : null}
     </section>
     </CinematicSection>
   );

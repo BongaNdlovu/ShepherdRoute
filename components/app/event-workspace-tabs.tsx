@@ -3,23 +3,25 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UsersRound, Clock, UserCheck, BarChart3, Settings, LayoutTemplate } from "lucide-react";
+import type { EventAssignmentPermissions } from "@/lib/event-permission-presets";
 
 interface EventWorkspaceTabsProps {
   eventId: string;
+  permissions?: Partial<EventAssignmentPermissions>;
 }
 
-export function EventWorkspaceTabs({ eventId }: EventWorkspaceTabsProps) {
+export function EventWorkspaceTabs({ eventId, permissions }: EventWorkspaceTabsProps) {
   const pathname = usePathname();
 
   const tabs = [
     { href: `/events/${eventId}`, label: "Overview", icon: LayoutTemplate },
-    { href: `/events/${eventId}/contacts`, label: "Contacts", icon: UsersRound },
-    { href: `/events/${eventId}/follow-ups`, label: "Follow-ups", icon: Clock },
-    { href: `/events/${eventId}/team`, label: "Team", icon: UserCheck },
-    { href: `/events/${eventId}/reports`, label: "Reports", icon: BarChart3 },
-    { href: `/events/${eventId}/customize`, label: "Form & QR", icon: LayoutTemplate },
-    { href: `/events/${eventId}/settings`, label: "Settings", icon: Settings },
-  ];
+    { href: `/events/${eventId}/contacts`, label: "Contacts", icon: UsersRound, allowed: permissions?.can_view_contacts },
+    { href: `/events/${eventId}/follow-ups`, label: "Follow-ups", icon: Clock, allowed: permissions?.can_view_contacts },
+    { href: `/events/${eventId}/team`, label: "Team", icon: UserCheck, allowed: permissions?.can_manage_event_team },
+    { href: `/events/${eventId}/reports`, label: "Reports", icon: BarChart3, allowed: permissions?.can_view_reports },
+    { href: `/events/${eventId}/customize`, label: "Form & QR", icon: LayoutTemplate, allowed: permissions?.can_edit_event_settings },
+    { href: `/events/${eventId}/settings`, label: "Settings", icon: Settings, allowed: permissions?.can_edit_event_settings },
+  ].filter((tab) => tab.allowed !== false);
 
   return (
     <nav className="border-b">

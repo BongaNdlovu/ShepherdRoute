@@ -41,6 +41,9 @@ function deriveAppRole(teamRole: TeamRole, requestedAppRole: AppRole | ""): AppR
 
 export async function addTeamMemberAction(formData: FormData) {
   const context = await getChurchContext();
+  if (context.workspaceStatus === "inactive" && !context.isAppAdmin) {
+    redirect("/settings/team?error=This%20workspace%20is%20inactive.");
+  }
   const supabase = await createClient();
   
   // Fetch current user's team member record to get app_role
@@ -163,6 +166,7 @@ export async function getTeamInviteGmailUrlAction(formData: FormData) {
     .from("team_invitations")
     .select("*, churches(name)")
     .eq("token_hash", createHash("sha256").update(parsed.data.token).digest("hex"))
+    .eq("church_id", context.churchId)
     .single();
 
   if (!invitation) {
@@ -193,6 +197,9 @@ export async function getTeamInviteGmailUrlAction(formData: FormData) {
 
 export async function revokeTeamInvitationAction(formData: FormData) {
   const context = await getChurchContext();
+  if (context.workspaceStatus === "inactive" && !context.isAppAdmin) {
+    redirect("/settings/team?error=This%20workspace%20is%20inactive.");
+  }
   const supabase = await createClient();
   
   // Fetch current user's team member record to get app_role

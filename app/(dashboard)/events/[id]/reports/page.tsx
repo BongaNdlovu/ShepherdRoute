@@ -8,7 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { interestLabels, statusLabels, type FollowUpStatus, type Interest } from "@/lib/constants";
 import { getChurchContext, getEventReportSummary } from "@/lib/data";
 import { getEventTemplate } from "@/lib/eventTemplates";
-import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
+import { getResolvedEventPermissions, requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
+import type { AppAdminRole } from "@/lib/permissions";
+import type { TeamRole } from "@/lib/constants";
 
 export const metadata = {
   title: "Event Report"
@@ -47,12 +49,18 @@ export default async function EventReportPage({
   }
 
   const { event, summary } = await getEventReportSummary(context.churchId, id);
+  const permissions = await getResolvedEventPermissions({
+    userId: context.userId,
+    eventId: id,
+    appRole: context.appAdminRole as AppAdminRole | null,
+    teamRole: context.role as TeamRole
+  });
   const template = getEventTemplate(event.event_type);
 
   return (
     <CinematicSection className="cinematic-fade-up">
       <section className="space-y-4">
-        <EventWorkspaceTabs eventId={event.id} />
+        <EventWorkspaceTabs eventId={event.id} permissions={permissions} />
 
       <header className="flex flex-col gap-3 rounded-lg border bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
         <div>
@@ -60,12 +68,14 @@ export default async function EventReportPage({
           <p className="mt-1 text-sm text-muted-foreground">Summary of visitor capture, interests, and follow-up activity.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline">
-            <Link href={`/events/${event.id}/reports/export`}>
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Link>
-          </Button>
+          {permissions.can_export_reports ? (
+            <Button asChild variant="outline">
+              <Link href={`/events/${event.id}/reports/export`}>
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Link>
+            </Button>
+          ) : null}
           <Button asChild variant="outline">
             <Link href={`/events/${event.id}`}>Back to event</Link>
           </Button>

@@ -10,6 +10,7 @@ import { getChurchContext, getEvent } from "@/lib/data";
 import { getEventTemplate } from "@/lib/eventTemplates";
 import { interestOptions, interestLabels } from "@/lib/constants";
 import { updateEventCustomizationAction } from "@/app/(dashboard)/actions";
+import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 
 export default async function EventCustomizePage({
   params
@@ -18,6 +19,31 @@ export default async function EventCustomizePage({
 }) {
   const { id } = await params;
   const context = await getChurchContext();
+
+  try {
+    await requireCurrentUserEventPermission({
+      churchId: context.churchId,
+      eventId: id,
+      permission: "can_edit_event_settings"
+    });
+  } catch {
+    return (
+      <CinematicSection className="cinematic-fade-up">
+        <section className="space-y-4">
+          <EventWorkspaceTabs eventId={id} permissions={{ can_edit_event_settings: false }} />
+          <Card>
+            <CardContent className="p-6">
+              <h1 className="text-lg font-semibold">Access restricted</h1>
+              <p className="text-sm text-muted-foreground">
+                You do not have permission to customize this event form.
+              </p>
+            </CardContent>
+          </Card>
+        </section>
+      </CinematicSection>
+    );
+  }
+
   const event = await getEvent(context.churchId, id);
 
   if (!event.event) {

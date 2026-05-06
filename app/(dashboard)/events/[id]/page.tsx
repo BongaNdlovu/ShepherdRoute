@@ -11,7 +11,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { eventTypeLabels, type EventType, type Interest, type FollowUpStatus } from "@/lib/constants";
 import { getChurchContext, getEventWorkspaceSummary } from "@/lib/data";
+import { getResolvedEventPermissions } from "@/lib/data-event-assignments";
 import { absoluteRequestUrl } from "@/lib/server-url";
+import type { AppAdminRole } from "@/lib/permissions";
+import type { TeamRole } from "@/lib/constants";
 
 export const metadata = {
   title: "Event"
@@ -28,13 +31,19 @@ export default async function EventDetailPage({
   const query = await searchParams;
   const context = await getChurchContext();
   const { event, summary, recentContacts, dueFollowUps, teamSnapshot } = await getEventWorkspaceSummary(context.churchId, id);
+  const permissions = await getResolvedEventPermissions({
+    userId: context.userId,
+    eventId: id,
+    appRole: context.appAdminRole as AppAdminRole | null,
+    teamRole: context.role as TeamRole
+  });
   const publicUrl = await absoluteRequestUrl(`/e/${event.slug}`);
   const isArchived = Boolean(event.archived_at);
 
   return (
     <CinematicSection className="cinematic-fade-up">
       <section className="space-y-4">
-        <EventWorkspaceTabs eventId={event.id} />
+        <EventWorkspaceTabs eventId={event.id} permissions={permissions} />
 
       <Card>
         <CardHeader>
@@ -50,43 +59,51 @@ export default async function EventDetailPage({
               <CardDescription>{event.description ?? "QR registration and team follow-up for this outreach event."}</CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button asChild variant="outline">
-                <Link href={`/events/${event.id}/customize`}>Customize form</Link>
-              </Button>
-              <form action={updateEventStatusAction}>
-                <input type="hidden" name="eventId" value={event.id} />
-                <input type="hidden" name="isActive" value={event.is_active ? "false" : "true"} />
-                <Button type="submit" variant="outline" disabled={isArchived}>
-                  {event.is_active ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
-                  {event.is_active ? "Close event" : "Reopen event"}
+              {permissions.can_edit_event_settings ? (
+                <>
+                  <Button asChild variant="outline">
+                    <Link href={`/events/${event.id}/customize`}>Customize form</Link>
+                  </Button>
+                  <form action={updateEventStatusAction}>
+                    <input type="hidden" name="eventId" value={event.id} />
+                    <input type="hidden" name="isActive" value={event.is_active ? "false" : "true"} />
+                    <Button type="submit" variant="outline" disabled={isArchived}>
+                      {event.is_active ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                      {event.is_active ? "Close event" : "Reopen event"}
+                    </Button>
+                  </form>
+                  <form action={updateEventArchiveAction}>
+                    <input type="hidden" name="eventId" value={event.id} />
+                    <input type="hidden" name="archived" value={isArchived ? "false" : "true"} />
+                    <Button type="submit" variant="outline">
+                      {isArchived ? <Undo2 className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                      {isArchived ? "Restore event" : "Archive event"}
+                    </Button>
+                  </form>
+                </>
+              ) : null}
+              {permissions.can_delete_event ? (
+                <form action={deleteEventAction} className="flex gap-2 items-center">
+                  <input type="hidden" name="eventId" value={event.id} />
+                  <input type="hidden" name="eventName" value={event.name} />
+                  <input
+                    type="text"
+                    name="confirmation"
+                    placeholder="Type the event name to delete"
+                    className="h-9 w-40 rounded-md border border-input bg-background px-3 text-sm focus-ring"
+                    required
+                  />
+                  <Button type="submit" variant="destructive">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete event
+                  </Button>
+                </form>
+              ) : null}
+              {permissions.can_view_reports ? (
+                <Button asChild variant="outline">
+                  <Link href={`/events/${event.id}/reports`}>View report</Link>
                 </Button>
-              </form>
-              <form action={updateEventArchiveAction}>
-                <input type="hidden" name="eventId" value={event.id} />
-                <input type="hidden" name="archived" value={isArchived ? "false" : "true"} />
-                <Button type="submit" variant="outline">
-                  {isArchived ? <Undo2 className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-                  {isArchived ? "Restore event" : "Archive event"}
-                </Button>
-              </form>
-              <form action={deleteEventAction} className="flex gap-2 items-center">
-                <input type="hidden" name="eventId" value={event.id} />
-                <input type="hidden" name="eventName" value={event.name} />
-                <input
-                  type="text"
-                  name="confirmation"
-                  placeholder="Type the event name to delete"
-                  className="h-9 w-40 rounded-md border border-input bg-background px-3 text-sm focus-ring"
-                  required
-                />
-                <Button type="submit" variant="destructive">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete event
-                </Button>
-              </form>
-              <Button asChild variant="outline">
-                <Link href={`/events/${event.id}/reports`}>View report</Link>
-              </Button>
+              ) : null}
               {event.is_active && !isArchived ? (
                 <Button asChild>
                   <a href={publicUrl} target="_blank" rel="noreferrer">Open public form</a>

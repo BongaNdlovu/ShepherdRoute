@@ -5,6 +5,10 @@ import type { getChurchContext } from "@/lib/data";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export async function requireEventManager(context: Awaited<ReturnType<typeof getChurchContext>>, supabase: SupabaseClient, fallbackPath = "/events") {
+  if (context.workspaceStatus === "inactive" && !context.isAppAdmin) {
+    redirect(`${fallbackPath}?error=This%20workspace%20is%20inactive.`);
+  }
+
   if (!canManageEvents(context.role as TeamRole, context.appRole as AppRole | null)) {
     redirect(`${fallbackPath}?error=You%20do%20not%20have%20permission%20to%20manage%20events.`);
   }

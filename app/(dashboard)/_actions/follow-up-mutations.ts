@@ -6,7 +6,7 @@ import { z } from "zod";
 import { followUpChannelOptions, statusOptions, assignmentRoleOptions } from "@/lib/constants";
 import { getChurchContext } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
-import { requireFollowUpAssigner, actionError, safeReturnTo } from "./contact-guards";
+import { requireActiveTeamMemberInChurch, requireFollowUpAssigner, actionError, safeReturnTo } from "./contact-guards";
 
 const followUpNoteSchema = z.object({
   contactId: z.string().uuid(),
@@ -62,6 +62,7 @@ export async function addFollowUpNoteAction(formData: FormData) {
   const completedAt = parsed.data.markComplete ? new Date().toISOString() : null;
   const supabase = await createClient();
   await requireFollowUpAssigner(context, supabase, "/contacts");
+  await requireActiveTeamMemberInChurch(supabase, context.churchId, assignedTo, `/contacts/${parsed.data.contactId}`);
 
   const { data: currentContact } = await supabase
     .from("contacts")

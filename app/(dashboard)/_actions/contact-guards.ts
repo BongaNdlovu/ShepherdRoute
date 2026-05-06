@@ -9,14 +9,41 @@ export async function getAppRole(context: Awaited<ReturnType<typeof getChurchCon
     .from("team_members")
     .select("app_role")
     .eq("church_id", context.churchId)
-    .eq("membership_id", context.userId)
+    .eq("membership_id", context.membershipId)
     .maybeSingle();
 
   return currentUserTeamMember?.app_role as AppRole | null;
 }
 
+export async function requireActiveTeamMemberInChurch(
+  supabase: SupabaseClient,
+  churchId: string,
+  teamMemberId: string | null,
+  fallbackPath = "/contacts"
+) {
+  if (!teamMemberId) {
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("team_members")
+    .select("id")
+    .eq("church_id", churchId)
+    .eq("id", teamMemberId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error || !data) {
+    redirect(`${fallbackPath}?error=Invalid%20assignee%20selected.`);
+  }
+}
+
 export async function requireContactManager(context: Awaited<ReturnType<typeof getChurchContext>>, supabase: SupabaseClient, fallbackPath = "/contacts") {
   const appRole = await getAppRole(context, supabase);
+
+  if (context.workspaceStatus === "inactive" && !context.isAppAdmin) {
+    redirect(`${fallbackPath}?error=This%20workspace%20is%20inactive.`);
+  }
 
   if (!canManageContacts(context.role as TeamRole, appRole)) {
     redirect(`${fallbackPath}?error=You%20do%20not%20have%20permission%20to%20manage%20contacts.`);
@@ -25,6 +52,10 @@ export async function requireContactManager(context: Awaited<ReturnType<typeof g
 
 export async function requireFollowUpAssigner(context: Awaited<ReturnType<typeof getChurchContext>>, supabase: SupabaseClient, fallbackPath = "/follow-ups") {
   const appRole = await getAppRole(context, supabase);
+
+  if (context.workspaceStatus === "inactive" && !context.isAppAdmin) {
+    redirect(`${fallbackPath}?error=This%20workspace%20is%20inactive.`);
+  }
 
   if (!canAssignFollowUp(context.role as TeamRole, appRole)) {
     redirect(`${fallbackPath}?error=You%20do%20not%20have%20permission%20to%20update%20follow-ups.`);

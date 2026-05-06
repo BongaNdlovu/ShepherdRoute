@@ -15,8 +15,10 @@ const publicEventPage = readFileSync("app/e/[slug]/page.tsx", "utf8");
 const authActions = readFileSync("app/(auth)/actions.ts", "utf8");
 const contactMutations = readFileSync("app/(dashboard)/_actions/contact-mutations.ts", "utf8");
 const followUpMutations = readFileSync("app/(dashboard)/_actions/follow-up-mutations.ts", "utf8");
+const contactGuards = readFileSync("app/(dashboard)/_actions/contact-guards.ts", "utf8");
 const publicValidation = readFileSync("lib/public-events/validation.ts", "utf8");
 const publicActions = readFileSync("app/e/[slug]/actions.ts", "utf8");
+const privacyRequestActions = readFileSync("app/privacy/request/actions.ts", "utf8");
 const eventCustomizationAction = readFileSync("app/(dashboard)/_actions/event-customization.ts", "utf8");
 const eventCustomizationForm = readFileSync("lib/events/customization-form.ts", "utf8");
 const dataEventAssignments = readFileSync("lib/data-event-assignments.ts", "utf8");
@@ -168,6 +170,12 @@ test.describe("workflow helpers", () => {
     expect(schema).toContain("grant select on public.public_events to anon, authenticated");
   });
 
+  test("public form rate-limit table has explicit RLS policies", () => {
+    expect(schema).toContain("alter table public.public_form_submissions enable row level security");
+    expect(schema).toContain('create policy "Public can read rate limit submissions"');
+    expect(schema).toContain('create policy "Public can create rate limit submissions"');
+  });
+
   test("best time options do not include channel-only preferences", () => {
     expect(publicEventPage).toContain("Best time to contact");
     expect(publicEventPage).not.toContain("WhatsApp first");
@@ -304,6 +312,37 @@ test.describe("workflow helpers", () => {
     expect(publicValidation).toContain("Contact follow-up consent for ${event.name}");
     expect(publicActions).toContain("p_consent_text_snapshot: validation.data.consentTextSnapshot");
     expect(publicActions).not.toContain("Contact follow-up consent for ${parsed.data.slug}");
+  });
+
+  test("public registration requires the current RPC signature", () => {
+    expect(publicActions).toContain('supabase.rpc("submit_event_registration", registrationArgs)');
+    expect(publicActions).not.toContain("legacyArgVariants");
+    expect(publicActions).not.toContain("withoutKeys");
+    expect(publicActions).not.toContain("isMissingRpcSignatureError");
+  });
+
+  test("privacy request validation is bounded in app and database", () => {
+    expect(privacyRequestActions).toContain("max(140");
+    expect(privacyRequestActions).toContain("max(180");
+    expect(privacyRequestActions).toContain("max(2000");
+    expect(schema).toContain("Requester name is too long.");
+    expect(schema).toContain("Requester contact is too long.");
+    expect(schema).toContain("Notes must be 2000 characters or fewer.");
+  });
+
+  test("contact and follow-up mutations validate current-workspace assignees", () => {
+    expect(contactGuards).toContain("requireActiveTeamMemberInChurch");
+    expect(contactGuards).toContain(".eq(\"membership_id\", context.membershipId)");
+    expect(contactGuards).not.toContain(".eq(\"membership_id\", context.userId)");
+    expect(contactMutations).toContain("requireActiveTeamMemberInChurch(supabase, context.churchId, assignedTo)");
+    expect(followUpMutations).toContain("requireActiveTeamMemberInChurch(supabase, context.churchId, assignedTo");
+  });
+
+  test("manual contact creation validates selected event belongs to current workspace", () => {
+    expect(contactMutations).toContain("Invalid%20event%20selected");
+    expect(contactMutations).toContain(".from(\"events\")");
+    expect(contactMutations).toContain(".eq(\"church_id\", context.churchId)");
+    expect(contactMutations).toContain(".eq(\"id\", parsed.data.eventId)");
   });
 
   test("today's follow-ups query exists and returns suggested messages", () => {
@@ -808,6 +847,7 @@ test.describe("workflow helpers", () => {
   test("event invitation accept page previews before accepting", () => {
     const eventInvitationAccept = readFileSync("app/event-invitations/accept/page.tsx", "utf8");
     const eventInvitationActions = readFileSync("app/event-invitations/accept/actions.ts", "utf8");
+    const legacyAcceptPage = readFileSync("app/accept/page.tsx", "utf8");
     expect(eventInvitationAccept).toContain("getEventInvitationPreview");
     expect(eventInvitationAccept).toContain("Create account");
     expect(eventInvitationAccept).toContain("/login?eventInvite=");
@@ -815,6 +855,7 @@ test.describe("workflow helpers", () => {
     expect(eventInvitationAccept).not.toContain("useEffect");
     expect(eventInvitationActions).toContain("accept_event_invitation");
     expect(eventInvitationActions).toContain("selected_church_id");
+    expect(legacyAcceptPage).toContain("/event-invitations/accept?token=");
   });
 
   test("team actions use deriveAppRole helper", () => {

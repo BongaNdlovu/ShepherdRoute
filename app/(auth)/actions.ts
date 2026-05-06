@@ -116,6 +116,10 @@ export async function loginAction(formData: FormData) {
     await setSelectedChurchCookie(churchId);
   }
 
+  if (parsed.data.eventInviteToken) {
+    redirect(parsed.data.next ?? `/event-invitations/accept?token=${encodeURIComponent(parsed.data.eventInviteToken)}`);
+  }
+
   redirect(parsed.data.next ?? await getPreferredDashboardPathForUser(data.user?.id));
 }
 

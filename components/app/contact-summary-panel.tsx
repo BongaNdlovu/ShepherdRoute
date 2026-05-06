@@ -13,9 +13,10 @@ import type { ContactDetailResult } from "@/lib/data";
 type ContactSummaryPanelProps = {
   contact: ContactDetailResult["contact"];
   error?: string;
+  canManageContact?: boolean;
 };
 
-export function ContactSummaryPanel({ contact, error }: ContactSummaryPanelProps) {
+export function ContactSummaryPanel({ contact, error, canManageContact = true }: ContactSummaryPanelProps) {
   const assignedMember = Array.isArray(contact.team_members) ? contact.team_members[0] : contact.team_members;
 
   return (
@@ -124,32 +125,34 @@ export function ContactSummaryPanel({ contact, error }: ContactSummaryPanelProps
           </div>
         </div>
       </div>
-      <div className="flex flex-wrap gap-2 rounded-lg border bg-white p-3">
-        <div className="flex min-w-0 flex-1 items-center gap-2 text-sm text-muted-foreground">
-          <ShieldCheck className="h-4 w-4" />
-          Consent, opt-out, archive, and soft-delete controls.
+      {canManageContact ? (
+        <div className="flex flex-wrap gap-2 rounded-lg border bg-white p-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2 text-sm text-muted-foreground">
+            <ShieldCheck className="h-4 w-4" />
+            Consent, opt-out, archive, and soft-delete controls.
+          </div>
+          <form action={updateContactLifecycleAction}>
+            <input type="hidden" name="contactId" value={contact.id} />
+            <input type="hidden" name="intent" value="do_not_contact" />
+            <Button type="submit" size="sm" variant="outline" disabled={contact.do_not_contact}>Do not contact</Button>
+          </form>
+          <form action={updateContactLifecycleAction}>
+            <input type="hidden" name="contactId" value={contact.id} />
+            <input type="hidden" name="intent" value="archive" />
+            <Button type="submit" size="sm" variant="outline">Archive</Button>
+          </form>
+          <form action={updateContactLifecycleAction}>
+            <input type="hidden" name="contactId" value={contact.id} />
+            <input type="hidden" name="intent" value="delete" />
+            <DeleteContactConfirmModal contactId={contact.id} contactName={contact.full_name} onConfirm={(contactId) => {
+              const formData = new FormData();
+              formData.append("contactId", contactId);
+              formData.append("intent", "delete");
+              updateContactLifecycleAction(formData);
+            }} />
+          </form>
         </div>
-        <form action={updateContactLifecycleAction}>
-          <input type="hidden" name="contactId" value={contact.id} />
-          <input type="hidden" name="intent" value="do_not_contact" />
-          <Button type="submit" size="sm" variant="outline" disabled={contact.do_not_contact}>Do not contact</Button>
-        </form>
-        <form action={updateContactLifecycleAction}>
-          <input type="hidden" name="contactId" value={contact.id} />
-          <input type="hidden" name="intent" value="archive" />
-          <Button type="submit" size="sm" variant="outline">Archive</Button>
-        </form>
-        <form action={updateContactLifecycleAction}>
-          <input type="hidden" name="contactId" value={contact.id} />
-          <input type="hidden" name="intent" value="delete" />
-          <DeleteContactConfirmModal contactId={contact.id} contactName={contact.full_name} onConfirm={(contactId) => {
-            const formData = new FormData();
-            formData.append("contactId", contactId);
-            formData.append("intent", "delete");
-            updateContactLifecycleAction(formData);
-          }} />
-        </form>
-      </div>
+      ) : null}
     </>
   );
 }

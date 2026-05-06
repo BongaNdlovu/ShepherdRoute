@@ -29,7 +29,13 @@ async function getClientIP(): Promise<string> {
 
 async function checkRateLimit(slug: string): Promise<boolean> {
   const ip = await getClientIP();
-  const salt = process.env.PUBLIC_FORM_RATE_LIMIT_SALT || "default-salt";
+  const salt = process.env.PUBLIC_FORM_RATE_LIMIT_SALT || "development-rate-limit-salt";
+
+  if (!process.env.PUBLIC_FORM_RATE_LIMIT_SALT && process.env.NODE_ENV === "production") {
+    console.error("PUBLIC_FORM_RATE_LIMIT_SALT is required in production.");
+    return false;
+  }
+
   const ipHash = await hashIP(ip, salt);
   
   const supabase = await createClient();
@@ -131,39 +137,11 @@ export async function submitRegistrationAction(formData: FormData) {
     p_recommended_assigned_role: validation.data.classification.recommended_assigned_role
   };
 
-  const legacyArgVariants = [
-    registrationArgs,
-    withoutKeys(registrationArgs, ["p_recommended_assigned_role"]),
-    withoutKeys(registrationArgs, ["p_recommended_assigned_role", "p_preferred_contact_methods"]),
-    withoutKeys(registrationArgs, ["p_recommended_assigned_role", "p_preferred_contact_methods", "p_form_answers"]),
-    withoutKeys(registrationArgs, ["p_recommended_assigned_role", "p_preferred_contact_methods", "p_form_answers", "p_email"])
-  ];
-
-  let error: { message: string } | null = null;
-  for (const args of legacyArgVariants) {
-    const result = await supabase.rpc("submit_event_registration", args);
-    error = result.error;
-
-    if (!error || !isMissingRpcSignatureError(error.message)) {
-      break;
-    }
-  }
+  const { error } = await supabase.rpc("submit_event_registration", registrationArgs);
 
   if (error) {
     redirect(`/e/${parsed.data.slug}?error=${encodeURIComponent(error.message)}`);
   }
 
   redirect(`/e/${parsed.data.slug}?submitted=true`);
-}
-
-function withoutKeys(source: Record<string, unknown>, keys: string[]) {
-  const copy = { ...source };
-  keys.forEach((key) => {
-    delete copy[key];
-  });
-  return copy;
-}
-
-function isMissingRpcSignatureError(message: string) {
-  return message.toLowerCase().includes("could not find the function public.submit_event_registration");
 }

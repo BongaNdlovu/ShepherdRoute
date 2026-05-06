@@ -8,9 +8,9 @@ import { getPublicChurch } from "@/lib/data-public";
 const schema = z.object({
   churchSlug: z.string().min(1),
   requestType: z.enum(["correction", "deletion", "export", "restriction"]),
-  requesterName: z.string().min(2, "Name must be at least 2 characters"),
-  requesterContact: z.string().min(3, "Contact must be at least 3 characters"),
-  notes: z.string().optional(),
+  requesterName: z.string().trim().min(2, "Name must be at least 2 characters").max(140, "Name is too long"),
+  requesterContact: z.string().trim().min(3, "Contact must be at least 3 characters").max(180, "Contact is too long"),
+  notes: z.string().trim().max(2000, "Notes must be 2000 characters or fewer").optional(),
   website: z.string().optional(), // honeypot field
 });
 
@@ -61,7 +61,7 @@ export async function submitPublicDataRequestAction(formData: FormData) {
     p_request_type: requestType,
     p_requester_name: requesterName,
     p_requester_contact: requesterContact,
-    p_notes: notes || null,
+    p_notes: notes?.trim() || null,
   });
 
   if (error) {

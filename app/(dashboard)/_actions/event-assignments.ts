@@ -128,6 +128,16 @@ async function requireCanManageEventTeam(params: {
     churchId,
   });
   const appRole = await getAppAdminRole(params.userId);
+  const supabase = await createClient();
+  const { data: workspace } = await supabase
+    .from("churches")
+    .select("workspace_status")
+    .eq("id", churchId)
+    .maybeSingle();
+
+  if (workspace?.workspace_status === "inactive" && !appRole) {
+    throw new Error("This workspace is inactive.");
+  }
 
   await requireEventPermission({
     userId: params.userId,
@@ -417,6 +427,15 @@ export async function getEventInviteGmailUrlAction(formData: FormData) {
 
   if (!assignment) {
     return { error: "Invitation not found" };
+  }
+
+  try {
+    await requireCanManageEventTeam({
+      userId: user.id,
+      eventId: parsed.eventId
+    });
+  } catch {
+    return { error: "You do not have permission to manage this event invitation." };
   }
 
   const inviteLink = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/event-invitations/accept?token=${parsed.token}`;

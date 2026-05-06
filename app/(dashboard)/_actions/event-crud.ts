@@ -85,6 +85,9 @@ export async function createEventAction(formData: FormData) {
 
 export async function updateEventStatusAction(formData: FormData) {
   const context = await getChurchContext();
+  if (context.workspaceStatus === "inactive" && !context.isAppAdmin) {
+    redirect("/events?error=This%20workspace%20is%20inactive.");
+  }
   const parsed = eventStatusSchema.safeParse({
     eventId: formData.get("eventId"),
     isActive: formData.get("isActive")
@@ -95,11 +98,15 @@ export async function updateEventStatusAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  await requireCurrentUserEventPermission({
-    churchId: context.churchId,
-    eventId: parsed.data.eventId,
-    permission: "can_edit_event_settings"
-  });
+  try {
+    await requireCurrentUserEventPermission({
+      churchId: context.churchId,
+      eventId: parsed.data.eventId,
+      permission: "can_edit_event_settings"
+    });
+  } catch {
+    redirect(`/events/${parsed.data.eventId}?error=You%20do%20not%20have%20permission%20to%20edit%20this%20event.`);
+  }
   const { error } = await supabase
     .from("events")
     .update({ is_active: parsed.data.isActive === "true" })
@@ -117,6 +124,9 @@ export async function updateEventStatusAction(formData: FormData) {
 
 export async function updateEventAction(formData: FormData) {
   const context = await getChurchContext();
+  if (context.workspaceStatus === "inactive" && !context.isAppAdmin) {
+    redirect("/events?error=This%20workspace%20is%20inactive.");
+  }
   const parsed = updateEventSchema.safeParse({
     eventId: formData.get("eventId"),
     name: formData.get("name"),
@@ -130,11 +140,15 @@ export async function updateEventAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  await requireCurrentUserEventPermission({
-    churchId: context.churchId,
-    eventId: parsed.data.eventId,
-    permission: "can_edit_event_settings"
-  });
+  try {
+    await requireCurrentUserEventPermission({
+      churchId: context.churchId,
+      eventId: parsed.data.eventId,
+      permission: "can_edit_event_settings"
+    });
+  } catch {
+    redirect(`/events/${parsed.data.eventId}/settings?error=You%20do%20not%20have%20permission%20to%20edit%20this%20event.`);
+  }
   const { error } = await supabase
     .from("events")
     .update({
@@ -157,6 +171,9 @@ export async function updateEventAction(formData: FormData) {
 
 export async function updateEventArchiveAction(formData: FormData) {
   const context = await getChurchContext();
+  if (context.workspaceStatus === "inactive" && !context.isAppAdmin) {
+    redirect("/events?error=This%20workspace%20is%20inactive.");
+  }
   const parsed = eventArchiveSchema.safeParse({
     eventId: formData.get("eventId"),
     archived: formData.get("archived")
@@ -168,11 +185,15 @@ export async function updateEventArchiveAction(formData: FormData) {
 
   const isArchiving = parsed.data.archived === "true";
   const supabase = await createClient();
-  await requireCurrentUserEventPermission({
-    churchId: context.churchId,
-    eventId: parsed.data.eventId,
-    permission: "can_edit_event_settings"
-  });
+  try {
+    await requireCurrentUserEventPermission({
+      churchId: context.churchId,
+      eventId: parsed.data.eventId,
+      permission: "can_edit_event_settings"
+    });
+  } catch {
+    redirect(`/events/${parsed.data.eventId}?error=You%20do%20not%20have%20permission%20to%20edit%20this%20event.`);
+  }
   const { error } = await supabase
     .from("events")
     .update({
@@ -195,6 +216,9 @@ export async function updateEventArchiveAction(formData: FormData) {
 
 export async function deleteEventAction(formData: FormData) {
   const context = await getChurchContext();
+  if (context.workspaceStatus === "inactive" && !context.isAppAdmin) {
+    redirect("/events?error=This%20workspace%20is%20inactive.");
+  }
   const parsed = deleteEventSchema.safeParse({
     eventId: formData.get("eventId"),
     eventName: formData.get("eventName"),
@@ -206,18 +230,21 @@ export async function deleteEventAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  await requireCurrentUserEventPermission({
-    churchId: context.churchId,
-    eventId: parsed.data.eventId,
-    permission: "can_delete_event"
-  });
+  try {
+    await requireCurrentUserEventPermission({
+      churchId: context.churchId,
+      eventId: parsed.data.eventId,
+      permission: "can_delete_event"
+    });
+  } catch {
+    redirect(`/events/${parsed.data.eventId}/settings?error=You%20do%20not%20have%20permission%20to%20delete%20this%20event.`);
+  }
 
   const { count: contactCount, error: contactCountError } = await supabase
     .from("contacts")
     .select("id", { count: "exact", head: true })
     .eq("church_id", context.churchId)
-    .eq("event_id", parsed.data.eventId)
-    .is("deleted_at", null);
+    .eq("event_id", parsed.data.eventId);
 
   if (contactCountError) {
     redirect(`/events/${parsed.data.eventId}/settings?error=${encodeURIComponent(contactCountError.message)}`);
@@ -226,7 +253,7 @@ export async function deleteEventAction(formData: FormData) {
   if ((contactCount ?? 0) > 0) {
     redirect(
       `/events/${parsed.data.eventId}/settings?error=${encodeURIComponent(
-        "This event has contacts and cannot be deleted. Archive or close it instead."
+        "This event has contact history and cannot be deleted. Archive or close it instead."
       )}`
     );
   }
