@@ -5,6 +5,14 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { registrationSchema, validatePublicEventRegistration } from "@/lib/public-events/validation";
 
+const DEFAULT_PUBLIC_FORM_HOURLY_LIMIT = 30;
+const DEFAULT_PUBLIC_FORM_DAILY_LIMIT = 200;
+
+function publicFormLimit(envName: string, fallback: number): number {
+  const value = Number.parseInt(process.env[envName] ?? "", 10);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
 async function hashIP(ip: string, salt: string): Promise<string> {
   const textEncoder = new TextEncoder();
   const data = textEncoder.encode(`${ip}${salt}`);
@@ -16,10 +24,18 @@ async function hashIP(ip: string, salt: string): Promise<string> {
 async function getClientIP(): Promise<string> {
   const headersList = await headers();
   const forwarded = headersList.get("x-forwarded-for");
+  const vercelForwarded = headersList.get("x-vercel-forwarded-for");
+  const cfConnectingIP = headersList.get("cf-connecting-ip");
   const realIP = headersList.get("x-real-ip");
   
   if (forwarded) {
     return forwarded.split(",")[0].trim();
+  }
+  if (vercelForwarded) {
+    return vercelForwarded.split(",")[0].trim();
+  }
+  if (cfConnectingIP) {
+    return cfConnectingIP;
   }
   if (realIP) {
     return realIP;
@@ -27,7 +43,7 @@ async function getClientIP(): Promise<string> {
   return "unknown";
 }
 
-async function checkRateLimit(slug: string): Promise<boolean> {
+async function reserveRateLimitSlot(slug: string): Promise<boolean> {
   const ip = await getClientIP();
   const salt = process.env.PUBLIC_FORM_RATE_LIMIT_SALT || "development-rate-limit-salt";
 
@@ -39,32 +55,22 @@ async function checkRateLimit(slug: string): Promise<boolean> {
   const ipHash = await hashIP(ip, salt);
   
   const supabase = await createClient();
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  
-  const { data, error } = await supabase
-    .from("public_form_submissions")
-    .select("id")
-    .eq("slug", slug)
-    .eq("ip_hash", ipHash)
-    .gte("created_at", oneHourAgo);
-  
-  if (error) {
-    console.error("Rate limit check error:", error);
-    return true; // Allow on error to be safe
-  }
-  
-  // Allow 5 submissions per hour per IP
-  if (data && data.length >= 5) {
-    return false;
-  }
-  
-  // Record this submission
-  await supabase.from("public_form_submissions").insert({
-    slug,
-    ip_hash: ipHash
+  const hourlyLimit = publicFormLimit("PUBLIC_FORM_RATE_LIMIT_HOURLY", DEFAULT_PUBLIC_FORM_HOURLY_LIMIT);
+  const dailyLimit = publicFormLimit("PUBLIC_FORM_RATE_LIMIT_DAILY", DEFAULT_PUBLIC_FORM_DAILY_LIMIT);
+
+  const { data, error } = await supabase.rpc("reserve_public_form_submission_slot", {
+    p_slug: slug,
+    p_ip_hash: ipHash,
+    p_hourly_limit: hourlyLimit,
+    p_daily_limit: dailyLimit
   });
+
+  if (error) {
+    console.error("Rate limit reservation error:", error);
+    return true;
+  }
   
-  return true;
+  return data === true;
 }
 
 export async function submitRegistrationAction(formData: FormData) {
@@ -75,12 +81,7 @@ export async function submitRegistrationAction(formData: FormData) {
     redirect(`/e/${formData.get("slug")}?submitted=true`);
   }
 
-  // Rate limit check
   const slug = String(formData.get("slug"));
-  const isAllowed = await checkRateLimit(slug);
-  if (!isAllowed) {
-    redirect(`/e/${slug}?error=Too%20many%20submissions.%20Please%20try%20again%20later.`);
-  }
 
   const parsed = registrationSchema.safeParse({
     slug: formData.get("slug"),
@@ -109,6 +110,12 @@ export async function submitRegistrationAction(formData: FormData) {
 
   if ("error" in validation) {
     redirect(`/e/${parsed.data.slug}?error=${encodeURIComponent(validation.error)}`);
+  }
+
+  // Rate limit after validation so incomplete form attempts do not consume the allowance.
+  const isAllowed = await reserveRateLimitSlot(parsed.data.slug);
+  if (!isAllowed) {
+    redirect(`/e/${parsed.data.slug}?error=Too%20many%20submissions.%20Please%20try%20again%20later.`);
   }
 
   const supabase = await createClient();

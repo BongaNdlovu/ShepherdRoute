@@ -1775,6 +1775,15 @@ export type Database = {
         }
         Returns: string
       }
+      reserve_public_form_submission_slot: {
+        Args: {
+          p_daily_limit?: number
+          p_hourly_limit?: number
+          p_ip_hash: string
+          p_slug: string
+        }
+        Returns: boolean
+      }
       team_invitation_preview: {
         Args: { p_token: string }
         Returns: {

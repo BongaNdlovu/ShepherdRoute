@@ -675,6 +675,62 @@ create policy "Public can create rate limit submissions"
 on public.public_form_submissions for insert
 with check (slug is not null and ip_hash is not null);
 
+drop function if exists public.reserve_public_form_submission_slot(text, text, integer, integer);
+
+create or replace function public.reserve_public_form_submission_slot(
+  p_slug text,
+  p_ip_hash text,
+  p_hourly_limit integer default 30,
+  p_daily_limit integer default 200
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  hourly_count integer;
+  daily_count integer;
+begin
+  if nullif(trim(coalesce(p_slug, '')), '') is null
+    or nullif(trim(coalesce(p_ip_hash, '')), '') is null then
+    return false;
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext(p_slug || ':' || p_ip_hash));
+
+  select count(*)
+  into hourly_count
+  from public.public_form_submissions
+  where slug = p_slug
+    and ip_hash = p_ip_hash
+    and created_at >= now() - interval '1 hour';
+
+  if hourly_count >= greatest(1, coalesce(p_hourly_limit, 30)) then
+    return false;
+  end if;
+
+  select count(*)
+  into daily_count
+  from public.public_form_submissions
+  where slug = p_slug
+    and ip_hash = p_ip_hash
+    and created_at >= now() - interval '24 hours';
+
+  if daily_count >= greatest(1, coalesce(p_daily_limit, 200)) then
+    return false;
+  end if;
+
+  insert into public.public_form_submissions (slug, ip_hash)
+  values (p_slug, p_ip_hash);
+
+  return true;
+end;
+$$;
+
+revoke all on function public.reserve_public_form_submission_slot(text, text, integer, integer) from public, anon, authenticated;
+grant execute on function public.reserve_public_form_submission_slot(text, text, integer, integer) to anon, authenticated;
+
 create table if not exists public.contact_journey_events (
   id uuid primary key default gen_random_uuid(),
   church_id uuid not null references public.churches(id) on delete cascade,
