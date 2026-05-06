@@ -4515,143 +4515,87 @@ language sql
 security invoker
 set search_path = public
 as $$
-  with event_counts as (
+  with scoped_contacts as (
+    select *
+    from public.contacts
+    where contacts.church_id = p_church_id
+      and contacts.deleted_at is null
+      and contacts.archived_at is null
+  ),
+  contact_interest_flags as (
+    select
+      scoped_contacts.id,
+      bool_or(contact_interests.interest = 'bible_study') as has_bible_study,
+      bool_or(contact_interests.interest = 'prayer') as has_prayer,
+      bool_or(contact_interests.interest in ('health', 'cooking_class')) as has_health,
+      bool_or(contact_interests.interest = 'baptism') as has_baptism
+    from scoped_contacts
+    left join public.contact_interests on contact_interests.contact_id = scoped_contacts.id
+      and contact_interests.church_id = scoped_contacts.church_id
+    group by scoped_contacts.id
+  ),
+  contact_counts as (
+    select
+      count(*) as total_contacts,
+      count(*) filter (where status <> 'new') as followed_up_count,
+      count(*) filter (where urgency = 'high') as high_priority_count,
+      count(*) filter (where assigned_to is null and status <> 'closed') as unassigned_count,
+      count(*) filter (where status = 'waiting' and status <> 'closed') as waiting_reply_count,
+      count(*) filter (where consent_given is distinct from true and status <> 'closed') as no_consent_count,
+      count(*) filter (where do_not_contact = true) as do_not_contact_count
+    from scoped_contacts
+  ),
+  interest_counts as (
+    select
+      count(*) filter (where has_bible_study) as bible_study_count,
+      count(*) filter (where has_prayer) as prayer_count,
+      count(*) filter (where has_health) as health_count,
+      count(*) filter (where has_baptism) as baptism_count
+    from contact_interest_flags
+  ),
+  follow_up_counts as (
+    select
+      count(distinct follow_ups.contact_id) filter (
+        where scoped_contacts.status <> 'closed'
+          and follow_ups.completed_at is null
+          and follow_ups.due_at >= date_trunc('day', now())
+          and follow_ups.due_at < date_trunc('day', now()) + interval '1 day'
+      ) as due_today_count,
+      count(distinct follow_ups.contact_id) filter (
+        where scoped_contacts.status <> 'closed'
+          and follow_ups.completed_at is null
+          and follow_ups.due_at < now()
+      ) as overdue_count
+    from public.follow_ups
+    join scoped_contacts on scoped_contacts.id = follow_ups.contact_id
+    where follow_ups.church_id = p_church_id
+  ),
+  event_counts as (
     select
       events.id,
       events.name,
       events.event_type,
       events.created_at,
-      count(contacts.id) as contact_count
+      count(scoped_contacts.id) as contact_count
     from public.events
-    left join public.contacts on contacts.event_id = events.id
-      and contacts.church_id = events.church_id
-      and contacts.deleted_at is null
-      and contacts.archived_at is null
+    left join scoped_contacts on scoped_contacts.event_id = events.id
     where events.church_id = p_church_id
     group by events.id, events.name, events.event_type, events.created_at
   )
   select
-    (
-      select count(*)
-      from public.contacts
-      where contacts.church_id = p_church_id
-        and contacts.deleted_at is null
-        and contacts.archived_at is null
-    ) as total_contacts,
-    (
-      select count(*)
-      from public.contacts
-      where contacts.church_id = p_church_id
-        and contacts.status <> 'new'
-        and contacts.deleted_at is null
-        and contacts.archived_at is null
-    ) as followed_up_count,
-    (
-      select count(distinct contacts.id)
-      from public.contacts
-      join public.contact_interests on contact_interests.contact_id = contacts.id
-        and contact_interests.church_id = contacts.church_id
-      where contacts.church_id = p_church_id
-        and contact_interests.interest = 'bible_study'
-        and contacts.deleted_at is null
-        and contacts.archived_at is null
-    ) as bible_study_count,
-    (
-      select count(distinct contacts.id)
-      from public.contacts
-      join public.contact_interests on contact_interests.contact_id = contacts.id
-        and contact_interests.church_id = contacts.church_id
-      where contacts.church_id = p_church_id
-        and contact_interests.interest = 'prayer'
-        and contacts.deleted_at is null
-        and contacts.archived_at is null
-    ) as prayer_count,
-    (
-      select count(distinct contacts.id)
-      from public.contacts
-      join public.contact_interests on contact_interests.contact_id = contacts.id
-        and contact_interests.church_id = contacts.church_id
-      where contacts.church_id = p_church_id
-        and contact_interests.interest in ('health', 'cooking_class')
-        and contacts.deleted_at is null
-        and contacts.archived_at is null
-    ) as health_count,
-    (
-      select count(distinct contacts.id)
-      from public.contacts
-      join public.contact_interests on contact_interests.contact_id = contacts.id
-        and contact_interests.church_id = contacts.church_id
-      where contacts.church_id = p_church_id
-        and contact_interests.interest = 'baptism'
-        and contacts.deleted_at is null
-        and contacts.archived_at is null
-    ) as baptism_count,
-    (
-      select count(*)
-      from public.contacts
-      where contacts.church_id = p_church_id
-        and contacts.urgency = 'high'
-        and contacts.deleted_at is null
-        and contacts.archived_at is null
-    ) as high_priority_count,
-    (
-      select count(*)
-      from public.contacts
-      where contacts.church_id = p_church_id
-        and contacts.assigned_to is null
-        and contacts.status <> 'closed'
-        and contacts.deleted_at is null
-        and contacts.archived_at is null
-    ) as unassigned_count,
-    (
-      select count(distinct follow_ups.contact_id)
-      from public.follow_ups
-      join public.contacts on contacts.id = follow_ups.contact_id
-      where follow_ups.church_id = p_church_id
-        and contacts.status <> 'closed'
-        and contacts.deleted_at is null
-        and contacts.archived_at is null
-        and follow_ups.completed_at is null
-        and follow_ups.due_at >= date_trunc('day', now())
-        and follow_ups.due_at < date_trunc('day', now()) + interval '1 day'
-    ) as due_today_count,
-    (
-      select count(distinct follow_ups.contact_id)
-      from public.follow_ups
-      join public.contacts on contacts.id = follow_ups.contact_id
-      where follow_ups.church_id = p_church_id
-        and contacts.status <> 'closed'
-        and contacts.deleted_at is null
-        and contacts.archived_at is null
-        and follow_ups.completed_at is null
-        and follow_ups.due_at < now()
-    ) as overdue_count,
-    (
-      select count(*)
-      from public.contacts
-      where contacts.church_id = p_church_id
-        and contacts.status = 'waiting'
-        and contacts.status <> 'closed'
-        and contacts.deleted_at is null
-        and contacts.archived_at is null
-    ) as waiting_reply_count,
-    (
-      select count(*)
-      from public.contacts
-      where contacts.church_id = p_church_id
-        and contacts.consent_given is distinct from true
-        and contacts.status <> 'closed'
-        and contacts.deleted_at is null
-        and contacts.archived_at is null
-    ) as no_consent_count,
-    (
-      select count(*)
-      from public.contacts
-      where contacts.church_id = p_church_id
-        and contacts.do_not_contact = true
-        and contacts.deleted_at is null
-        and contacts.archived_at is null
-    ) as do_not_contact_count,
+    coalesce(contact_counts.total_contacts, 0) as total_contacts,
+    coalesce(contact_counts.followed_up_count, 0) as followed_up_count,
+    coalesce(interest_counts.bible_study_count, 0) as bible_study_count,
+    coalesce(interest_counts.prayer_count, 0) as prayer_count,
+    coalesce(interest_counts.health_count, 0) as health_count,
+    coalesce(interest_counts.baptism_count, 0) as baptism_count,
+    coalesce(contact_counts.high_priority_count, 0) as high_priority_count,
+    coalesce(contact_counts.unassigned_count, 0) as unassigned_count,
+    coalesce(follow_up_counts.due_today_count, 0) as due_today_count,
+    coalesce(follow_up_counts.overdue_count, 0) as overdue_count,
+    coalesce(contact_counts.waiting_reply_count, 0) as waiting_reply_count,
+    coalesce(contact_counts.no_consent_count, 0) as no_consent_count,
+    coalesce(contact_counts.do_not_contact_count, 0) as do_not_contact_count,
     coalesce(
       (
         select jsonb_agg(
@@ -4666,7 +4610,10 @@ as $$
         from event_counts
       ),
       '[]'::jsonb
-    ) as events;
+    ) as events
+  from contact_counts
+  cross join interest_counts
+  cross join follow_up_counts;
 $$;
 
 revoke all on function public.outreach_report_summary(uuid) from public, anon, authenticated;
@@ -4710,6 +4657,57 @@ as $$
       and church_id = p_church_id
     limit 1
   ),
+  enabled_interest_options as (
+    select opt->>'value' as value
+    from event_form_config efc
+    cross join lateral jsonb_array_elements(coalesce(efc.form_config->'interest_options', '[]'::jsonb)) as opt
+    where (efc.form_config->>'show_interests')::boolean = true
+      and (opt->>'enabled')::boolean = true
+  ),
+  contact_interest_flags as (
+    select
+      event_contacts.id,
+      bool_or(contact_interests.interest = 'bible_study' and enabled_interest_options.value = 'bible_study') as has_bible_study,
+      bool_or(contact_interests.interest = 'prayer' and enabled_interest_options.value = 'prayer') as has_prayer,
+      bool_or(contact_interests.interest = 'baptism' and enabled_interest_options.value = 'baptism') as has_baptism
+    from event_contacts
+    left join public.contact_interests on contact_interests.contact_id = event_contacts.id
+      and contact_interests.church_id = event_contacts.church_id
+    left join enabled_interest_options on enabled_interest_options.value = contact_interests.interest::text
+    group by event_contacts.id
+  ),
+  contact_counts as (
+    select
+      count(*) as total_contacts,
+      count(*) filter (where status <> 'new') as followed_up_count,
+      count(*) filter (where urgency = 'high') as high_priority_count
+    from event_contacts
+  ),
+  interest_summary as (
+    select
+      count(*) filter (where has_bible_study) as bible_study_count,
+      count(*) filter (where has_prayer) as prayer_count,
+      count(*) filter (where has_baptism) as baptism_count
+    from contact_interest_flags
+  ),
+  follow_up_counts as (
+    select count(*) as follow_up_count
+    from public.follow_ups
+    join event_contacts on event_contacts.id = follow_ups.contact_id
+    where follow_ups.church_id = p_church_id
+  ),
+  status_rows as (
+    select event_contacts.status::text as status, count(*) as count
+    from event_contacts
+    group by event_contacts.status
+  ),
+  interest_rows as (
+    select contact_interests.interest::text as interest, count(distinct event_contacts.id) as count
+    from event_contacts
+    join public.contact_interests on contact_interests.contact_id = event_contacts.id
+      and contact_interests.church_id = event_contacts.church_id
+    group by contact_interests.interest
+  ),
   topic_rows as (
     select coalesce(nullif(classification_payload->>'selected_topic', ''), 'unspecified') as topic, count(*) as count
     from event_contacts
@@ -4744,82 +4742,19 @@ as $$
     group by cfa.question_name, cfa.question_label
   )
   select
-    (select count(*) from event_contacts) as total_contacts,
-    (select count(*) from event_contacts where status <> 'new') as followed_up_count,
-    (
-      select count(distinct event_contacts.id)
-      from event_contacts
-      join public.contact_interests on contact_interests.contact_id = event_contacts.id
-        and contact_interests.church_id = event_contacts.church_id
-      cross join event_form_config efc
-      where contact_interests.interest = 'bible_study'
-        and (efc.form_config->>'show_interests')::boolean = true
-        and exists (
-          select 1
-          from jsonb_array_elements(efc.form_config->'interest_options') as opt
-          where opt->>'value' = 'bible_study'
-            and (opt->>'enabled')::boolean = true
-        )
-    ) as bible_study_count,
-    (
-      select count(distinct event_contacts.id)
-      from event_contacts
-      join public.contact_interests on contact_interests.contact_id = event_contacts.id
-        and contact_interests.church_id = event_contacts.church_id
-      cross join event_form_config efc
-      where contact_interests.interest = 'prayer'
-        and (efc.form_config->>'show_interests')::boolean = true
-        and exists (
-          select 1
-          from jsonb_array_elements(efc.form_config->'interest_options') as opt
-          where opt->>'value' = 'prayer'
-            and (opt->>'enabled')::boolean = true
-        )
-    ) as prayer_count,
-    (
-      select count(distinct event_contacts.id)
-      from event_contacts
-      join public.contact_interests on contact_interests.contact_id = event_contacts.id
-        and contact_interests.church_id = event_contacts.church_id
-      cross join event_form_config efc
-      where contact_interests.interest = 'baptism'
-        and (efc.form_config->>'show_interests')::boolean = true
-        and exists (
-          select 1
-          from jsonb_array_elements(efc.form_config->'interest_options') as opt
-          where opt->>'value' = 'baptism'
-            and (opt->>'enabled')::boolean = true
-        )
-    ) as baptism_count,
-    (select count(*) from event_contacts where urgency = 'high') as high_priority_count,
-    (
-      select count(*)
-      from public.follow_ups
-      join event_contacts on event_contacts.id = follow_ups.contact_id
-      where follow_ups.church_id = p_church_id
-    ) as follow_up_count,
+    coalesce(contact_counts.total_contacts, 0) as total_contacts,
+    coalesce(contact_counts.followed_up_count, 0) as followed_up_count,
+    coalesce(interest_summary.bible_study_count, 0) as bible_study_count,
+    coalesce(interest_summary.prayer_count, 0) as prayer_count,
+    coalesce(interest_summary.baptism_count, 0) as baptism_count,
+    coalesce(contact_counts.high_priority_count, 0) as high_priority_count,
+    coalesce(follow_up_counts.follow_up_count, 0) as follow_up_count,
     coalesce(
-      (
-        select jsonb_object_agg(status_rows.status, status_rows.count)
-        from (
-          select event_contacts.status::text as status, count(*) as count
-          from event_contacts
-          group by event_contacts.status
-        ) status_rows
-      ),
+      (select jsonb_object_agg(status_rows.status, status_rows.count) from status_rows),
       '{}'::jsonb
     ) as status_counts,
     coalesce(
-      (
-        select jsonb_object_agg(interest_rows.interest, interest_rows.count)
-        from (
-          select contact_interests.interest::text as interest, count(distinct event_contacts.id) as count
-          from event_contacts
-          join public.contact_interests on contact_interests.contact_id = event_contacts.id
-            and contact_interests.church_id = event_contacts.church_id
-          group by contact_interests.interest
-        ) interest_rows
-      ),
+      (select jsonb_object_agg(interest_rows.interest, interest_rows.count) from interest_rows),
       '{}'::jsonb
     ) as interest_counts,
     coalesce(
@@ -4838,7 +4773,10 @@ as $$
         from form_answer_rows
       ),
       '[]'::jsonb
-    ) as form_answer_counts;
+    ) as form_answer_counts
+  from contact_counts
+  cross join interest_summary
+  cross join follow_up_counts;
 $$;
 
 revoke all on function public.event_report_summary(uuid, uuid) from public, anon, authenticated;

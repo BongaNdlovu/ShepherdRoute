@@ -6,7 +6,6 @@ const STATIC_ASSETS = [
   "/favicon.ico",
   "/favicon.png",
   "/shepherd-logo.svg",
-  "/icon.svg",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/icons/apple-touch-icon.png"
@@ -40,7 +39,6 @@ self.addEventListener("fetch", (event) => {
     url.pathname === "/favicon.ico" ||
     url.pathname === "/favicon.png" ||
     url.pathname === "/shepherd-logo.svg" ||
-    url.pathname === "/icon.svg" ||
     url.pathname.startsWith("/icons/") ||
     CACHEABLE_DESTINATIONS.has(event.request.destination);
 
