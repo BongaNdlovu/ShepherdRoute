@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { registrationSchema, validatePublicEventRegistration } from "@/lib/public-events/validation";
 
-const DEFAULT_PUBLIC_FORM_HOURLY_LIMIT = 30;
+const DEFAULT_PUBLIC_FORM_HOURLY_LIMIT = 50;
 const DEFAULT_PUBLIC_FORM_DAILY_LIMIT = 200;
 
 function publicFormLimit(envName: string, fallback: number): number {

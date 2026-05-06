@@ -174,14 +174,14 @@ test.describe("workflow helpers", () => {
     expect(schema).toContain("alter table public.public_form_submissions enable row level security");
     expect(schema).toContain('create policy "Public can read rate limit submissions"');
     expect(schema).toContain('create policy "Public can create rate limit submissions"');
-    expect(publicActions).toContain("DEFAULT_PUBLIC_FORM_HOURLY_LIMIT = 30");
+    expect(publicActions).toContain("DEFAULT_PUBLIC_FORM_HOURLY_LIMIT = 50");
     expect(publicActions).toContain("DEFAULT_PUBLIC_FORM_DAILY_LIMIT = 200");
     expect(publicActions).toContain('publicFormLimit("PUBLIC_FORM_RATE_LIMIT_HOURLY"');
     expect(publicActions).toContain('publicFormLimit("PUBLIC_FORM_RATE_LIMIT_DAILY"');
     expect(publicActions).toContain('supabase.rpc("reserve_public_form_submission_slot"');
     expect(schema).toContain("create or replace function public.reserve_public_form_submission_slot");
     expect(schema).toContain("pg_advisory_xact_lock");
-    expect(schema).toContain("p_hourly_limit integer default 30");
+    expect(schema).toContain("p_hourly_limit integer default 50");
     expect(schema).toContain("p_daily_limit integer default 200");
     expect(publicActions.indexOf("const validation = await validatePublicEventRegistration")).toBeLessThan(
       publicActions.indexOf("reserveRateLimitSlot(parsed.data.slug)")

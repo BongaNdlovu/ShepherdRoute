@@ -680,7 +680,7 @@ drop function if exists public.reserve_public_form_submission_slot(text, text, i
 create or replace function public.reserve_public_form_submission_slot(
   p_slug text,
   p_ip_hash text,
-  p_hourly_limit integer default 30,
+  p_hourly_limit integer default 50,
   p_daily_limit integer default 200
 )
 returns boolean
@@ -706,7 +706,7 @@ begin
     and ip_hash = p_ip_hash
     and created_at >= now() - interval '1 hour';
 
-  if hourly_count >= greatest(1, coalesce(p_hourly_limit, 30)) then
+  if hourly_count >= greatest(1, coalesce(p_hourly_limit, 50)) then
     return false;
   end if;
 
