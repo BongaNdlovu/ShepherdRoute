@@ -5,6 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_HISTORY_MESSAGES = 10;
+const DEEPSEEK_TIMEOUT_MS = 30_000;
+const CHAT_RATE_LIMIT_WINDOW_MS = 60_000;
+const CHAT_RATE_LIMIT_MAX_REQUESTS = 10;
+
+const chatRateLimitBuckets = new Map<string, { count: number; resetAt: number }>();
 
 type ClientChatMessage = {
   role: "user" | "assistant";
@@ -41,6 +46,23 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
+function reserveChatRequestSlot(userId: string) {
+  const now = Date.now();
+  const bucket = chatRateLimitBuckets.get(userId);
+
+  if (!bucket || bucket.resetAt <= now) {
+    chatRateLimitBuckets.set(userId, { count: 1, resetAt: now + CHAT_RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+
+  if (bucket.count >= CHAT_RATE_LIMIT_MAX_REQUESTS) {
+    return false;
+  }
+
+  bucket.count += 1;
+  return true;
+}
+
 async function generateDeepSeekReply(prompt: string, history: ClientChatMessage[] = []) {
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim();
 
@@ -50,6 +72,7 @@ async function generateDeepSeekReply(prompt: string, history: ClientChatMessage[
 
   const response = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
+    signal: AbortSignal.timeout(DEEPSEEK_TIMEOUT_MS),
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${apiKey}`
@@ -112,6 +135,10 @@ export async function POST(request: Request) {
 
     if (userError || !user) {
       return safeJson({ error: "Authentication is required." }, 401);
+    }
+
+    if (!reserveChatRequestSlot(user.id)) {
+      return safeJson({ error: "Too many chat requests. Please wait a minute and try again." }, 429);
     }
 
     let prompt = `You are the ShepherdRoute assistant. Help users understand the ShepherdRoute app, church follow-up workflows, event reporting, visitor care, and ministry accountability. Keep answers practical, concise, and action-oriented. User question: ${message}`;

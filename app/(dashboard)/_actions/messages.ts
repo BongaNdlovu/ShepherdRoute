@@ -142,7 +142,8 @@ export async function openSuggestedWhatsappAction(formData: FormData) {
       .eq("purpose", "suggested_whatsapp");
 
     if (updateError) {
-      redirect(`${returnTo}?error=${encodeURIComponent(updateError.message)}`);
+      console.error("Suggested WhatsApp message update error:", updateError);
+      redirect(`${returnTo}?error=Could%20not%20update%20the%20suggested%20WhatsApp%20message.`);
     }
   }
 

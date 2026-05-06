@@ -65,7 +65,8 @@ export async function createDataRequestAction(formData: FormData) {
   });
 
   if (error) {
-    redirect(`${PRIVACY_REQUESTS_PATH}?error=${encodeURIComponent(error.message)}`);
+    console.error("Data request creation error:", error);
+    redirect(`${PRIVACY_REQUESTS_PATH}?error=Could%20not%20create%20the%20data%20request.`);
   }
 
   // Audit log
@@ -116,7 +117,8 @@ export async function updateDataRequestStatusAction(formData: FormData) {
     .eq("id", parsed.data.requestId);
 
   if (error) {
-    redirect(`${PRIVACY_REQUESTS_PATH}?error=${encodeURIComponent(error.message)}`);
+    console.error("Data request status update error:", error);
+    redirect(`${PRIVACY_REQUESTS_PATH}?error=Could%20not%20update%20the%20data%20request.`);
   }
 
   // Audit log

@@ -181,7 +181,8 @@ export async function updateContactLifecycleAction(formData: FormData) {
     .eq("id", parsed.data.contactId);
 
   if (error) {
-    redirect(`/contacts/${parsed.data.contactId}?error=${encodeURIComponent(error.message)}`);
+    console.error("Contact lifecycle update error:", error);
+    redirect(`/contacts/${parsed.data.contactId}?error=Could%20not%20update%20contact%20preferences.`);
   }
 
   if (!updatedContacts?.length) {
@@ -331,7 +332,8 @@ export async function addQuickContactAction(formData: FormData) {
     .single();
 
   if (error || !contact) {
-    redirect(`/contacts?error=${encodeURIComponent(error?.message ?? "Could not add contact.")}`);
+    console.error("Quick contact creation error:", error);
+    redirect("/contacts?error=Could%20not%20add%20contact.");
   }
 
   const { error: interestsError } = await supabase.from("contact_interests").insert(

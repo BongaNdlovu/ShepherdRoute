@@ -71,5 +71,9 @@ export function safeReturnTo(value: string | undefined, fallback: string) {
 }
 
 export function actionError(error: { message?: string } | null | undefined, fallback: string) {
-  return encodeURIComponent(error?.message ?? fallback);
+  if (error?.message) {
+    console.error(fallback, error);
+  }
+
+  return encodeURIComponent(fallback);
 }

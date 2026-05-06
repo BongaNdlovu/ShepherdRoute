@@ -66,7 +66,8 @@ export async function updateEventCustomizationAction(formData: FormData) {
     .eq("church_id", context.churchId);
 
   if (error) {
-    redirect(`/events/${eventId}/customize?error=${encodeURIComponent(error.message)}`);
+    console.error("Event customization update error:", error);
+    redirect(`/events/${eventId}/customize?error=Could%20not%20update%20the%20event%20customization.`);
   }
 
   revalidatePath("/events");

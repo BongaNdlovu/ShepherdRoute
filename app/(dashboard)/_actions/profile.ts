@@ -23,7 +23,11 @@ const settingsSchema = z.object({
 });
 
 function actionError(error: unknown, fallback: string) {
-  return encodeURIComponent(error instanceof Error ? error.message : fallback);
+  if (error) {
+    console.error(fallback, error);
+  }
+
+  return encodeURIComponent(fallback);
 }
 
 export async function updateProfileAction(formData: FormData) {

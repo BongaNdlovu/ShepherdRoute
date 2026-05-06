@@ -10,6 +10,8 @@ import { slugify } from "@/lib/utils";
 import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 import { requireEventManager } from "./event-guards";
 
+const EVENT_SLUG_ATTEMPTS = 5;
+
 const eventSchema = z.object({
   name: z.string().min(2).max(140),
   eventType: z.enum(eventTypeOptions),
@@ -58,6 +60,14 @@ function parseBulkEventIds(formData: FormData) {
   });
 }
 
+function eventSlug(baseSlug: string) {
+  return `${baseSlug}-${crypto.randomUUID().slice(0, 10)}`;
+}
+
+function isUniqueViolation(error: { code?: string } | null) {
+  return error?.code === "23505";
+}
+
 export async function createEventAction(formData: FormData) {
   const context = await getChurchContext();
   const parsed = eventSchema.safeParse({
@@ -75,24 +85,41 @@ export async function createEventAction(formData: FormData) {
   const supabase = await createClient();
   await requireEventManager(context, supabase);
   const baseSlug = slugify(parsed.data.name);
-  const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`;
-  const { data: event, error } = await supabase
-    .from("events")
-    .insert({
-      church_id: context.churchId,
-      name: parsed.data.name,
-      event_type: parsed.data.eventType,
-      starts_on: parsed.data.startsOn || null,
-      location: parsed.data.location || null,
-      description: parsed.data.description || null,
-      slug,
-      created_by: context.userId
-    })
-    .select("id")
-    .single();
+  let event: { id: string } | null = null;
+  let insertError: { code?: string; message?: string } | null = null;
 
-  if (error) {
-    redirect(`/events/new?error=${encodeURIComponent(error.message)}`);
+  for (let attempt = 0; attempt < EVENT_SLUG_ATTEMPTS; attempt += 1) {
+    const { data, error } = await supabase
+      .from("events")
+      .insert({
+        church_id: context.churchId,
+        name: parsed.data.name,
+        event_type: parsed.data.eventType,
+        starts_on: parsed.data.startsOn || null,
+        location: parsed.data.location || null,
+        description: parsed.data.description || null,
+        slug: eventSlug(baseSlug),
+        created_by: context.userId
+      })
+      .select("id")
+      .single();
+
+    if (!error && data) {
+      event = data;
+      insertError = null;
+      break;
+    }
+
+    insertError = error;
+
+    if (!isUniqueViolation(error)) {
+      break;
+    }
+  }
+
+  if (!event) {
+    console.error("Event creation error:", insertError);
+    redirect("/events/new?error=Could%20not%20create%20the%20event.%20Please%20try%20again.");
   }
 
   revalidatePath("/events");
@@ -130,7 +157,8 @@ export async function updateEventStatusAction(formData: FormData) {
     .eq("id", parsed.data.eventId);
 
   if (error) {
-    redirect(`/events/${parsed.data.eventId}?error=${encodeURIComponent(error.message)}`);
+    console.error("Event status update error:", error);
+    redirect(`/events/${parsed.data.eventId}?error=Could%20not%20update%20the%20event.`);
   }
 
   revalidatePath("/events");
@@ -177,7 +205,8 @@ export async function updateEventAction(formData: FormData) {
     .eq("id", parsed.data.eventId);
 
   if (error) {
-    redirect(`/events/${parsed.data.eventId}/settings?error=${encodeURIComponent(error.message)}`);
+    console.error("Event customization update error:", error);
+    redirect(`/events/${parsed.data.eventId}/settings?error=Could%20not%20update%20the%20event.`);
   }
 
   revalidatePath("/events");
@@ -221,7 +250,8 @@ export async function updateEventArchiveAction(formData: FormData) {
     .eq("id", parsed.data.eventId);
 
   if (error) {
-    redirect(`/events/${parsed.data.eventId}?error=${encodeURIComponent(error.message)}`);
+    console.error("Event archive update error:", error);
+    redirect(`/events/${parsed.data.eventId}?error=Could%20not%20update%20the%20event.`);
   }
 
   if (!updatedEvents?.length) {
@@ -270,7 +300,8 @@ export async function deleteEventAction(formData: FormData) {
     .eq("name", parsed.data.eventName);
 
   if (error) {
-    redirect(`/events/${parsed.data.eventId}?error=${encodeURIComponent(error.message)}`);
+    console.error("Event deletion error:", error);
+    redirect(`/events/${parsed.data.eventId}?error=Could%20not%20delete%20the%20event.`);
   }
 
   if (!deletedEvents?.length) {
@@ -316,7 +347,8 @@ export async function bulkCloseEventsAction(formData: FormData) {
     .in("id", parsed.data.eventIds);
 
   if (error) {
-    redirect(`/events?error=${encodeURIComponent(error.message)}`);
+    console.error("Bulk event close error:", error);
+    redirect("/events?error=Could%20not%20close%20the%20selected%20events.");
   }
 
   if ((updatedEvents?.length ?? 0) !== parsed.data.eventIds.length) {
@@ -365,7 +397,8 @@ export async function bulkDeleteEventsAction(formData: FormData) {
     .in("id", parsed.data.eventIds);
 
   if (error) {
-    redirect(`/events?error=${encodeURIComponent(error.message)}`);
+    console.error("Bulk event deletion error:", error);
+    redirect("/events?error=Could%20not%20delete%20the%20selected%20events.");
   }
 
   if ((deletedEvents?.length ?? 0) !== parsed.data.eventIds.length) {

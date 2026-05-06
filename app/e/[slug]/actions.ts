@@ -70,7 +70,7 @@ async function reserveRateLimitSlot(slug: string): Promise<boolean> {
 
   if (error) {
     console.error("Rate limit reservation error:", error);
-    return true;
+    return false;
   }
   
   return data === true;
@@ -148,7 +148,8 @@ export async function submitRegistrationAction(formData: FormData) {
   const { error } = await supabase.rpc("submit_event_registration", registrationArgs);
 
   if (error) {
-    redirect(`/e/${parsed.data.slug}?error=${encodeURIComponent(error.message)}`);
+    console.error("Public registration submission error:", error);
+    redirect(`/e/${parsed.data.slug}?error=Could%20not%20submit%20your%20registration.%20Please%20try%20again.`);
   }
 
   redirect(`/e/${parsed.data.slug}?submitted=true`);

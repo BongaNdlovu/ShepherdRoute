@@ -96,7 +96,8 @@ export async function addTeamMemberAction(formData: FormData) {
     .single();
 
   if (error || !teamMember) {
-    redirect(`/settings/team?error=${encodeURIComponent(error?.message ?? "Could not add team member.")}`);
+    console.error("Team member creation error:", error);
+    redirect("/settings/team?error=Could%20not%20add%20team%20member.");
   }
 
   await supabase.from("audit_logs").insert({
@@ -126,7 +127,8 @@ export async function addTeamMemberAction(formData: FormData) {
     });
 
     if (invitationError) {
-      redirect(`/settings/team?error=${encodeURIComponent(invitationError.message)}`);
+      console.error("Team invitation creation error:", invitationError);
+      redirect("/settings/team?error=Could%20not%20create%20the%20team%20invitation.");
     }
 
     await supabase.from("audit_logs").insert({
@@ -236,7 +238,8 @@ export async function revokeTeamInvitationAction(formData: FormData) {
     .eq("church_id", context.churchId);
 
   if (error) {
-    redirect(`/settings/team?error=${encodeURIComponent(error.message)}`);
+    console.error("Team invitation revocation error:", error);
+    redirect("/settings/team?error=Could%20not%20revoke%20that%20invitation.");
   }
 
   if (invitation?.team_member_id) {

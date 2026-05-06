@@ -14,7 +14,8 @@ export async function dismissOnboardingGuideAction() {
   });
 
   if (error) {
-    redirect(`/dashboard?error=${encodeURIComponent(error.message)}`);
+    console.error("Onboarding guide dismissal error:", error);
+    redirect("/dashboard?error=Could%20not%20update%20the%20onboarding%20guide.");
   }
 
   revalidatePath("/dashboard");

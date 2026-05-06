@@ -88,7 +88,8 @@ export async function addFollowUpNoteAction(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/contacts/${parsed.data.contactId}?error=${encodeURIComponent(error.message)}`);
+    console.error("Follow-up note creation error:", error);
+    redirect(`/contacts/${parsed.data.contactId}?error=Could%20not%20save%20the%20follow-up%20note.`);
   }
 
   const { error: contactUpdateError } = await supabase

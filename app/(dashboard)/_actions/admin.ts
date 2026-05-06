@@ -89,7 +89,8 @@ async function runOwnerRpcAction(options: {
   const { error } = await supabase.rpc(options.rpc, options.args);
 
   if (error) {
-    redirect(`${options.errorRedirect}?error=${encodeURIComponent(error.message)}`);
+    console.error(`${options.rpc} error:`, error);
+    redirect(`${options.errorRedirect}?error=Could%20not%20complete%20the%20owner%20admin%20action.`);
   }
 
   options.revalidate.forEach((path) => revalidatePath(path));
@@ -116,7 +117,8 @@ export async function updateOwnerMembershipStatusAction(formData: FormData) {
   });
 
   if (error) {
-    redirect(`${safeOwnerReturnTo(parsed.data?.returnTo)}?error=${encodeURIComponent(error.message)}`);
+    console.error("Owner membership status update error:", error);
+    redirect(`${safeOwnerReturnTo(parsed.data?.returnTo)}?error=Could%20not%20update%20membership%20status.`);
   }
 
   revalidatePath("/admin");
@@ -144,7 +146,8 @@ export async function updateOwnerMembershipRoleAction(formData: FormData) {
   });
 
   if (error) {
-    redirect(`${safeOwnerReturnTo(parsed.data?.returnTo)}?error=${encodeURIComponent(error.message)}`);
+    console.error("Owner membership role update error:", error);
+    redirect(`${safeOwnerReturnTo(parsed.data?.returnTo)}?error=Could%20not%20update%20membership%20role.`);
   }
 
   revalidatePath("/admin");
@@ -178,7 +181,8 @@ export async function updateOwnerWorkspaceStatusAction(formData: FormData) {
     .eq("id", parsed.data.churchId);
 
   if (error) {
-    redirect(`${safeOwnerReturnTo(parsed.data.returnTo)}?error=${encodeURIComponent(error.message)}`);
+    console.error("Owner workspace status update error:", error);
+    redirect(`${safeOwnerReturnTo(parsed.data.returnTo)}?error=Could%20not%20update%20workspace%20status.`);
   }
 
   await supabase.from("audit_logs").insert({
@@ -222,7 +226,8 @@ export async function updateOwnerWorkspaceTypeAction(formData: FormData) {
     .eq("id", parsed.data.churchId);
 
   if (error) {
-    redirect(`${safeOwnerReturnTo(parsed.data.returnTo)}?error=${encodeURIComponent(error.message)}`);
+    console.error("Owner workspace type update error:", error);
+    redirect(`${safeOwnerReturnTo(parsed.data.returnTo)}?error=Could%20not%20update%20workspace%20type.`);
   }
 
   await supabase.from("audit_logs").insert({
