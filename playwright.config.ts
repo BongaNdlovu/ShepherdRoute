@@ -10,6 +10,9 @@ export default defineConfig({
   },
   use: {
     baseURL,
+    contextOptions: {
+      reducedMotion: "reduce"
+    },
     trace: "on-first-retry"
   },
   webServer: process.env.E2E_BASE_URL
