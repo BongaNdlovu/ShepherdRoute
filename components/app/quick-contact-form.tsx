@@ -18,7 +18,7 @@ export function QuickContactForm({ events }: QuickContactFormProps) {
         <CardTitle>Manual intake</CardTitle>
         <CardDescription>Add someone who connected outside a QR form.</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pb-24 md:pb-6">
         <form action={addQuickContactAction} className="grid gap-4">
           <div className="grid gap-2">
             <Label htmlFor="fullName">Name</Label>
@@ -96,7 +96,7 @@ export function QuickContactForm({ events }: QuickContactFormProps) {
               ))}
             </select>
           </div>
-          <PendingSubmitButton type="submit" pendingText="Adding contact...">
+          <PendingSubmitButton type="submit" pendingText="Adding contact..." className="scroll-mb-28">
             Add contact
           </PendingSubmitButton>
         </form>
