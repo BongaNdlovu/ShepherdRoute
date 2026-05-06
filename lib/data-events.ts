@@ -32,6 +32,23 @@ export async function getEvents(churchId: string, options: { includeArchived?: b
   return data ?? [];
 }
 
+export async function getEventOptions(churchId: string, options: { includeArchived?: boolean } = {}) {
+  const supabase = await createClient();
+  let query = supabase
+    .from("events")
+    .select("id, name, event_type, starts_on, location, slug, is_active, archived_at, created_at")
+    .eq("church_id", churchId)
+    .order("created_at", { ascending: false });
+
+  if (!options.includeArchived) {
+    query = query.is("archived_at", null);
+  }
+
+  const { data } = await query;
+
+  return data ?? [];
+}
+
 export async function getEvent(churchId: string, id: string) {
   const supabase = await createClient();
   const [{ data: event }, { data: contacts, count }] = await Promise.all([
@@ -113,178 +130,49 @@ export type EventWorkspaceSummary = {
 
 export async function getEventWorkspaceSummary(churchId: string, eventId: string): Promise<EventWorkspaceSummary> {
   const supabase = await createClient();
+  const { data, error } = await (supabase as any).rpc("event_workspace_summary", {
+    p_church_id: churchId,
+    p_event_id: eventId
+  });
 
-  const [{ data: event }, totalContacts, newContacts, assignedContacts, followUpCounts, workspaceInterestCounts, highUrgencyContacts, recentContacts, dueFollowUps, assignedContactRows] = await Promise.all([
-    supabase
-      .from("events")
-      .select("*")
-      .eq("church_id", churchId)
-      .eq("id", eventId)
-      .single(),
+  if (error) {
+    throw new Error(error.message);
+  }
 
-    supabase
-      .from("contacts")
-      .select("id", { count: "exact", head: true })
-      .eq("church_id", churchId)
-      .eq("event_id", eventId)
-      .is("deleted_at", null)
-      .is("archived_at", null),
+  const row = Array.isArray(data) ? data[0] : data;
 
-    supabase
-      .from("contacts")
-      .select("id", { count: "exact", head: true })
-      .eq("church_id", churchId)
-      .eq("event_id", eventId)
-      .eq("status", "new")
-      .is("deleted_at", null)
-      .is("archived_at", null),
-
-    supabase
-      .from("contacts")
-      .select("id", { count: "exact", head: true })
-      .eq("church_id", churchId)
-      .eq("event_id", eventId)
-      .not("assigned_to", "is", null)
-      .is("deleted_at", null)
-      .is("archived_at", null),
-
-    supabase.rpc("event_follow_up_counts", {
-      p_church_id: churchId,
-      p_event_id: eventId
-    }),
-
-    supabase.rpc("event_workspace_interest_counts", {
-      p_church_id: churchId,
-      p_event_id: eventId
-    }),
-
-    supabase
-      .from("contacts")
-      .select("id", { count: "exact", head: true })
-      .eq("church_id", churchId)
-      .eq("event_id", eventId)
-      .eq("urgency", "high")
-      .is("deleted_at", null)
-      .is("archived_at", null),
-
-    supabase
-      .from("contacts")
-      .select("id, full_name, phone, area, status, urgency, created_at, contact_interests(interest)")
-      .eq("church_id", churchId)
-      .eq("event_id", eventId)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(5),
-
-    supabase
-      .from("follow_ups")
-      .select("id, contact_id, assigned_to, due_at, status")
-      .eq("church_id", churchId)
-      .is("completed_at", null)
-      .lte("due_at", new Date().toISOString())
-      .order("due_at", { ascending: true })
-      .limit(5),
-
-    supabase
-      .from("contacts")
-      .select("id, assigned_to")
-      .eq("church_id", churchId)
-      .eq("event_id", eventId)
-      .not("assigned_to", "is", null)
-      .is("deleted_at", null)
-  ]);
-
-  if (!event) {
+  if (!row?.event) {
     notFound();
   }
 
-  const counts = Array.isArray(followUpCounts) ? followUpCounts[0] : followUpCounts;
-  const interestCounts = Array.isArray(workspaceInterestCounts) ? workspaceInterestCounts[0] : workspaceInterestCounts;
-  const dueRows = dueFollowUps.data ?? [];
-  const dueContactIds = Array.from(new Set(dueRows.map((row) => row.contact_id).filter(Boolean)));
-  const dueTeamMemberIds = Array.from(new Set(dueRows.map((row) => row.assigned_to).filter(Boolean)));
-  const assignedTeamMemberIds = Array.from(new Set((assignedContactRows.data ?? []).map((row) => row.assigned_to).filter(Boolean)));
-  const teamMemberIds = Array.from(new Set([...dueTeamMemberIds, ...assignedTeamMemberIds]));
-
-  const [dueContactsResult, teamMembersResult] = await Promise.all([
-    dueContactIds.length
-      ? supabase
-          .from("contacts")
-          .select("id, full_name, phone, event_id, deleted_at")
-          .eq("church_id", churchId)
-          .eq("event_id", eventId)
-          .is("deleted_at", null)
-          .in("id", dueContactIds)
-      : Promise.resolve({ data: [] }),
-    teamMemberIds.length
-      ? supabase
-          .from("team_members")
-          .select("id, display_name, role")
-          .eq("church_id", churchId)
-          .in("id", teamMemberIds)
-      : Promise.resolve({ data: [] })
-  ]);
-
-  const dueContactMap = new Map((dueContactsResult.data ?? []).map((contact) => [contact.id, contact]));
-  const teamMemberMap = new Map((teamMembersResult.data ?? []).map((member) => [member.id, member]));
-
-  const teamMap = new Map<string, { displayName: string; role: string | null; count: number }>();
-  (assignedContactRows.data ?? []).forEach((row: { assigned_to: string | null }) => {
-    const member = row.assigned_to ? teamMemberMap.get(row.assigned_to) : null;
-    if (member && row.assigned_to) {
-      const existing = teamMap.get(row.assigned_to);
-      if (existing) {
-        existing.count++;
-      } else {
-        teamMap.set(row.assigned_to, {
-          displayName: member.display_name,
-          role: member.role,
-          count: 1
-        });
-      }
-    }
-  });
-
-  const teamSnapshotArray = Array.from(teamMap.entries()).map(([teamMemberId, data]) => ({
-    teamMemberId,
-    displayName: data.displayName,
-    role: data.role,
-    assignedContactCount: data.count
-  }));
-
   return {
-    event: event as EventWorkspaceSummary["event"],
+    event: row.event as EventWorkspaceSummary["event"],
     summary: {
-      totalContacts: totalContacts.count ?? 0,
-      newContacts: newContacts.count ?? 0,
-      assignedContacts: assignedContacts.count ?? 0,
-      pendingFollowUps: Number(counts?.pending_follow_ups ?? 0),
-      completedFollowUps: Number(counts?.completed_follow_ups ?? 0),
-      overdueFollowUps: Number(counts?.overdue_follow_ups ?? 0),
-      highUrgencyContacts: highUrgencyContacts.count ?? 0,
-      prayerRequests: Number(interestCounts?.prayer_request_count ?? 0),
-      bibleStudyInterests: Number(interestCounts?.bible_study_interest_count ?? 0),
-      baptismInterests: Number(interestCounts?.baptism_interest_count ?? 0),
-      healthInterests: Number(interestCounts?.health_interest_count ?? 0)
+      totalContacts: Number(row.total_contacts ?? 0),
+      newContacts: Number(row.new_contacts ?? 0),
+      assignedContacts: Number(row.assigned_contacts ?? 0),
+      pendingFollowUps: Number(row.pending_follow_ups ?? 0),
+      completedFollowUps: Number(row.completed_follow_ups ?? 0),
+      overdueFollowUps: Number(row.overdue_follow_ups ?? 0),
+      highUrgencyContacts: Number(row.high_urgency_contacts ?? 0),
+      prayerRequests: Number(row.prayer_requests ?? 0),
+      bibleStudyInterests: Number(row.bible_study_interests ?? 0),
+      baptismInterests: Number(row.baptism_interests ?? 0),
+      healthInterests: Number(row.health_interests ?? 0)
     },
-    recentContacts: (recentContacts.data ?? []) as unknown as EventContactListItem[],
-    dueFollowUps: dueRows
-      .filter((row) => dueContactMap.has(row.contact_id))
-      .map((row: { id: string; contact_id: string; assigned_to: string | null; due_at: string; status: FollowUpStatus }) => {
-        const contact = dueContactMap.get(row.contact_id);
-        const member = row.assigned_to ? teamMemberMap.get(row.assigned_to) : null;
-
-        return {
-          id: row.id,
-          contact_id: row.contact_id,
-          contact_name: contact?.full_name ?? "",
-          contact_phone: contact?.phone ?? "",
-          due_at: row.due_at,
-          assigned_name: member?.display_name ?? null,
-          status: row.status
-        };
-      }),
-    teamSnapshot: teamSnapshotArray
+    recentContacts: (row.recent_contacts ?? []) as EventContactListItem[],
+    dueFollowUps: (row.due_follow_ups ?? []) as EventWorkspaceSummary["dueFollowUps"],
+    teamSnapshot: (row.team_snapshot ?? []).map((member: {
+      team_member_id: string;
+      display_name: string;
+      role: string | null;
+      assigned_contact_count: number;
+    }) => ({
+      teamMemberId: member.team_member_id,
+      displayName: member.display_name,
+      role: member.role,
+      assignedContactCount: Number(member.assigned_contact_count ?? 0)
+    }))
   };
 }
 
@@ -484,82 +372,32 @@ export type EventTeamMemberSummary = {
 
 export async function getEventTeam(churchId: string, eventId: string): Promise<EventTeamMemberSummary[]> {
   const supabase = await createClient();
-
-  const { data: assignedContacts } = await supabase
-    .from("contacts")
-    .select("id, assigned_to, team_members!inner(display_name, role), created_at")
-    .eq("church_id", churchId)
-    .eq("event_id", eventId)
-    .not("assigned_to", "is", null)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false });
-
-  const teamMap = new Map<string, {
-    displayName: string;
-    role: string | null;
-    assignedContactCount: number;
-    contactIds: string[];
-    lastActivityAt: string | null;
-  }>();
-
-  (assignedContacts ?? []).forEach((row: { assigned_to: string; team_members: { display_name: string; role: string | null }[]; id: string; created_at: string }) => {
-    const member = row.team_members[0];
-    if (member && row.assigned_to) {
-      const existing = teamMap.get(row.assigned_to);
-      if (existing) {
-        existing.assignedContactCount++;
-        existing.contactIds.push(row.id);
-      } else {
-        teamMap.set(row.assigned_to, {
-          displayName: member.display_name,
-          role: member.role,
-          assignedContactCount: 1,
-          contactIds: [row.id],
-          lastActivityAt: row.created_at
-        });
-      }
-    }
+  const { data, error } = await (supabase as any).rpc("event_team_summary", {
+    p_church_id: churchId,
+    p_event_id: eventId
   });
 
-  const teamMemberIds = Array.from(teamMap.keys());
-
-  if (teamMemberIds.length === 0) {
-    return [];
+  if (error) {
+    throw new Error(error.message);
   }
 
-  const { data: followUpData } = await supabase
-    .from("follow_ups")
-    .select("assigned_to, completed_at, due_at")
-    .eq("church_id", churchId)
-    .in("assigned_to", teamMemberIds)
-    .in("contact_id", Array.from(teamMap.values()).flatMap(m => m.contactIds));
-
-  const followUpStats = new Map<string, { pending: number; completed: number; overdue: number }>();
-  const now = new Date();
-
-  (followUpData ?? []).forEach((row: { assigned_to: string; completed_at: string | null; due_at: string | null }) => {
-    const stats = followUpStats.get(row.assigned_to) || { pending: 0, completed: 0, overdue: 0 };
-    if (row.completed_at) {
-      stats.completed++;
-    } else if (row.due_at && new Date(row.due_at) < now) {
-      stats.overdue++;
-    } else {
-      stats.pending++;
-    }
-    followUpStats.set(row.assigned_to, stats);
-  });
-
-  return Array.from(teamMap.entries()).map(([teamMemberId, data]) => {
-    const stats = followUpStats.get(teamMemberId) || { pending: 0, completed: 0, overdue: 0 };
-    return {
-      teamMemberId,
-      displayName: data.displayName,
-      role: data.role,
-      assignedContactCount: data.assignedContactCount,
-      pendingCount: stats.pending,
-      completedCount: stats.completed,
-      overdueCount: stats.overdue,
-      lastActivityAt: data.lastActivityAt
-    };
-  });
+  return (data ?? []).map((row: {
+    team_member_id: string;
+    display_name: string;
+    role: string | null;
+    assigned_contact_count: number;
+    pending_count: number;
+    completed_count: number;
+    overdue_count: number;
+    last_activity_at: string | null;
+  }) => ({
+    teamMemberId: row.team_member_id,
+    displayName: row.display_name,
+    role: row.role,
+    assignedContactCount: Number(row.assigned_contact_count ?? 0),
+    pendingCount: Number(row.pending_count ?? 0),
+    completedCount: Number(row.completed_count ?? 0),
+    overdueCount: Number(row.overdue_count ?? 0),
+    lastActivityAt: row.last_activity_at
+  }));
 }

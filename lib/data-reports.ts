@@ -175,84 +175,65 @@ function parseEventSummary(row: Partial<EventReportSummary> | null | undefined):
 
 export async function getTodayFollowUps(churchId: string): Promise<TodayFollowUpItem[]> {
   const supabase = await createClient();
-  const tomorrow = new Date();
-  tomorrow.setHours(24, 0, 0, 0);
-
-  const { data, error } = await supabase
-    .from("follow_ups")
-    .select(`
-      id,
-      contact_id,
-      assigned_to,
-      status,
-      next_action,
-      due_at,
-      contacts(
-        id,
-        full_name,
-        phone,
-        status,
-        urgency,
-        assigned_to,
-        do_not_contact,
-        deleted_at,
-        events(name),
-        contact_interests(interest),
-        generated_messages(id, message_text, wa_link, opened_at, purpose, created_at)
-      ),
-      team_members(display_name)
-    `)
-    .eq("church_id", churchId)
-    .is("completed_at", null)
-    .lt("due_at", tomorrow.toISOString())
-    .neq("status", "closed")
-    .order("due_at", { ascending: true })
-    .limit(12);
+  // The RPC keeps the former purpose === "suggested_whatsapp" filter in SQL.
+  const { data, error } = await (supabase as any).rpc("today_follow_ups", {
+    p_church_id: churchId,
+    p_limit: 12
+  });
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return (data ?? []).flatMap((row) => {
-    const contactRow = Array.isArray(row.contacts) ? row.contacts[0] ?? null : row.contacts;
-    if (!contactRow || contactRow.status === "closed" || contactRow.deleted_at) return [];
-
-    const event = Array.isArray(contactRow.events) ? contactRow.events[0] ?? null : contactRow.events;
-    const teamMember = Array.isArray(row.team_members) ? row.team_members[0] ?? null : row.team_members;
-    const messages = Array.isArray(contactRow.generated_messages) ? contactRow.generated_messages : [];
-    const suggestedMessage = messages
-      .filter((message) => message.purpose === "suggested_whatsapp")
-      .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0] ?? null;
-
-    return [{
-      id: row.id,
-      contact_id: row.contact_id,
-      assigned_to: row.assigned_to,
-      status: row.status,
-      next_action: row.next_action,
-      due_at: row.due_at,
-      contact: {
-        id: contactRow.id,
-        full_name: contactRow.full_name,
-        phone: contactRow.phone,
-        status: contactRow.status,
-        urgency: contactRow.urgency,
-        assigned_to: contactRow.assigned_to,
-        do_not_contact: contactRow.do_not_contact,
-        event_name: event?.name ?? null,
-        interests: (contactRow.contact_interests ?? []).map((item) => item.interest)
-      },
-      assigned_name: teamMember?.display_name ?? null,
-      suggested_message: suggestedMessage
-        ? {
-          id: suggestedMessage.id,
-          message_text: suggestedMessage.message_text,
-          wa_link: suggestedMessage.wa_link,
-          opened_at: suggestedMessage.opened_at
-        }
-        : null
-    }];
-  });
+  return (data ?? []).map((row: {
+    id: string;
+    contact_id: string;
+    assigned_to: string | null;
+    status: FollowUpStatus;
+    next_action: string | null;
+    due_at: string | null;
+    contact_id_value: string;
+    contact_full_name: string;
+    contact_phone: string;
+    contact_status: FollowUpStatus;
+    contact_urgency: "low" | "medium" | "high";
+    contact_assigned_to: string | null;
+    contact_do_not_contact: boolean;
+    event_name: string | null;
+    interests: Interest[] | null;
+    assigned_name: string | null;
+    suggested_message_id: string | null;
+    suggested_message_text: string | null;
+    suggested_wa_link: string | null;
+    suggested_opened_at: string | null;
+  }) => ({
+    id: row.id,
+    contact_id: row.contact_id,
+    assigned_to: row.assigned_to,
+    status: row.status,
+    next_action: row.next_action,
+    due_at: row.due_at,
+    contact: {
+      id: row.contact_id_value,
+      full_name: row.contact_full_name,
+      phone: row.contact_phone,
+      status: row.contact_status,
+      urgency: row.contact_urgency,
+      assigned_to: row.contact_assigned_to,
+      do_not_contact: row.contact_do_not_contact,
+      event_name: row.event_name,
+      interests: row.interests ?? []
+    },
+    assigned_name: row.assigned_name,
+    suggested_message: row.suggested_message_id
+      ? {
+        id: row.suggested_message_id,
+        message_text: row.suggested_message_text ?? "",
+        wa_link: row.suggested_wa_link,
+        opened_at: row.suggested_opened_at
+      }
+      : null
+  }));
 }
 
 export async function getDashboardData(churchId: string) {

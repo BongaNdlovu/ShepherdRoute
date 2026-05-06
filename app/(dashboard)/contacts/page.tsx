@@ -9,7 +9,7 @@ import { InlineHelp } from "@/components/app/inline-help";
 import { QuickContactForm } from "@/components/app/quick-contact-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getChurchContext, getContactsPage, getEvents, getTeamMembers, getUserAccountPreferences } from "@/lib/data";
+import { getChurchContext, getContactsPage, getEventOptions, getTeamMembers, getUserAccountPreferences } from "@/lib/data";
 import { canManageContacts } from "@/lib/permissions";
 
 export const metadata = {
@@ -25,7 +25,7 @@ export default async function ContactsPage({
   const context = await getChurchContext();
   const [contactsPage, events, team, preferences] = await Promise.all([
     getContactsPage(context.churchId, params),
-    getEvents(context.churchId),
+    getEventOptions(context.churchId),
     getTeamMembers(context.churchId),
     getUserAccountPreferences(context.userId)
   ]);

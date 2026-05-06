@@ -5712,6 +5712,924 @@ $$;
 revoke all on function public.owner_church_events_page(uuid, text, integer, integer) from public;
 grant execute on function public.owner_church_events_page(uuid, text, integer, integer) to authenticated;
 
+-- Performance-focused read RPCs
+create or replace function public.today_follow_ups(
+  p_church_id uuid,
+  p_limit integer default 12
+)
+returns table (
+  id uuid,
+  contact_id uuid,
+  assigned_to uuid,
+  status public.follow_up_status,
+  next_action text,
+  due_at timestamptz,
+  contact_id_value uuid,
+  contact_full_name text,
+  contact_phone text,
+  contact_status public.follow_up_status,
+  contact_urgency public.urgency_level,
+  contact_assigned_to uuid,
+  contact_do_not_contact boolean,
+  event_name text,
+  interests public.interest_tag[],
+  assigned_name text,
+  suggested_message_id uuid,
+  suggested_message_text text,
+  suggested_wa_link text,
+  suggested_opened_at timestamptz
+)
+language sql
+security invoker
+set search_path = public
+as $$
+  with due as (
+    select
+      f.id,
+      f.contact_id,
+      f.assigned_to,
+      f.status,
+      f.next_action,
+      f.due_at,
+      c.id as contact_id_value,
+      c.full_name as contact_full_name,
+      c.phone as contact_phone,
+      c.status as contact_status,
+      c.urgency as contact_urgency,
+      c.assigned_to as contact_assigned_to,
+      c.do_not_contact as contact_do_not_contact,
+      e.name as event_name,
+      tm.display_name as assigned_name,
+      gm.id as suggested_message_id,
+      gm.message_text as suggested_message_text,
+      gm.wa_link as suggested_wa_link,
+      gm.opened_at as suggested_opened_at
+    from public.follow_ups f
+    join public.contacts c on c.id = f.contact_id
+      and c.church_id = f.church_id
+    left join public.events e on e.id = c.event_id
+    left join public.team_members tm on tm.id = f.assigned_to
+    left join lateral (
+      select id, message_text, wa_link, opened_at
+      from public.generated_messages
+      where generated_messages.church_id = f.church_id
+        and generated_messages.contact_id = f.contact_id
+        and generated_messages.purpose = 'suggested_whatsapp'
+      order by generated_messages.created_at desc
+      limit 1
+    ) gm on true
+    where f.church_id = p_church_id
+      and f.completed_at is null
+      and f.due_at < date_trunc('day', now()) + interval '1 day'
+      and f.status <> 'closed'
+      and c.status <> 'closed'
+      and c.deleted_at is null
+      and c.archived_at is null
+    order by f.due_at asc nulls last, f.created_at desc
+    limit greatest(1, least(coalesce(p_limit, 12), 50))
+  ),
+  due_interests as (
+    select
+      ci.contact_id,
+      array_agg(ci.interest order by ci.interest::text) as interests
+    from public.contact_interests ci
+    join due on due.contact_id = ci.contact_id
+    where ci.church_id = p_church_id
+    group by ci.contact_id
+  )
+  select
+    due.id,
+    due.contact_id,
+    due.assigned_to,
+    due.status,
+    due.next_action,
+    due.due_at,
+    due.contact_id_value,
+    due.contact_full_name,
+    due.contact_phone,
+    due.contact_status,
+    due.contact_urgency,
+    due.contact_assigned_to,
+    due.contact_do_not_contact,
+    due.event_name,
+    coalesce(due_interests.interests, array[]::public.interest_tag[]) as interests,
+    due.assigned_name,
+    due.suggested_message_id,
+    due.suggested_message_text,
+    due.suggested_wa_link,
+    due.suggested_opened_at
+  from due
+  left join due_interests on due_interests.contact_id = due.contact_id
+  order by due.due_at asc nulls last;
+$$;
+
+revoke all on function public.today_follow_ups(uuid, integer) from public, anon, authenticated;
+grant execute on function public.today_follow_ups(uuid, integer) to authenticated;
+
+create or replace function public.event_team_summary(
+  p_church_id uuid,
+  p_event_id uuid
+)
+returns table (
+  team_member_id uuid,
+  display_name text,
+  role text,
+  assigned_contact_count bigint,
+  pending_count bigint,
+  completed_count bigint,
+  overdue_count bigint,
+  last_activity_at timestamptz
+)
+language sql
+security invoker
+set search_path = public
+as $$
+  with assigned_contacts as (
+    select id, assigned_to, created_at
+    from public.contacts
+    where church_id = p_church_id
+      and event_id = p_event_id
+      and assigned_to is not null
+      and deleted_at is null
+      and archived_at is null
+  )
+  select
+    tm.id as team_member_id,
+    tm.display_name,
+    tm.role::text as role,
+    count(distinct ac.id) as assigned_contact_count,
+    count(f.id) filter (where f.completed_at is null and (f.due_at is null or f.due_at >= now())) as pending_count,
+    count(f.id) filter (where f.completed_at is not null) as completed_count,
+    count(f.id) filter (where f.completed_at is null and f.due_at < now()) as overdue_count,
+    max(ac.created_at) as last_activity_at
+  from assigned_contacts ac
+  join public.team_members tm on tm.id = ac.assigned_to
+  left join public.follow_ups f on f.church_id = p_church_id
+    and f.contact_id = ac.id
+    and f.assigned_to = ac.assigned_to
+  where tm.church_id = p_church_id
+  group by tm.id, tm.display_name, tm.role
+  order by assigned_contact_count desc, tm.display_name;
+$$;
+
+revoke all on function public.event_team_summary(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.event_team_summary(uuid, uuid) to authenticated;
+
+create or replace function public.event_workspace_summary(
+  p_church_id uuid,
+  p_event_id uuid
+)
+returns table (
+  event jsonb,
+  total_contacts bigint,
+  new_contacts bigint,
+  assigned_contacts bigint,
+  pending_follow_ups bigint,
+  completed_follow_ups bigint,
+  overdue_follow_ups bigint,
+  high_urgency_contacts bigint,
+  prayer_requests bigint,
+  bible_study_interests bigint,
+  baptism_interests bigint,
+  health_interests bigint,
+  recent_contacts jsonb,
+  due_follow_ups jsonb,
+  team_snapshot jsonb
+)
+language sql
+security invoker
+set search_path = public
+as $$
+  with event_row as (
+    select
+      e.id,
+      e.church_id,
+      e.name,
+      e.event_type::text as event_type,
+      e.starts_on,
+      e.location,
+      e.slug,
+      e.description,
+      e.is_active,
+      e.archived_at,
+      e.created_at,
+      e.form_config,
+      e.branding_config,
+      e.public_info
+    from public.events e
+    where e.church_id = p_church_id
+      and e.id = p_event_id
+    limit 1
+  ),
+  event_contacts as (
+    select id, full_name, phone, area, status, urgency, assigned_to, created_at
+    from public.contacts
+    where church_id = p_church_id
+      and event_id = p_event_id
+      and deleted_at is null
+      and archived_at is null
+  ),
+  contact_counts as (
+    select
+      count(*) as total_contacts,
+      count(*) filter (where status = 'new') as new_contacts,
+      count(*) filter (where assigned_to is not null) as assigned_contacts,
+      count(*) filter (where urgency = 'high') as high_urgency_contacts
+    from event_contacts
+  ),
+  follow_up_counts as (
+    select
+      count(*) filter (where f.completed_at is null and f.status <> 'closed') as pending_follow_ups,
+      count(*) filter (where f.completed_at is not null) as completed_follow_ups,
+      count(*) filter (where f.completed_at is null and f.due_at < now()) as overdue_follow_ups
+    from public.follow_ups f
+    join event_contacts ec on ec.id = f.contact_id
+    where f.church_id = p_church_id
+  ),
+  interest_counts as (
+    select
+      count(*) filter (where ci.interest = 'prayer') as prayer_requests,
+      count(*) filter (where ci.interest = 'bible_study') as bible_study_interests,
+      count(*) filter (where ci.interest = 'baptism') as baptism_interests,
+      count(*) filter (where ci.interest in ('health', 'cooking_class')) as health_interests
+    from public.contact_interests ci
+    join event_contacts ec on ec.id = ci.contact_id
+    where ci.church_id = p_church_id
+  ),
+  recent_rows as (
+    select *
+    from event_contacts
+    order by created_at desc
+    limit 5
+  ),
+  recent_with_interests as (
+    select
+      rr.*,
+      coalesce(
+        jsonb_agg(jsonb_build_object('interest', ci.interest) order by ci.interest::text)
+          filter (where ci.id is not null),
+        '[]'::jsonb
+      ) as contact_interests
+    from recent_rows rr
+    left join public.contact_interests ci on ci.church_id = p_church_id
+      and ci.contact_id = rr.id
+    group by rr.id, rr.full_name, rr.phone, rr.area, rr.status, rr.urgency, rr.assigned_to, rr.created_at
+  ),
+  due_rows as (
+    select
+      f.id,
+      f.contact_id,
+      c.full_name as contact_name,
+      c.phone as contact_phone,
+      f.due_at,
+      tm.display_name as assigned_name,
+      f.status
+    from public.follow_ups f
+    join public.contacts c on c.id = f.contact_id
+      and c.church_id = f.church_id
+      and c.event_id = p_event_id
+      and c.deleted_at is null
+      and c.archived_at is null
+    left join public.team_members tm on tm.id = f.assigned_to
+    where f.church_id = p_church_id
+      and f.completed_at is null
+      and f.due_at <= now()
+    order by f.due_at asc nulls last, f.created_at desc
+    limit 5
+  ),
+  team_rows as (
+    select
+      tm.id as team_member_id,
+      tm.display_name,
+      tm.role::text as role,
+      count(ec.id) as assigned_contact_count
+    from event_contacts ec
+    join public.team_members tm on tm.id = ec.assigned_to
+    where ec.assigned_to is not null
+      and tm.church_id = p_church_id
+    group by tm.id, tm.display_name, tm.role
+    order by assigned_contact_count desc, tm.display_name
+    limit 8
+  )
+  select
+    to_jsonb(event_row.*) as event,
+    coalesce(contact_counts.total_contacts, 0) as total_contacts,
+    coalesce(contact_counts.new_contacts, 0) as new_contacts,
+    coalesce(contact_counts.assigned_contacts, 0) as assigned_contacts,
+    coalesce(follow_up_counts.pending_follow_ups, 0) as pending_follow_ups,
+    coalesce(follow_up_counts.completed_follow_ups, 0) as completed_follow_ups,
+    coalesce(follow_up_counts.overdue_follow_ups, 0) as overdue_follow_ups,
+    coalesce(contact_counts.high_urgency_contacts, 0) as high_urgency_contacts,
+    coalesce(interest_counts.prayer_requests, 0) as prayer_requests,
+    coalesce(interest_counts.bible_study_interests, 0) as bible_study_interests,
+    coalesce(interest_counts.baptism_interests, 0) as baptism_interests,
+    coalesce(interest_counts.health_interests, 0) as health_interests,
+    coalesce((select jsonb_agg(to_jsonb(recent_with_interests.*) order by recent_with_interests.created_at desc) from recent_with_interests), '[]'::jsonb) as recent_contacts,
+    coalesce((select jsonb_agg(to_jsonb(due_rows.*) order by due_rows.due_at asc nulls last) from due_rows), '[]'::jsonb) as due_follow_ups,
+    coalesce((select jsonb_agg(to_jsonb(team_rows.*) order by team_rows.assigned_contact_count desc, team_rows.display_name) from team_rows), '[]'::jsonb) as team_snapshot
+  from event_row
+  cross join contact_counts
+  cross join follow_up_counts
+  cross join interest_counts;
+$$;
+
+revoke all on function public.event_workspace_summary(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.event_workspace_summary(uuid, uuid) to authenticated;
+
+create or replace function public.search_follow_ups(
+  p_church_id uuid,
+  p_q text default null,
+  p_status public.follow_up_status default null,
+  p_assigned_to uuid default null,
+  p_unassigned boolean default false,
+  p_due_state text default 'open_due',
+  p_limit integer default 25,
+  p_offset integer default 0
+)
+returns table (
+  id uuid,
+  contact_id uuid,
+  assigned_to uuid,
+  status public.follow_up_status,
+  channel public.follow_up_channel,
+  next_action text,
+  notes text,
+  due_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz,
+  contact_full_name text,
+  contact_phone text,
+  contact_email text,
+  contact_area text,
+  contact_status public.follow_up_status,
+  contact_urgency public.urgency_level,
+  contact_do_not_contact boolean,
+  event_id uuid,
+  event_name text,
+  assigned_name text,
+  interests public.interest_tag[],
+  suggested_message_id uuid,
+  suggested_message_text text,
+  suggested_wa_link text,
+  suggested_opened_at timestamptz,
+  total_count bigint
+)
+language sql
+security invoker
+set search_path = public
+as $$
+  with filtered as (
+    select
+      f.id,
+      f.contact_id,
+      f.assigned_to,
+      f.status,
+      f.channel,
+      f.next_action,
+      f.notes,
+      f.due_at,
+      f.completed_at,
+      f.created_at,
+      c.full_name as contact_full_name,
+      c.phone as contact_phone,
+      c.email as contact_email,
+      c.area as contact_area,
+      c.status as contact_status,
+      c.urgency as contact_urgency,
+      c.do_not_contact as contact_do_not_contact,
+      e.id as event_id,
+      e.name as event_name,
+      tm.display_name as assigned_name,
+      gm.id as suggested_message_id,
+      gm.message_text as suggested_message_text,
+      gm.wa_link as suggested_wa_link,
+      gm.opened_at as suggested_opened_at,
+      count(*) over() as total_count
+    from public.follow_ups f
+    join public.contacts c on c.id = f.contact_id
+      and c.church_id = f.church_id
+    left join public.events e on e.id = c.event_id
+    left join public.team_members tm on tm.id = f.assigned_to
+    left join lateral (
+      select id, message_text, wa_link, opened_at
+      from public.generated_messages
+      where generated_messages.contact_id = c.id
+        and generated_messages.church_id = f.church_id
+        and generated_messages.purpose = 'suggested_whatsapp'
+      order by generated_messages.created_at desc
+      limit 1
+    ) gm on true
+    where f.church_id = p_church_id
+      and c.deleted_at is null
+      and c.archived_at is null
+      and (
+        case coalesce(nullif(p_due_state, ''), 'open_due')
+          when 'all' then true
+          when 'overdue' then f.completed_at is null and f.due_at < now()
+          when 'due_today' then f.completed_at is null and f.due_at >= date_trunc('day', now()) and f.due_at < date_trunc('day', now()) + interval '1 day'
+          when 'upcoming' then f.completed_at is null and f.due_at >= date_trunc('day', now()) + interval '1 day'
+          when 'completed' then f.completed_at is not null
+          else f.completed_at is null and f.due_at < date_trunc('day', now()) + interval '1 day'
+        end
+      )
+      and (p_status is null or f.status = p_status)
+      and (
+        case
+          when p_unassigned then f.assigned_to is null
+          when p_assigned_to is not null then f.assigned_to = p_assigned_to
+          else true
+        end
+      )
+      and (
+        nullif(trim(coalesce(p_q, '')), '') is null
+        or c.full_name ilike '%' || trim(p_q) || '%'
+        or c.phone ilike '%' || trim(p_q) || '%'
+        or c.email ilike '%' || trim(p_q) || '%'
+        or c.area ilike '%' || trim(p_q) || '%'
+        or f.next_action ilike '%' || trim(p_q) || '%'
+        or f.notes ilike '%' || trim(p_q) || '%'
+        or e.name ilike '%' || trim(p_q) || '%'
+      )
+    order by f.due_at asc nulls last, f.created_at desc
+    limit greatest(1, least(coalesce(p_limit, 25), 100))
+    offset greatest(0, coalesce(p_offset, 0))
+  ),
+  interest_rows as (
+    select
+      ci.contact_id,
+      array_agg(ci.interest order by ci.interest::text) as interests
+    from public.contact_interests ci
+    join filtered on filtered.contact_id = ci.contact_id
+    where ci.church_id = p_church_id
+    group by ci.contact_id
+  )
+  select
+    filtered.id,
+    filtered.contact_id,
+    filtered.assigned_to,
+    filtered.status,
+    filtered.channel,
+    filtered.next_action,
+    filtered.notes,
+    filtered.due_at,
+    filtered.completed_at,
+    filtered.created_at,
+    filtered.contact_full_name,
+    filtered.contact_phone,
+    filtered.contact_email,
+    filtered.contact_area,
+    filtered.contact_status,
+    filtered.contact_urgency,
+    filtered.contact_do_not_contact,
+    filtered.event_id,
+    filtered.event_name,
+    filtered.assigned_name,
+    coalesce(interest_rows.interests, array[]::public.interest_tag[]) as interests,
+    filtered.suggested_message_id,
+    filtered.suggested_message_text,
+    filtered.suggested_wa_link,
+    filtered.suggested_opened_at,
+    filtered.total_count
+  from filtered
+  left join interest_rows on interest_rows.contact_id = filtered.contact_id;
+$$;
+
+grant execute on function public.search_follow_ups(uuid, text, public.follow_up_status, uuid, boolean, text, integer, integer) to authenticated;
+
+create or replace function public.search_contacts(
+  p_church_id uuid,
+  p_q text default null,
+  p_status public.follow_up_status default null,
+  p_event_id uuid default null,
+  p_interest public.interest_tag default null,
+  p_assigned_to uuid default null,
+  p_unassigned boolean default false,
+  p_limit integer default 25,
+  p_offset integer default 0
+)
+returns table (
+  id uuid,
+  person_id uuid,
+  full_name text,
+  phone text,
+  email text,
+  area text,
+  language text,
+  best_time_to_contact text,
+  status public.follow_up_status,
+  urgency public.urgency_level,
+  assigned_to uuid,
+  assigned_handling_role text,
+  recommended_assigned_role text,
+  do_not_contact boolean,
+  preferred_contact_methods text[],
+  duplicate_of_contact_id uuid,
+  duplicate_match_confidence numeric,
+  duplicate_match_reason text,
+  created_at timestamptz,
+  event_id uuid,
+  event_name text,
+  assigned_name text,
+  interests public.interest_tag[],
+  total_count bigint
+)
+language sql
+security invoker
+set search_path = public
+as $$
+  with filtered as (
+    select
+      c.id,
+      c.person_id,
+      c.full_name,
+      c.phone,
+      c.email,
+      c.area,
+      c.language,
+      c.best_time_to_contact,
+      c.status,
+      c.urgency,
+      c.assigned_to,
+      c.assigned_handling_role,
+      c.recommended_assigned_role,
+      c.do_not_contact,
+      c.preferred_contact_methods,
+      c.duplicate_of_contact_id,
+      c.duplicate_match_confidence,
+      c.duplicate_match_reason,
+      c.created_at,
+      e.id as event_id,
+      e.name as event_name,
+      tm.display_name as assigned_name,
+      count(*) over() as total_count
+    from public.contacts c
+    left join public.events e on e.id = c.event_id
+    left join public.team_members tm on tm.id = c.assigned_to
+    where c.church_id = p_church_id
+      and c.deleted_at is null
+      and c.archived_at is null
+      and (
+        nullif(trim(coalesce(p_q, '')), '') is null
+        or c.full_name ilike '%' || trim(p_q) || '%'
+        or c.phone ilike '%' || trim(p_q) || '%'
+        or c.email ilike '%' || trim(p_q) || '%'
+        or c.area ilike '%' || trim(p_q) || '%'
+      )
+      and (p_status is null or c.status = p_status)
+      and (p_event_id is null or c.event_id = p_event_id)
+      and (
+        case
+          when p_unassigned then c.assigned_to is null
+          when p_assigned_to is not null then c.assigned_to = p_assigned_to
+          else true
+        end
+      )
+      and (
+        p_interest is null
+        or exists (
+          select 1
+          from public.contact_interests ci
+          where ci.church_id = c.church_id
+            and ci.contact_id = c.id
+            and ci.interest = p_interest
+        )
+      )
+    order by c.created_at desc
+    limit greatest(1, least(coalesce(p_limit, 25), 100))
+    offset greatest(0, coalesce(p_offset, 0))
+  ),
+  interest_rows as (
+    select
+      ci.contact_id,
+      array_agg(ci.interest order by ci.interest::text) as interests
+    from public.contact_interests ci
+    join filtered on filtered.id = ci.contact_id
+    where ci.church_id = p_church_id
+    group by ci.contact_id
+  )
+  select
+    filtered.id,
+    filtered.person_id,
+    filtered.full_name,
+    filtered.phone,
+    filtered.email,
+    filtered.area,
+    filtered.language,
+    filtered.best_time_to_contact,
+    filtered.status,
+    filtered.urgency,
+    filtered.assigned_to,
+    filtered.assigned_handling_role,
+    filtered.recommended_assigned_role,
+    filtered.do_not_contact,
+    filtered.preferred_contact_methods,
+    filtered.duplicate_of_contact_id,
+    filtered.duplicate_match_confidence,
+    filtered.duplicate_match_reason,
+    filtered.created_at,
+    filtered.event_id,
+    filtered.event_name,
+    filtered.assigned_name,
+    coalesce(interest_rows.interests, array[]::public.interest_tag[]) as interests,
+    filtered.total_count
+  from filtered
+  left join interest_rows on interest_rows.contact_id = filtered.id;
+$$;
+
+grant execute on function public.search_contacts(uuid, text, public.follow_up_status, uuid, public.interest_tag, uuid, boolean, integer, integer) to authenticated;
+
+create or replace function public.outreach_report_summary(p_church_id uuid)
+returns table (
+  total_contacts bigint,
+  followed_up_count bigint,
+  bible_study_count bigint,
+  prayer_count bigint,
+  health_count bigint,
+  baptism_count bigint,
+  high_priority_count bigint,
+  unassigned_count bigint,
+  due_today_count bigint,
+  overdue_count bigint,
+  waiting_reply_count bigint,
+  no_consent_count bigint,
+  do_not_contact_count bigint,
+  events jsonb
+)
+language sql
+security invoker
+set search_path = public
+as $$
+  with scoped_contacts as (
+    select id, church_id, event_id, status, urgency, assigned_to, consent_given, do_not_contact
+    from public.contacts
+    where contacts.church_id = p_church_id
+      and contacts.deleted_at is null
+      and contacts.archived_at is null
+  ),
+  contact_interest_flags as (
+    select
+      scoped_contacts.id,
+      bool_or(contact_interests.interest = 'bible_study') as has_bible_study,
+      bool_or(contact_interests.interest = 'prayer') as has_prayer,
+      bool_or(contact_interests.interest in ('health', 'cooking_class')) as has_health,
+      bool_or(contact_interests.interest = 'baptism') as has_baptism
+    from scoped_contacts
+    left join public.contact_interests on contact_interests.contact_id = scoped_contacts.id
+      and contact_interests.church_id = scoped_contacts.church_id
+    group by scoped_contacts.id
+  ),
+  contact_counts as (
+    select
+      count(*) as total_contacts,
+      count(*) filter (where status <> 'new') as followed_up_count,
+      count(*) filter (where urgency = 'high') as high_priority_count,
+      count(*) filter (where assigned_to is null and status <> 'closed') as unassigned_count,
+      count(*) filter (where status = 'waiting') as waiting_reply_count,
+      count(*) filter (where consent_given is distinct from true and status <> 'closed') as no_consent_count,
+      count(*) filter (where do_not_contact = true) as do_not_contact_count
+    from scoped_contacts
+  ),
+  interest_counts as (
+    select
+      count(*) filter (where has_bible_study) as bible_study_count,
+      count(*) filter (where has_prayer) as prayer_count,
+      count(*) filter (where has_health) as health_count,
+      count(*) filter (where has_baptism) as baptism_count
+    from contact_interest_flags
+  ),
+  follow_up_counts as (
+    select
+      count(distinct f.contact_id) filter (
+        where sc.status <> 'closed'
+          and f.completed_at is null
+          and f.due_at >= date_trunc('day', now())
+          and f.due_at < date_trunc('day', now()) + interval '1 day'
+      ) as due_today_count,
+      count(distinct f.contact_id) filter (
+        where sc.status <> 'closed'
+          and f.completed_at is null
+          and f.due_at < now()
+      ) as overdue_count
+    from public.follow_ups f
+    join scoped_contacts sc on sc.id = f.contact_id
+    where f.church_id = p_church_id
+  ),
+  event_counts as (
+    select
+      events.id,
+      events.name,
+      events.event_type,
+      events.created_at,
+      count(scoped_contacts.id) as contact_count
+    from public.events
+    left join scoped_contacts on scoped_contacts.event_id = events.id
+    where events.church_id = p_church_id
+    group by events.id, events.name, events.event_type, events.created_at
+  )
+  select
+    coalesce(contact_counts.total_contacts, 0) as total_contacts,
+    coalesce(contact_counts.followed_up_count, 0) as followed_up_count,
+    coalesce(interest_counts.bible_study_count, 0) as bible_study_count,
+    coalesce(interest_counts.prayer_count, 0) as prayer_count,
+    coalesce(interest_counts.health_count, 0) as health_count,
+    coalesce(interest_counts.baptism_count, 0) as baptism_count,
+    coalesce(contact_counts.high_priority_count, 0) as high_priority_count,
+    coalesce(contact_counts.unassigned_count, 0) as unassigned_count,
+    coalesce(follow_up_counts.due_today_count, 0) as due_today_count,
+    coalesce(follow_up_counts.overdue_count, 0) as overdue_count,
+    coalesce(contact_counts.waiting_reply_count, 0) as waiting_reply_count,
+    coalesce(contact_counts.no_consent_count, 0) as no_consent_count,
+    coalesce(contact_counts.do_not_contact_count, 0) as do_not_contact_count,
+    coalesce(
+      (
+        select jsonb_agg(
+          jsonb_build_object(
+            'id', event_counts.id,
+            'name', event_counts.name,
+            'event_type', event_counts.event_type,
+            'contact_count', event_counts.contact_count
+          )
+          order by event_counts.created_at desc
+        )
+        from event_counts
+      ),
+      '[]'::jsonb
+    ) as events
+  from contact_counts
+  cross join interest_counts
+  cross join follow_up_counts;
+$$;
+
+grant execute on function public.outreach_report_summary(uuid) to authenticated;
+
+create or replace function public.event_report_summary(
+  p_church_id uuid,
+  p_event_id uuid
+)
+returns table (
+  total_contacts bigint,
+  followed_up_count bigint,
+  bible_study_count bigint,
+  prayer_count bigint,
+  baptism_count bigint,
+  high_priority_count bigint,
+  follow_up_count bigint,
+  status_counts jsonb,
+  interest_counts jsonb,
+  topic_counts jsonb,
+  form_answer_counts jsonb
+)
+language sql
+security invoker
+set search_path = public
+as $$
+  with event_contacts as (
+    select id, church_id, status, urgency, classification_payload
+    from public.contacts
+    where contacts.church_id = p_church_id
+      and contacts.event_id = p_event_id
+      and contacts.deleted_at is null
+      and contacts.archived_at is null
+  ),
+  event_form_config as (
+    select form_config
+    from public.events
+    where id = p_event_id
+      and church_id = p_church_id
+    limit 1
+  ),
+  enabled_interest_options as (
+    select opt->>'value' as value
+    from event_form_config efc
+    cross join lateral jsonb_array_elements(coalesce(efc.form_config->'interest_options', '[]'::jsonb)) as opt
+    where (efc.form_config->>'show_interests')::boolean = true
+      and (opt->>'enabled')::boolean = true
+  ),
+  contact_interest_flags as (
+    select
+      event_contacts.id,
+      bool_or(contact_interests.interest = 'bible_study' and enabled_interest_options.value = 'bible_study') as has_bible_study,
+      bool_or(contact_interests.interest = 'prayer' and enabled_interest_options.value = 'prayer') as has_prayer,
+      bool_or(contact_interests.interest = 'baptism' and enabled_interest_options.value = 'baptism') as has_baptism
+    from event_contacts
+    left join public.contact_interests on contact_interests.contact_id = event_contacts.id
+      and contact_interests.church_id = event_contacts.church_id
+    left join enabled_interest_options on enabled_interest_options.value = contact_interests.interest::text
+    group by event_contacts.id
+  ),
+  contact_counts as (
+    select
+      count(*) as total_contacts,
+      count(*) filter (where status <> 'new') as followed_up_count,
+      count(*) filter (where urgency = 'high') as high_priority_count
+    from event_contacts
+  ),
+  interest_summary as (
+    select
+      count(*) filter (where has_bible_study) as bible_study_count,
+      count(*) filter (where has_prayer) as prayer_count,
+      count(*) filter (where has_baptism) as baptism_count
+    from contact_interest_flags
+  ),
+  follow_up_counts as (
+    select count(*) as follow_up_count
+    from public.follow_ups
+    join event_contacts on event_contacts.id = follow_ups.contact_id
+    where follow_ups.church_id = p_church_id
+  ),
+  status_rows as (
+    select event_contacts.status::text as status, count(*) as count
+    from event_contacts
+    group by event_contacts.status
+  ),
+  interest_rows as (
+    select contact_interests.interest::text as interest, count(distinct event_contacts.id) as count
+    from event_contacts
+    join public.contact_interests on contact_interests.contact_id = event_contacts.id
+      and contact_interests.church_id = event_contacts.church_id
+    group by contact_interests.interest
+  ),
+  topic_rows as (
+    select coalesce(nullif(classification_payload->>'selected_topic', ''), 'unspecified') as topic, count(*) as count
+    from event_contacts
+    group by topic
+  ),
+  form_answer_rows as (
+    select cfa.question_name, cfa.question_label, count(*) as count
+    from public.contact_form_answers cfa
+    join event_contacts ec on ec.id = cfa.contact_id
+    cross join event_form_config efc
+    where cfa.church_id = p_church_id
+      and cfa.event_id = p_event_id
+      and (
+        (cfa.question_name = 'phone' and (efc.form_config->>'show_phone')::boolean = true)
+        or (cfa.question_name = 'email' and (efc.form_config->>'show_email')::boolean = true)
+        or (cfa.question_name = 'area' and (efc.form_config->>'show_area')::boolean = true)
+        or (cfa.question_name = 'language' and (efc.form_config->>'show_language')::boolean = true)
+        or (cfa.question_name = 'best_time' and (efc.form_config->>'show_best_time')::boolean = true)
+        or (cfa.question_name = 'message' and (efc.form_config->>'show_message')::boolean = true)
+        or (cfa.question_name = 'prayer_visibility' and (efc.form_config->>'show_prayer_visibility')::boolean = true)
+        or (
+          cfa.question_name not in ('phone', 'email', 'area', 'language', 'best_time', 'message', 'prayer_visibility')
+          and exists (
+            select 1
+            from jsonb_array_elements(coalesce(efc.form_config->'questions', '[]'::jsonb)) as q
+            where q->>'name' = cfa.question_name
+          )
+        )
+      )
+    group by cfa.question_name, cfa.question_label
+  )
+  select
+    coalesce(contact_counts.total_contacts, 0) as total_contacts,
+    coalesce(contact_counts.followed_up_count, 0) as followed_up_count,
+    coalesce(interest_summary.bible_study_count, 0) as bible_study_count,
+    coalesce(interest_summary.prayer_count, 0) as prayer_count,
+    coalesce(interest_summary.baptism_count, 0) as baptism_count,
+    coalesce(contact_counts.high_priority_count, 0) as high_priority_count,
+    coalesce(follow_up_counts.follow_up_count, 0) as follow_up_count,
+    coalesce((select jsonb_object_agg(status_rows.status, status_rows.count) from status_rows), '{}'::jsonb) as status_counts,
+    coalesce((select jsonb_object_agg(interest_rows.interest, interest_rows.count) from interest_rows), '{}'::jsonb) as interest_counts,
+    coalesce((select jsonb_object_agg(topic, count) from topic_rows), '{}'::jsonb) as topic_counts,
+    coalesce(
+      (
+        select jsonb_agg(
+          jsonb_build_object(
+            'question_name', question_name,
+            'question_label', question_label,
+            'count', count
+          )
+        )
+        from form_answer_rows
+      ),
+      '[]'::jsonb
+    ) as form_answer_counts
+  from contact_counts
+  cross join interest_summary
+  cross join follow_up_counts;
+$$;
+
+grant execute on function public.event_report_summary(uuid, uuid) to authenticated;
+
+create index if not exists contacts_church_event_active_created_idx
+on public.contacts(church_id, event_id, created_at desc)
+where deleted_at is null and archived_at is null;
+
+create index if not exists contacts_church_event_assigned_active_idx
+on public.contacts(church_id, event_id, assigned_to)
+where deleted_at is null and archived_at is null and assigned_to is not null;
+
+create index if not exists contacts_church_event_status_active_idx
+on public.contacts(church_id, event_id, status)
+where deleted_at is null and archived_at is null;
+
+create index if not exists contacts_church_event_urgency_active_idx
+on public.contacts(church_id, event_id, urgency)
+where deleted_at is null and archived_at is null;
+
+create index if not exists follow_ups_church_contact_assigned_idx
+on public.follow_ups(church_id, contact_id, assigned_to);
+
 -- Handling Role Assignment Safety Migration
 -- Phase 1: Add constraints and follow_ups.assigned_handling_role
 
