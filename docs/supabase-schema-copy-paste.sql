@@ -5092,6 +5092,7 @@ declare
   first_name text;
   digits text;
   journey_title text;
+  event_context text := '';
   form_answer jsonb;
 begin
   if p_consent_given is distinct from true then
@@ -5112,6 +5113,11 @@ begin
   select name into target_church_name
   from public.churches
   where id = target_event.church_id;
+
+  event_context := case
+    when target_event.event_type in ('regular_member'::public.event_type, 'baptized_member'::public.event_type) then ''
+    else ' after ' || target_event.name
+  end;
 
   select id into assigned_owner_id
   from public.team_members
@@ -5264,19 +5270,19 @@ begin
   first_name := coalesce(nullif(split_part(trim(p_full_name), ' ', 1), ''), 'there');
   suggested_message := case
     when 'pastoral_visit'::public.interest_tag = any(p_interests) then
-      'Good day ' || first_name || ', thank you for connecting with ' || coalesce(target_church_name, 'our church') || ' after ' || target_event.name || '. You mentioned that you would appreciate a pastoral visit. Would it be okay if one of our pastoral team members contacts you to find a suitable time?'
+      'Good day ' || first_name || ', thank you for connecting with ' || coalesce(target_church_name, 'our church') || event_context || '. You mentioned that you would appreciate a pastoral visit. Would it be okay if one of our pastoral team members contacts you to find a suitable time?'
     when 'baptism'::public.interest_tag = any(p_interests) then
-      'Good day ' || first_name || ', thank you for reaching out to ' || coalesce(target_church_name, 'our church') || ' after ' || target_event.name || '. Thank you for sharing your baptism request. We would be honoured to connect you with a Bible worker who can walk with you through preparation. Would it also be helpful if we shared Bible study options with you?'
+      'Good day ' || first_name || ', thank you for reaching out to ' || coalesce(target_church_name, 'our church') || event_context || '. Thank you for sharing your baptism request. We would be honoured to connect you with a Bible worker who can walk with you through preparation. Would it also be helpful if we shared Bible study options with you?'
     when 'prayer'::public.interest_tag = any(p_interests) then
-      'Good day ' || first_name || ', thank you for trusting ' || coalesce(target_church_name, 'our church') || ' after ' || target_event.name || '. We have received your prayer request, and we will handle it with care. Would you like someone from our prayer team to check in with you?'
+      'Good day ' || first_name || ', thank you for trusting ' || coalesce(target_church_name, 'our church') || event_context || '. We have received your prayer request, and we will handle it with care. Would you like someone from our prayer team to check in with you?'
     when 'bible_study'::public.interest_tag = any(p_interests) then
-      'Good day ' || first_name || ', thank you for connecting with ' || coalesce(target_church_name, 'our church') || ' after ' || target_event.name || '. We are glad you are interested in Bible study. Would it be okay if one of our Bible workers contacts you and shares the available study options?'
+      'Good day ' || first_name || ', thank you for connecting with ' || coalesce(target_church_name, 'our church') || event_context || '. We are glad you are interested in Bible study. Would it be okay if one of our Bible workers contacts you and shares the available study options?'
     when 'health'::public.interest_tag = any(p_interests) then
-      'Good day ' || first_name || ', thank you for connecting with ' || coalesce(target_church_name, 'our church') || ' after ' || target_event.name || '. You showed interest in health resources. Would you like us to send a simple resource and let you know about the next health program?'
+      'Good day ' || first_name || ', thank you for connecting with ' || coalesce(target_church_name, 'our church') || event_context || '. You showed interest in health resources. Would you like us to send a simple resource and let you know about the next health program?'
     when 'cooking_class'::public.interest_tag = any(p_interests) then
-      'Good day ' || first_name || ', thank you for connecting with ' || coalesce(target_church_name, 'our church') || ' after ' || target_event.name || '. You selected cooking class updates. Would you like us to send details when the next healthy cooking session is planned?'
+      'Good day ' || first_name || ', thank you for connecting with ' || coalesce(target_church_name, 'our church') || event_context || '. You selected cooking class updates. Would you like us to send details when the next healthy cooking session is planned?'
     else
-      'Good day ' || first_name || ', thank you for visiting ' || coalesce(target_church_name, 'our church') || ' after ' || target_event.name || '. We are grateful you connected with us. Would it be okay if one of our team members follows up with you this week?'
+      'Good day ' || first_name || ', thank you for visiting ' || coalesce(target_church_name, 'our church') || event_context || '. We are grateful you connected with us. Would it be okay if one of our team members follows up with you this week?'
   end;
 
   digits := regexp_replace(coalesce(p_phone, ''), '[^0-9]', '', 'g');

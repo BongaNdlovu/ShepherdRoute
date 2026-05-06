@@ -8,8 +8,8 @@ type PrayerRequestsSectionProps = {
 export function PrayerRequestsSection({ prayer }: PrayerRequestsSectionProps) {
   return (
     <div>
-      <h3 className="font-bold">Prayer requests</h3>
-      <p className="mt-1 text-sm text-muted-foreground">Kept outside the general contact table for tighter future access control.</p>
+      <h3 className="font-bold">Optional message / prayer request</h3>
+      <p className="mt-1 text-sm text-muted-foreground">Stored separately from general contact details for role-based access control.</p>
       <div className="mt-3 grid gap-2">
         {prayer.map((request) => (
           <div key={request.created_at} className="rounded-lg border bg-white p-3 text-sm leading-6">

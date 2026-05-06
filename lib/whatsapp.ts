@@ -13,7 +13,7 @@ type MessageContact = {
 export function generateMessage(contact: MessageContact) {
   const firstName = contact.name.trim().split(/\s+/)[0] || "there";
   const churchName = contact.churchName || "our church";
-  const eventLine = contact.eventName ? ` after ${contact.eventName}` : "";
+  const eventLine = shouldMentionEvent(contact.templateType) && contact.eventName ? ` after ${contact.eventName}` : "";
   const eventName = contact.eventName || "the event";
   const template = contact.templateType ? getEventTemplate(contact.templateType) : null;
   const templateMessage = template
@@ -49,6 +49,10 @@ export function generateMessage(contact: MessageContact) {
   }
 
   return `Good day ${firstName}, thank you for visiting ${churchName}${eventLine}. We are grateful you connected with us. Would it be okay if one of our team members follows up with you this week?`;
+}
+
+function shouldMentionEvent(templateType: string | null | undefined) {
+  return templateType !== "regular_member" && templateType !== "baptized_member";
 }
 
 export function normalizeWhatsappPhone(phone: string | null | undefined) {
