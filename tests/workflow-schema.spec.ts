@@ -197,6 +197,8 @@ test.describe("workflow helpers", () => {
     expect(publicActions).toContain("Falling back to app-derived public form rate-limit salt");
     expect(publicActions).not.toContain("PUBLIC_FORM_RATE_LIMIT_SALT is required");
     expect(schema).toContain("create or replace function public.reserve_public_form_submission_slot");
+    expect(schema).toContain("create or replace function private.reserve_public_form_submission_slot_impl");
+    expect(schema).toContain("security invoker\nset search_path = public, private\nas $$\n  select private.reserve_public_form_submission_slot_impl");
     expect(schema).toContain("pg_advisory_xact_lock");
     expect(schema).toContain("p_hourly_limit integer default 50");
     expect(schema).toContain("p_daily_limit integer default 200");

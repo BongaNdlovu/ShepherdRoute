@@ -676,8 +676,9 @@ on public.public_form_submissions for insert
 with check (slug is not null and ip_hash is not null);
 
 drop function if exists public.reserve_public_form_submission_slot(text, text, integer, integer);
+drop function if exists private.reserve_public_form_submission_slot_impl(text, text, integer, integer);
 
-create or replace function public.reserve_public_form_submission_slot(
+create or replace function private.reserve_public_form_submission_slot_impl(
   p_slug text,
   p_ip_hash text,
   p_hourly_limit integer default 50,
@@ -726,6 +727,28 @@ begin
 
   return true;
 end;
+$$;
+
+revoke all on function private.reserve_public_form_submission_slot_impl(text, text, integer, integer) from public, anon, authenticated;
+grant execute on function private.reserve_public_form_submission_slot_impl(text, text, integer, integer) to anon, authenticated;
+
+create or replace function public.reserve_public_form_submission_slot(
+  p_slug text,
+  p_ip_hash text,
+  p_hourly_limit integer default 50,
+  p_daily_limit integer default 200
+)
+returns boolean
+language sql
+security invoker
+set search_path = public, private
+as $$
+  select private.reserve_public_form_submission_slot_impl(
+    p_slug,
+    p_ip_hash,
+    p_hourly_limit,
+    p_daily_limit
+  );
 $$;
 
 revoke all on function public.reserve_public_form_submission_slot(text, text, integer, integer) from public, anon, authenticated;
