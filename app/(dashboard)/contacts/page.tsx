@@ -77,6 +77,8 @@ export default async function ContactsPage({
           <div className="rounded-3xl border border-white/55 bg-white/35 p-4 shadow-sm backdrop-blur-md">
             <ContactsFilterForm events={events} params={params} team={team} />
           </div>
+          {userCanManageContacts ? <QuickContactForm events={events} /> : null}
+
           <div className="overflow-hidden rounded-3xl border border-slate-200/75 bg-white/90 shadow-sm backdrop-blur">
             <div className="p-6 space-y-4">
               <ContactList churchName={context.churchName} contacts={contacts} team={team} compactLists={preferences.compactLists} canManageContacts={userCanManageContacts} />
@@ -115,8 +117,6 @@ export default async function ContactsPage({
                 </InlineHelp>
               </CardContent>
             </Card>
-
-            {userCanManageContacts ? <QuickContactForm events={events} /> : null}
           </div>
         </section>
       </CinematicSection>

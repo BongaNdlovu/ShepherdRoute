@@ -39,6 +39,24 @@ export default async function DashboardLayout({ children }: { children: React.Re
         Skip to main content
       </a>
       <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col gap-4 p-3 md:flex-row md:p-6">
+        <header className="surface-card flex items-center justify-between gap-3 rounded-2xl p-3 lg:hidden">
+          <Link href="/dashboard" className="flex min-w-0 items-center gap-3 rounded-lg text-slate-900">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white p-1.5">
+              <BrandLogo className="h-full w-full object-contain" priority />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold">ShepherdRoute</p>
+              <p className="truncate text-xs text-muted-foreground">{context.workspaceLabel}</p>
+            </div>
+          </Link>
+          <form action={logoutAction} className="shrink-0">
+            <Button variant="outline" size="sm" type="submit" aria-label="Log out">
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
+          </form>
+        </header>
+
         <aside className="surface-card sticky top-6 hidden h-[calc(100dvh-3rem)] w-72 shrink-0 rounded-3xl p-4 lg:flex flex-col">
           <Link href="/dashboard" className="flex items-center gap-3 rounded-lg bg-primary p-4 text-primary-foreground">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-white p-1.5">

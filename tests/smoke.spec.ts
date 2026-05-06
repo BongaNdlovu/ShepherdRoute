@@ -46,10 +46,7 @@ test.describe("authenticated smoke flow", () => {
     await page.getByRole("button", { name: /create event and get qr code/i }).click();
 
     await expect(page.getByRole("heading", { name: eventName, exact: true }).first()).toBeVisible();
-    await Promise.all([
-      page.waitForURL(/\/events\/[^/]+$/),
-      page.getByRole("link", { name: "Overview", exact: true }).click()
-    ]);
+    await expect(page).toHaveURL(/\/events\/[^/]+$/);
     await expect(page.getByRole("heading", { name: eventName, exact: true }).first()).toBeVisible();
 
     await expect(page.getByRole("button", { name: "PNG" })).toBeVisible();

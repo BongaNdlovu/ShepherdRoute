@@ -114,7 +114,7 @@ export type EventWorkspaceSummary = {
 export async function getEventWorkspaceSummary(churchId: string, eventId: string): Promise<EventWorkspaceSummary> {
   const supabase = await createClient();
 
-  const [{ data: event }, totalContacts, newContacts, assignedContacts, followUpCounts, workspaceInterestCounts, highUrgencyContacts, recentContacts, dueFollowUps, teamSnapshot] = await Promise.all([
+  const [{ data: event }, totalContacts, newContacts, assignedContacts, followUpCounts, workspaceInterestCounts, highUrgencyContacts, recentContacts, dueFollowUps, assignedContactRows] = await Promise.all([
     supabase
       .from("events")
       .select("*")
@@ -178,17 +178,8 @@ export async function getEventWorkspaceSummary(churchId: string, eventId: string
 
     supabase
       .from("follow_ups")
-      .select(`
-        id,
-        contact_id,
-        due_at,
-        status,
-        contacts!inner(id, full_name, phone, event_id, deleted_at),
-        team_members(display_name)
-      `)
+      .select("id, contact_id, assigned_to, due_at, status")
       .eq("church_id", churchId)
-      .eq("contacts.event_id", eventId)
-      .is("contacts.deleted_at", null)
       .is("completed_at", null)
       .lte("due_at", new Date().toISOString())
       .order("due_at", { ascending: true })
@@ -196,7 +187,7 @@ export async function getEventWorkspaceSummary(churchId: string, eventId: string
 
     supabase
       .from("contacts")
-      .select("assigned_to, team_members!inner(display_name, role)")
+      .select("id, assigned_to")
       .eq("church_id", churchId)
       .eq("event_id", eventId)
       .not("assigned_to", "is", null)
@@ -209,10 +200,37 @@ export async function getEventWorkspaceSummary(churchId: string, eventId: string
 
   const counts = Array.isArray(followUpCounts) ? followUpCounts[0] : followUpCounts;
   const interestCounts = Array.isArray(workspaceInterestCounts) ? workspaceInterestCounts[0] : workspaceInterestCounts;
+  const dueRows = dueFollowUps.data ?? [];
+  const dueContactIds = Array.from(new Set(dueRows.map((row) => row.contact_id).filter(Boolean)));
+  const dueTeamMemberIds = Array.from(new Set(dueRows.map((row) => row.assigned_to).filter(Boolean)));
+  const assignedTeamMemberIds = Array.from(new Set((assignedContactRows.data ?? []).map((row) => row.assigned_to).filter(Boolean)));
+  const teamMemberIds = Array.from(new Set([...dueTeamMemberIds, ...assignedTeamMemberIds]));
+
+  const [dueContactsResult, teamMembersResult] = await Promise.all([
+    dueContactIds.length
+      ? supabase
+          .from("contacts")
+          .select("id, full_name, phone, event_id, deleted_at")
+          .eq("church_id", churchId)
+          .eq("event_id", eventId)
+          .is("deleted_at", null)
+          .in("id", dueContactIds)
+      : Promise.resolve({ data: [] }),
+    teamMemberIds.length
+      ? supabase
+          .from("team_members")
+          .select("id, display_name, role")
+          .eq("church_id", churchId)
+          .in("id", teamMemberIds)
+      : Promise.resolve({ data: [] })
+  ]);
+
+  const dueContactMap = new Map((dueContactsResult.data ?? []).map((contact) => [contact.id, contact]));
+  const teamMemberMap = new Map((teamMembersResult.data ?? []).map((member) => [member.id, member]));
 
   const teamMap = new Map<string, { displayName: string; role: string | null; count: number }>();
-  (teamSnapshot.data ?? []).forEach((row: { assigned_to: string; team_members: { display_name: string; role: string | null }[] }) => {
-    const member = row.team_members[0];
+  (assignedContactRows.data ?? []).forEach((row: { assigned_to: string | null }) => {
+    const member = row.assigned_to ? teamMemberMap.get(row.assigned_to) : null;
     if (member && row.assigned_to) {
       const existing = teamMap.get(row.assigned_to);
       if (existing) {
@@ -250,15 +268,22 @@ export async function getEventWorkspaceSummary(churchId: string, eventId: string
       healthInterests: Number(interestCounts?.health_interest_count ?? 0)
     },
     recentContacts: (recentContacts.data ?? []) as unknown as EventContactListItem[],
-    dueFollowUps: (dueFollowUps.data ?? []).map((row: { id: string; contact_id: string; contacts: { full_name: string; phone: string }[]; team_members: { display_name: string }[]; due_at: string; status: FollowUpStatus }) => ({
-      id: row.id,
-      contact_id: row.contact_id,
-      contact_name: row.contacts[0]?.full_name ?? "",
-      contact_phone: row.contacts[0]?.phone ?? "",
-      due_at: row.due_at,
-      assigned_name: row.team_members[0]?.display_name ?? null,
-      status: row.status
-    })),
+    dueFollowUps: dueRows
+      .filter((row) => dueContactMap.has(row.contact_id))
+      .map((row: { id: string; contact_id: string; assigned_to: string | null; due_at: string; status: FollowUpStatus }) => {
+        const contact = dueContactMap.get(row.contact_id);
+        const member = row.assigned_to ? teamMemberMap.get(row.assigned_to) : null;
+
+        return {
+          id: row.id,
+          contact_id: row.contact_id,
+          contact_name: contact?.full_name ?? "",
+          contact_phone: contact?.phone ?? "",
+          due_at: row.due_at,
+          assigned_name: member?.display_name ?? null,
+          status: row.status
+        };
+      }),
     teamSnapshot: teamSnapshotArray
   };
 }
