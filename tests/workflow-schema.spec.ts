@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { defaultDueDate } from "@/lib/followUp";
 import { canChangeChurchRole, canInviteRole, canManageMembershipStatus, canManageTeam } from "@/lib/permissions";
 import { createWhatsappLink, generateMessage, normalizeWhatsappPhone } from "@/lib/whatsapp";
+import { createWorkbook } from "@/lib/xlsx";
 
 const schema = readFileSync("supabase/schema.sql", "utf8");
 const dashboardLayout = readFileSync("app/(dashboard)/layout.tsx", "utf8");
@@ -638,10 +639,43 @@ test.describe("workflow helpers", () => {
     expect(eventReportPage).toContain("Export Excel");
     expect(xlsx).toContain("createWorkbook");
     expect(xlsx).toContain("stylesXml");
+    expect(xlsx).toContain("<sheetPr><pageSetUpPr");
+    expect(xlsx).toContain("<dimension ref=");
     expect(xlsx).toContain("freezePane");
     expect(xlsx).toContain("autoFilter");
     expect(xlsx).toContain("columnWidths");
     expect(xlsx).toContain("wrapText");
+    expect(xlsx).toContain("[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F]");
+  });
+
+  test("XLSX workbook writer emits visible worksheet rows", () => {
+    const workbook = createWorkbook([
+      {
+        name: "Contacts",
+        rows: [
+          ["ShepherdRoute Contact Export"],
+          [],
+          ["Name", "Phone"],
+          ["Alice Example", "+27820000000"],
+          ["Control char cleaned", "Bad\u0001Value"]
+        ],
+        headerRow: 3,
+        freezePane: { ySplit: 3, topLeftCell: "A4" },
+        autoFilter: { from: "A3", to: "B5" },
+        columnWidths: [24, 18],
+        wrapColumns: [1]
+      }
+    ]);
+    const text = new TextDecoder().decode(workbook);
+
+    expect(workbook[0]).toBe(0x50);
+    expect(workbook[1]).toBe(0x4b);
+    expect(text).toContain("xl/worksheets/sheet1.xml");
+    expect(text).toContain('<dimension ref="A1:B5"/>');
+    expect(text).toContain("<sheetData>");
+    expect(text).toContain("Alice Example");
+    expect(text).toContain("BadValue");
+    expect(text).not.toContain("Bad\u0001Value");
   });
 
   test("event CSV export orders dynamic questions from form config with answer fallback", () => {

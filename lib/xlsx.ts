@@ -13,7 +13,12 @@ type WorksheetInput = {
 const CRC_TABLE = createCrcTable();
 
 export function xlsxResponse(fileName: string, workbook: Uint8Array) {
-  return new Response(new Blob([workbook.buffer as ArrayBuffer]), {
+  const body = workbook.buffer.slice(
+    workbook.byteOffset,
+    workbook.byteOffset + workbook.byteLength
+  ) as ArrayBuffer;
+
+  return new Response(body, {
     headers: {
       "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "content-disposition": `attachment; filename="${fileName}"`
@@ -40,6 +45,8 @@ export function createWorkbook(sheets: WorksheetInput[]) {
 function worksheetXml(sheet: WorksheetInput) {
   const headerRow = sheet.headerRow ?? 1;
   const wrapColumns = new Set(sheet.wrapColumns ?? []);
+  const maxColumns = Math.max(...sheet.rows.map((row) => row.length), 1);
+  const lastCell = `${columnName(maxColumns)}${Math.max(sheet.rows.length, 1)}`;
   const rowsXml = sheet.rows
     .map((row, rowIndex) => {
       const rowNumber = rowIndex + 1;
@@ -61,11 +68,11 @@ function worksheetXml(sheet: WorksheetInput) {
         .join("")}</cols>`
     : "";
   const freezeXml = sheet.freezePane
-    ? `<sheetViews><sheetView workbookViewId="0"><pane xSplit="${sheet.freezePane.xSplit ?? 0}" ySplit="${sheet.freezePane.ySplit ?? 0}" topLeftCell="${sheet.freezePane.topLeftCell ?? "A1"}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`
+    ? `<sheetViews><sheetView workbookViewId="0"><pane${paneSplitAttributes(sheet.freezePane)} topLeftCell="${sheet.freezePane.topLeftCell ?? "A1"}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`
     : `<sheetViews><sheetView workbookViewId="0"/></sheetViews>`;
   const autoFilterXml = sheet.autoFilter ? `<autoFilter ref="${sheet.autoFilter.from}:${sheet.autoFilter.to}"/>` : "";
 
-  return xmlDecl(`<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${freezeXml}<sheetFormatPr defaultRowHeight="15"/><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>${colsXml}<sheetData>${rowsXml}</sheetData>${autoFilterXml}</worksheet>`);
+  return xmlDecl(`<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><dimension ref="A1:${lastCell}"/>${freezeXml}<sheetFormatPr defaultRowHeight="15"/>${colsXml}<sheetData>${rowsXml}</sheetData>${autoFilterXml}</worksheet>`);
 }
 
 function cellXml(ref: string, cell: XlsxCell, style?: number) {
@@ -84,6 +91,13 @@ function cellXml(ref: string, cell: XlsxCell, style?: number) {
   }
 
   return `<c r="${ref}" t="inlineStr"${styleAttr}><is><t>${escapeXml(String(cell))}</t></is></c>`;
+}
+
+function paneSplitAttributes(freezePane: NonNullable<WorksheetInput["freezePane"]>) {
+  return [
+    freezePane.xSplit ? ` xSplit="${freezePane.xSplit}"` : "",
+    freezePane.ySplit ? ` ySplit="${freezePane.ySplit}"` : ""
+  ].join("");
 }
 
 function stylesXml() {
@@ -225,6 +239,7 @@ function columnName(index: number) {
 
 function escapeXml(value: string) {
   return value
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
