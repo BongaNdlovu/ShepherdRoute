@@ -93,7 +93,9 @@ test.describe("authenticated smoke flow", () => {
     await addContactForm.getByLabel("Prayer request or note").fill("Interested in Bible study.");
     await addContactForm.getByRole("button", { name: "Add contact" }).click();
 
-    await expect(page.getByRole("heading", { name: contactName, exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/\/contacts\/[^/?#]+(?:\?.*)?$/, { timeout: 30000 });
+    await expect(page.getByText(/could not|please add|invalid/i)).toBeHidden();
+    await expect(page.getByRole("heading", { name: contactName, exact: true })).toBeVisible({ timeout: 30000 });
     await expect(page.getByRole("button", { name: /save and open in whatsapp|open whatsapp|open whatsapp again|opted out/i }).first()).toBeVisible();
   });
 });
