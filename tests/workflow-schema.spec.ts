@@ -601,8 +601,47 @@ test.describe("workflow helpers", () => {
   test("CSV escaping protects spreadsheet formula-like values", () => {
     const csv = readFileSync("lib/csv.ts", "utf8");
     expect(csv).toContain("escapeCsvValue");
-    expect(csv).toContain("/^[=+\\-@]/");
+    expect(csv).toContain("/^[=+\\-@\\t\\r]/");
     expect(csv).toContain("text = `'${text}`");
+  });
+
+  test("CSV exports use readable presentation headers and formatted values", () => {
+    const contactsExport = readFileSync("app/(dashboard)/contacts/export/route.ts", "utf8");
+    const eventExport = readFileSync("app/(dashboard)/events/[id]/reports/export/route.ts", "utf8");
+
+    for (const source of [contactsExport, eventExport]) {
+      expect(source).toContain("Best Time to Contact");
+      expect(source).toContain("Assigned To");
+      expect(source).toContain("Date Captured");
+      expect(source).toContain("formatExportDateTime");
+      expect(source).toContain("formatExportUrgency");
+      expect(source).toContain("formatSpreadsheetPhone");
+    }
+  });
+
+  test("XLSX exports share route permissions, audit logging, and workbook formatting", () => {
+    const contactsExport = readFileSync("app/(dashboard)/contacts/export/route.ts", "utf8");
+    const eventExport = readFileSync("app/(dashboard)/events/[id]/reports/export/route.ts", "utf8");
+    const contactsPage = readFileSync("app/(dashboard)/contacts/page.tsx", "utf8");
+    const eventReportPage = readFileSync("app/(dashboard)/events/[id]/reports/page.tsx", "utf8");
+    const xlsx = readFileSync("lib/xlsx.ts", "utf8");
+
+    expect(contactsExport).toContain('url.searchParams.get("format") === "xlsx"');
+    expect(eventExport).toContain('url.searchParams.get("format") === "xlsx"');
+    expect(contactsExport).toContain("canExportContacts");
+    expect(eventExport).toContain('permission: "can_export_reports"');
+    expect(contactsExport).toContain("audit_logs");
+    expect(eventExport).toContain("audit_logs");
+    expect(contactsExport).toContain("xlsxResponse");
+    expect(eventExport).toContain("xlsxResponse");
+    expect(contactsPage).toContain("Export Excel");
+    expect(eventReportPage).toContain("Export Excel");
+    expect(xlsx).toContain("createWorkbook");
+    expect(xlsx).toContain("stylesXml");
+    expect(xlsx).toContain("freezePane");
+    expect(xlsx).toContain("autoFilter");
+    expect(xlsx).toContain("columnWidths");
+    expect(xlsx).toContain("wrapText");
   });
 
   test("event CSV export orders dynamic questions from form config with answer fallback", () => {

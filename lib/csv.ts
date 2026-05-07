@@ -8,7 +8,7 @@ export function normalizeCsvValue(value: unknown) {
 export function escapeCsvValue(value: unknown) {
   let text = normalizeCsvValue(value);
 
-  if (/^[=+\-@]/.test(text) || /^[\s\t\r\n]*[=+\-@]/.test(text)) {
+  if (/^[=+\-@\t\r]/.test(text) || /^[\s\t\r\n]*[=+\-@]/.test(text)) {
     text = `'${text}`;
   }
 

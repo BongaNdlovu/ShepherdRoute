@@ -33,7 +33,7 @@ export default async function ContactsPage({
   const userCanManageContacts = canManageContacts(context.role as "admin" | "pastor" | "elder" | "bible_worker" | "health_leader" | "prayer_team" | "youth_leader" | "viewer");
   const userCanExportContacts =
     context.isAppAdmin || context.role === "admin" || context.role === "pastor";
-  const exportHref = () => {
+  const exportHref = (format?: "xlsx") => {
     const search = new URLSearchParams();
 
     for (const key of ["q", "status", "interest", "event", "assignedTo"] as const) {
@@ -41,6 +41,10 @@ export default async function ContactsPage({
       if (value && value !== "all") {
         search.set(key, value);
       }
+    }
+
+    if (format) {
+      search.set("format", format);
     }
 
     const suffix = search.toString();
@@ -62,12 +66,20 @@ export default async function ContactsPage({
             </Button>
           ) : null}
           {userCanExportContacts ? (
-            <Button asChild variant="outline">
-              <Link href={exportHref()}>
-                <Download className="h-4 w-4" />
-                Export CSV
-              </Link>
-            </Button>
+            <>
+              <Button asChild variant="outline">
+                <Link href={exportHref()}>
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href={exportHref("xlsx")}>
+                  <Download className="h-4 w-4" />
+                  Export Excel
+                </Link>
+              </Button>
+            </>
           ) : null}
         </div>
       }

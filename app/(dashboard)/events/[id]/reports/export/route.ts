@@ -1,9 +1,11 @@
 import { csvResponse, toCsv } from "@/lib/csv";
+import { formatExportDateTime, formatExportUrgency, formatSpreadsheetPhone } from "@/lib/exports/export-formatting";
 import { interestLabels, statusLabels, type FollowUpStatus, type Interest } from "@/lib/constants";
 import { getChurchContext, getEventReportContactsPage, getEventReportExportMeta } from "@/lib/data";
 import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 import { slugify } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
+import { createWorkbook, xlsxResponse, type XlsxCell } from "@/lib/xlsx";
 
 const EXPORT_BATCH_SIZE = 1000;
 const EVENT_EXPORT_HEADERS = [
@@ -12,18 +14,20 @@ const EVENT_EXPORT_HEADERS = [
   "Email",
   "Area",
   "Language",
-  "Best Time",
+  "Best Time to Contact",
   "Interests",
   "Status",
   "Urgency",
-  "Assignee",
-  "Created At"
+  "Assigned To",
+  "Date Captured"
 ];
 
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const context = await getChurchContext();
   const supabase = await createClient();
+  const url = new URL(request.url);
+  const format = url.searchParams.get("format") === "xlsx" ? "xlsx" : "csv";
 
   try {
     await requireCurrentUserEventPermission({
@@ -100,7 +104,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       action: "event_report_export",
       target_type: "event",
       target_id: id,
-      metadata: { event_name: event.name }
+      metadata: { event_name: event.name, format }
     });
 
   const rows = await collectEventRows(context.churchId, id, uniqueQuestions);
@@ -124,11 +128,58 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     });
   }
 
-  const csv = toCsv(headers, rows);
+  if (format === "xlsx") {
+    const workbook = createWorkbook([
+      {
+        name: "Event Contacts",
+        rows: [
+          ["Event Contact Report"],
+          [`Export date: ${formatExportDateTime(new Date().toISOString())}`],
+          [`Event: ${event.name}`],
+          [],
+          headers,
+          ...toXlsxRows(rows, headers)
+        ],
+        headerRow: 5,
+        freezePane: { ySplit: 5, topLeftCell: "A6" },
+        autoFilter: { from: "A5", to: `${columnName(headers.length)}${Math.max(5, rows.length + 5)}` },
+        columnWidths: eventColumnWidths(headers.length),
+        wrapColumns: eventWrapColumns(headers.length)
+      },
+      {
+        name: "Summary",
+        rows: buildEventSummaryRows(rows, headers, event.name)
+      }
+    ]);
 
+    return xlsxResponse(
+      `${slugify(event.name)}-${new Date().toISOString().split("T")[0]}-contacts.xlsx`,
+      workbook
+    );
+  }
+
+  const csv = toCsv(headers, rows);
   return csvResponse(
     `${slugify(event.name)}-${new Date().toISOString().split("T")[0]}-contacts.csv`,
     csv
+  );
+}
+
+function toXlsxRows(rows: Array<Array<unknown>>, headers: string[]): XlsxCell[][] {
+  const phoneIndex = headers.indexOf("Phone");
+
+  return rows.map((row) =>
+    row.map((cell, index) => {
+      if (index === phoneIndex && typeof cell === "string" && cell.startsWith("'")) {
+        return cell.slice(1);
+      }
+
+      if (typeof cell === "string" || typeof cell === "number" || typeof cell === "boolean" || cell === null || cell === undefined) {
+        return cell;
+      }
+
+      return String(cell);
+    })
   );
 }
 
@@ -233,16 +284,16 @@ async function collectEventRows(churchId: string, eventId: string, uniqueQuestio
 
       rows.push([
         contact.full_name,
-        contact.phone ?? contact.whatsapp_number ?? "",
+        formatSpreadsheetPhone(contact.phone ?? contact.whatsapp_number ?? ""),
         contact.email ?? "",
         contact.area ?? "",
         contact.language ?? "",
         contact.best_time_to_contact ?? "",
         interests,
         statusLabels[contact.status as FollowUpStatus] ?? contact.status,
-        contact.urgency,
+        formatExportUrgency(contact.urgency),
         contact.assigned_name ?? "",
-        contact.created_at,
+        formatExportDateTime(contact.created_at),
         ...dynamicValues
       ]);
     }
@@ -255,4 +306,66 @@ async function collectEventRows(churchId: string, eventId: string, uniqueQuestio
   }
 
   return rows;
+}
+
+function eventColumnWidths(columnCount: number) {
+  const baseWidths = [24, 18, 28, 22, 16, 22, 28, 16, 14, 24, 20];
+  return Array.from({ length: columnCount }, (_, index) => baseWidths[index] ?? 40);
+}
+
+function eventWrapColumns(columnCount: number) {
+  const wrap = [7];
+
+  for (let index = EVENT_EXPORT_HEADERS.length + 1; index <= columnCount; index += 1) {
+    wrap.push(index);
+  }
+
+  return wrap;
+}
+
+function buildEventSummaryRows(rows: Array<Array<unknown>>, headers: string[], eventName: string) {
+  const statusIndex = headers.indexOf("Status");
+  const urgencyIndex = headers.indexOf("Urgency");
+  const assignedIndex = headers.indexOf("Assigned To");
+  const countsByStatus = countValues(rows, statusIndex);
+  const countsByUrgency = countValues(rows, urgencyIndex);
+  const assignedCount = rows.filter((row) => Boolean(row[assignedIndex])).length;
+
+  return [
+    ["Event Contact Report Summary"],
+    [`Export date: ${formatExportDateTime(new Date().toISOString())}`],
+    [`Event: ${eventName}`],
+    [],
+    ["Metric", "Value"],
+    ["Total contacts exported", rows.length],
+    ["Total assigned", assignedCount],
+    ["Total unassigned", rows.length - assignedCount],
+    [],
+    ["Count by status"],
+    ...Object.entries(countsByStatus),
+    [],
+    ["Count by urgency"],
+    ...Object.entries(countsByUrgency)
+  ];
+}
+
+function countValues(rows: Array<Array<unknown>>, index: number) {
+  return rows.reduce<Record<string, number>>((counts, row) => {
+    const key = String(row[index] || "Blank");
+    counts[key] = (counts[key] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
+function columnName(index: number) {
+  let name = "";
+  let value = index;
+
+  while (value > 0) {
+    value -= 1;
+    name = String.fromCharCode(65 + (value % 26)) + name;
+    value = Math.floor(value / 26);
+  }
+
+  return name;
 }

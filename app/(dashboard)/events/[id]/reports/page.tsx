@@ -69,12 +69,20 @@ export default async function EventReportPage({
         </div>
         <div className="flex flex-wrap gap-2">
           {permissions.can_export_reports ? (
-            <Button asChild variant="outline">
-              <Link href={`/events/${event.id}/reports/export`}>
-                <Download className="h-4 w-4" />
-                Export CSV
-              </Link>
-            </Button>
+            <>
+              <Button asChild variant="outline">
+                <Link href={`/events/${event.id}/reports/export`}>
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href={`/events/${event.id}/reports/export?format=xlsx`}>
+                  <Download className="h-4 w-4" />
+                  Export Excel
+                </Link>
+              </Button>
+            </>
           ) : null}
           <Button asChild variant="outline">
             <Link href={`/events/${event.id}`}>Back to event</Link>
