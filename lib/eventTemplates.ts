@@ -101,12 +101,14 @@ const friendlyMessageTemplates = {
   prayerDefault:
     "Good day {firstName}, thank you for trusting {churchName}{eventLine}. We have received your prayer request, and we will handle it with care. Would it be okay if a trusted prayer leader checks in with you?",
   prayer:
-    "Good day {firstName}, thank you for sharing your prayer request with {churchName}. Our prayer team would be honoured to pray for you and check in with care and respect.",
+    "Good day {firstName}, thank you for sharing your prayer request with {churchName}. Our prayer team will pray with care and respect. Would it be okay if someone checks in with you again in a few days?",
   prayerBaptism:
     "Good day {firstName}, thank you for sharing your baptism request with {churchName}. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
 
   memberDefault:
     "Good day {firstName}, thank you for reaching out to {churchName}. We are grateful you trusted us with this request. One of the right ministry leaders will follow up with care.",
+  memberPrayer:
+    "Good day {firstName}, thank you for sharing your prayer request with {churchName}. Our prayer team will pray with care and respect. Would it be okay if someone checks in with you again in a few days?",
   memberBaptism:
     "Good day {firstName}, thank you for contacting {churchName}. Thank you for sharing your baptism request. We would be honoured to connect you with a Bible worker who can walk with you through preparation.",
 
@@ -525,6 +527,7 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     description: "Member care, ministry interest, or internal church follow-up.",
     formHeading: "How can the church team support you?",
     formDescription: "Share the ministry area or follow-up you would like from the team.",
+    topicOptions: ["Prayer", "Health", "Family", "Spiritual guidance", "Small group or Bible study", "Church ministry involvement", "Other"],
     interestOptions: [
       ...commonPrayerBibleHealth,
       { value: "youth", label: "Youth or Family Ministry" },
@@ -535,7 +538,7 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
     defaultRoles: ["elder", "pastor", "prayer_team", "bible_worker", "health_leader"],
     messageTemplates: {
       default: friendlyMessageTemplates.memberDefault,
-      prayer: friendlyMessageTemplates.prayer,
+      prayer: friendlyMessageTemplates.memberPrayer,
       baptism: friendlyMessageTemplates.memberBaptism
     },
     reportSections: [
@@ -557,6 +560,19 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
           { value: "suggestion", label: "Suggest church improvements" },
           { value: "team_involvement", label: "Request to get involved in a team" },
           { value: "contribute", label: "Contribute towards improving the church" }
+        ]
+      },
+      {
+        name: "small_group_status",
+        label: "Are you currently in a small group or Bible study?",
+        type: "select",
+        required: true,
+        options: [
+          { value: "yes_small_group", label: "Yes, in a small group" },
+          { value: "yes_bible_study", label: "Yes, in a Bible study" },
+          { value: "both", label: "Yes, both" },
+          { value: "not_currently", label: "Not currently" },
+          { value: "would_like_info", label: "I would like information" }
         ]
       }
     ]

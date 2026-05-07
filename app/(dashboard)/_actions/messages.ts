@@ -6,8 +6,9 @@ import { z } from "zod";
 import { getChurchContext } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
-import { createWhatsappLink } from "@/lib/whatsapp";
+import { createWhatsappLink, CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION, generateMessage } from "@/lib/whatsapp";
 import { requireContactManager, requireFollowUpAssigner } from "./contact-guards";
+import type { Interest } from "@/lib/constants";
 
 const generatedMessageSchema = z.object({
   contactId: z.string().uuid(),
@@ -51,7 +52,8 @@ export async function saveGeneratedMessageAction(formData: FormData) {
     generated_by: context.userId,
     channel: "whatsapp",
     message_text: parsed.data.message,
-    wa_link: link
+    wa_link: link,
+    prompt_version: CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION
   }).select("id").single();
 
   await supabase.from("message_open_events").insert({
@@ -134,7 +136,7 @@ export async function openSuggestedWhatsappAction(formData: FormData) {
   if (parsed.data.messageId) {
     const { data: message, error } = await supabase
       .from("generated_messages")
-      .select("id, message_text")
+      .select("id, message_text, prompt_version")
       .eq("church_id", context.churchId)
       .eq("contact_id", parsed.data.contactId)
       .eq("id", parsed.data.messageId)
@@ -146,6 +148,29 @@ export async function openSuggestedWhatsappAction(formData: FormData) {
     }
 
     messageText = message?.message_text ?? "";
+
+    if (message && message.prompt_version !== CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION) {
+      const { data: contactForMessage } = await supabase
+        .from("contacts")
+        .select("full_name, phone, whatsapp_number, events(name, event_type), contact_interests(interest)")
+        .eq("church_id", context.churchId)
+        .eq("id", parsed.data.contactId)
+        .maybeSingle();
+
+      if (contactForMessage) {
+        const event = Array.isArray(contactForMessage.events)
+          ? contactForMessage.events[0] ?? null
+          : contactForMessage.events;
+        messageText = generateMessage({
+          name: contactForMessage.full_name,
+          phone: contactForMessage.phone ?? contactForMessage.whatsapp_number,
+          interests: (contactForMessage.contact_interests ?? []).map((item: { interest: Interest }) => item.interest),
+          churchName: context.churchName,
+          eventName: event?.name,
+          templateType: event?.event_type
+        });
+      }
+    }
   }
 
   const link = createWhatsappLink(contact.whatsapp_number ?? contact.phone, messageText);
@@ -158,7 +183,12 @@ export async function openSuggestedWhatsappAction(formData: FormData) {
     const now = new Date().toISOString();
     const { error: updateError } = await supabase
       .from("generated_messages")
-      .update({ opened_at: now, wa_link: link })
+      .update({
+        opened_at: now,
+        wa_link: link,
+        message_text: messageText,
+        prompt_version: CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION
+      })
       .eq("church_id", context.churchId)
       .eq("contact_id", parsed.data.contactId)
       .eq("id", parsed.data.messageId)

@@ -1422,6 +1422,7 @@ export type Database = {
           language: string
           person_id: string
           phone: string
+          whatsapp_number: string
           preferred_contact_methods: string[]
           recommended_assigned_role: string
           status: Database["public"]["Enums"]["follow_up_status"]
@@ -1703,6 +1704,7 @@ export type Database = {
           language: string
           person_id: string
           phone: string
+          whatsapp_number: string
           preferred_contact_methods: string[]
           recommended_assigned_role: string
           status: Database["public"]["Enums"]["follow_up_status"]

@@ -125,7 +125,7 @@ async function* eventRows(churchId: string, eventId: string, uniqueQuestions: Ar
 
       yield [
         contact.full_name,
-        contact.phone,
+        contact.phone ?? contact.whatsapp_number ?? "",
         contact.email ?? "",
         contact.area ?? "",
         contact.language ?? "",

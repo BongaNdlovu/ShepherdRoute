@@ -170,7 +170,7 @@ export async function markFollowUpContactedAction(formData: FormData) {
   await requireFollowUpMutationPermission({ context, supabase, contactId: parsed.data.contactId, returnTo });
   const { data: followUp, error: followUpLookupError } = await supabase
     .from("follow_ups")
-    .select("id")
+    .select("id, assigned_to, assigned_handling_role")
     .eq("church_id", context.churchId)
     .eq("id", parsed.data.followUpId)
     .eq("contact_id", parsed.data.contactId)
@@ -202,6 +202,26 @@ export async function markFollowUpContactedAction(formData: FormData) {
 
   if (contactError) {
     redirect(`${returnTo}?error=${actionError(contactError, "Follow-up completed, but contact status could not be updated.")}`);
+  }
+
+  const secondTouchDueAt = new Date();
+  secondTouchDueAt.setDate(secondTouchDueAt.getDate() + 5);
+
+  const { error: secondTouchError } = await supabase.from("follow_ups").insert({
+    church_id: context.churchId,
+    contact_id: parsed.data.contactId,
+    assigned_to: followUp.assigned_to,
+    assigned_handling_role: followUp.assigned_handling_role,
+    author_id: context.userId,
+    channel: "note",
+    status: "assigned",
+    notes: "Automatic second touchpoint after initial contact.",
+    next_action: "Check in again, confirm whether the prayer or care need has changed, and record the outcome.",
+    due_at: secondTouchDueAt.toISOString()
+  });
+
+  if (secondTouchError) {
+    redirect(`${returnTo}?error=${actionError(secondTouchError, "Follow-up completed, but the second touchpoint reminder could not be created.")}`);
   }
 
   revalidatePath("/dashboard");

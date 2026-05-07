@@ -48,7 +48,8 @@ export type EventReportSummary = {
 export type EventReportExportContact = {
   id: string;
   full_name: string;
-  phone: string;
+  phone: string | null;
+  whatsapp_number: string | null;
   email: string | null;
   area: string | null;
   language: string | null;
@@ -378,7 +379,7 @@ export async function getEventReportContactsPage(churchId: string, id: string, o
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("contacts")
-    .select("id, full_name, phone, email, area, language, best_time_to_contact, status, urgency, created_at, archived_at, team_members(display_name), contact_interests(interest)")
+    .select("id, full_name, phone, whatsapp_number, email, area, language, best_time_to_contact, status, urgency, created_at, archived_at, team_members(display_name), contact_interests(interest)")
     .eq("church_id", churchId)
     .eq("event_id", id)
     .is("deleted_at", null)
@@ -403,7 +404,7 @@ export async function getEventReportDocumentContacts(churchId: string, id: strin
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("contacts")
-    .select("id, full_name, phone, email, area, language, best_time_to_contact, status, urgency, created_at, archived_at, do_not_contact, consent_given, preferred_contact_methods, team_members(display_name), contact_interests(interest)")
+    .select("id, full_name, phone, whatsapp_number, email, area, language, best_time_to_contact, status, urgency, created_at, archived_at, do_not_contact, consent_given, preferred_contact_methods, team_members(display_name), contact_interests(interest)")
     .eq("church_id", churchId)
     .eq("event_id", id)
     .is("deleted_at", null)

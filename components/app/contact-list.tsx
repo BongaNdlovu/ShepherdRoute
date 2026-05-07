@@ -38,9 +38,10 @@ export function ContactList({ churchName, contacts, team, compactLists = false, 
       </div>
       <div className="divide-y divide-border/70">
         {contacts.map((contact) => {
+          const contactPhone = contact.phone ?? contact.whatsapp_number;
           const message = generateMessage({
             name: contact.full_name,
-            phone: contact.phone,
+            phone: contactPhone,
             interests: contact.interests,
             churchName,
             eventName: contact.event_name
@@ -76,7 +77,7 @@ export function ContactList({ churchName, contacts, team, compactLists = false, 
                   {contact.duplicate_of_contact_id ? <span className="rounded-md bg-accent/10 px-2 py-1 text-xs font-semibold text-accent">Journey match</span> : null}
                   {isSelected ? <Check className="h-4 w-4 text-amber-600" /> : null}
                 </div>
-                <p className={cn(compactLists ? "mt-0.5 text-xs" : "mt-1 text-sm", "text-muted-foreground")}>{contact.phone ?? "No phone"}{contact.email ? ` - ${contact.email}` : ""}{contact.area ? ` - ${contact.area}` : ""}</p>
+                <p className={cn(compactLists ? "mt-0.5 text-xs" : "mt-1 text-sm", "text-muted-foreground")}>{contactPhone ?? "No phone"}{contact.email ? ` - ${contact.email}` : ""}{contact.area ? ` - ${contact.area}` : ""}</p>
                 <p className={cn(compactLists ? "mt-0.5" : "mt-1", "text-xs text-muted-foreground")}>
                   {contact.event_name ?? "Manual contact"}
                   {contact.best_time_to_contact ? ` - ${contact.best_time_to_contact}` : ""}
@@ -175,9 +176,9 @@ export function ContactList({ churchName, contacts, team, compactLists = false, 
                   <Button asChild size="sm" variant="outline">
                     <Link href={`/contacts/${contact.id}`}>Open detail</Link>
                   </Button>
-                  {contact.phone ? (
+                  {contactPhone ? (
                     <Button asChild size="sm" variant={contact.do_not_contact ? "outline" : "success"}>
-                      <a href={contact.do_not_contact ? `/contacts/${contact.id}` : createWhatsappLink(contact.phone, message) ?? `/contacts/${contact.id}`} target={contact.do_not_contact ? undefined : "_blank"} rel={contact.do_not_contact ? undefined : "noreferrer"}>
+                      <a href={contact.do_not_contact ? `/contacts/${contact.id}` : createWhatsappLink(contactPhone, message) ?? `/contacts/${contact.id}`} target={contact.do_not_contact ? undefined : "_blank"} rel={contact.do_not_contact ? undefined : "noreferrer"}>
                         <MessageCircle className="h-4 w-4" />
                         {contact.do_not_contact ? "Opted out" : "WhatsApp"}
                       </a>

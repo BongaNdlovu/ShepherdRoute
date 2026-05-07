@@ -399,7 +399,8 @@ export async function addQuickContactAction(formData: FormData) {
       contact: {
         id: contact.id,
         church_id: contact.church_id,
-        phone: parsed.data.phone
+        phone: parsed.data.phone,
+        whatsapp_number: parsed.data.phone
       },
       message: suggestedMessage,
       generatedBy: context.userId

@@ -3986,6 +3986,7 @@ returns table (
   person_id uuid,
   full_name text,
   phone text,
+  whatsapp_number text,
   email text,
   area text,
   language text,
@@ -4017,6 +4018,7 @@ as $$
       contacts.person_id,
       contacts.full_name,
       contacts.phone,
+      contacts.whatsapp_number,
       contacts.email,
       contacts.area,
       contacts.language,
@@ -4044,6 +4046,7 @@ as $$
         nullif(trim(coalesce(p_q, '')), '') is null
         or contacts.full_name ilike '%' || trim(p_q) || '%'
         or contacts.phone ilike '%' || trim(p_q) || '%'
+        or contacts.whatsapp_number ilike '%' || trim(p_q) || '%'
         or contacts.email ilike '%' || trim(p_q) || '%'
         or contacts.area ilike '%' || trim(p_q) || '%'
       )
@@ -4076,6 +4079,7 @@ as $$
     filtered.person_id,
     filtered.full_name,
     filtered.phone,
+    filtered.whatsapp_number,
     filtered.email,
     filtered.area,
     filtered.language,
@@ -4520,6 +4524,7 @@ returns table (
   person_id uuid,
   full_name text,
   phone text,
+  whatsapp_number text,
   email text,
   area text,
   language text,
@@ -4551,6 +4556,7 @@ as $$
       contacts.person_id,
       contacts.full_name,
       contacts.phone,
+      contacts.whatsapp_number,
       contacts.email,
       contacts.area,
       contacts.language,
@@ -4578,6 +4584,7 @@ as $$
         nullif(trim(coalesce(p_q, '')), '') is null
         or contacts.full_name ilike '%' || trim(p_q) || '%'
         or contacts.phone ilike '%' || trim(p_q) || '%'
+        or contacts.whatsapp_number ilike '%' || trim(p_q) || '%'
         or contacts.email ilike '%' || trim(p_q) || '%'
         or contacts.area ilike '%' || trim(p_q) || '%'
       )
@@ -4609,6 +4616,7 @@ as $$
     filtered.person_id,
     filtered.full_name,
     filtered.phone,
+    filtered.whatsapp_number,
     filtered.email,
     filtered.area,
     filtered.language,
@@ -5440,7 +5448,7 @@ begin
     when 'baptism'::public.interest_tag = any(p_interests) then
       'Good day ' || first_name || ', thank you for reaching out to ' || coalesce(target_church_name, 'our church') || event_context || '. Thank you for sharing your baptism request. We would be honoured to connect you with a Bible worker who can walk with you through preparation. Would it also be helpful if we shared Bible study options with you?'
     when 'prayer'::public.interest_tag = any(p_interests) then
-      'Good day ' || first_name || ', thank you for trusting ' || coalesce(target_church_name, 'our church') || event_context || '. We have received your prayer request, and we will handle it with care. Would you like someone from our prayer team to check in with you?'
+      'Good day ' || first_name || ', thank you for sharing your prayer request with ' || coalesce(target_church_name, 'our church') || event_context || '. Our prayer team will pray with care and respect. Would it be okay if someone checks in with you again in a few days?'
     when 'bible_study'::public.interest_tag = any(p_interests) then
       'Good day ' || first_name || ', thank you for connecting with ' || coalesce(target_church_name, 'our church') || event_context || '. We are glad you are interested in Bible study. Would it be okay if one of our Bible workers contacts you and shares the available study options?'
     when 'health'::public.interest_tag = any(p_interests) then
@@ -5472,7 +5480,7 @@ begin
     'whatsapp',
     suggested_message,
     suggested_wa_link,
-    'v1_suggested_rpc',
+    'v2_suggested',
     'suggested_whatsapp'
   );
 
@@ -6445,6 +6453,7 @@ returns table (
   person_id uuid,
   full_name text,
   phone text,
+  whatsapp_number text,
   email text,
   area text,
   language text,
@@ -6476,6 +6485,7 @@ as $$
       c.person_id,
       c.full_name,
       c.phone,
+      c.whatsapp_number,
       c.email,
       c.area,
       c.language,
@@ -6505,6 +6515,7 @@ as $$
         nullif(trim(coalesce(p_q, '')), '') is null
         or c.full_name ilike '%' || trim(p_q) || '%'
         or c.phone ilike '%' || trim(p_q) || '%'
+        or c.whatsapp_number ilike '%' || trim(p_q) || '%'
         or c.email ilike '%' || trim(p_q) || '%'
         or c.area ilike '%' || trim(p_q) || '%'
       )
@@ -6545,6 +6556,7 @@ as $$
     filtered.person_id,
     filtered.full_name,
     filtered.phone,
+    filtered.whatsapp_number,
     filtered.email,
     filtered.area,
     filtered.language,

@@ -1,6 +1,8 @@
 import type { Interest } from "@/lib/constants";
 import { getEventTemplate, type TemplateMessageKey } from "@/lib/eventTemplates";
 
+export const CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION = "v2_suggested";
+
 type MessageContact = {
   name: string;
   phone: string | null;
@@ -33,7 +35,7 @@ export function generateMessage(contact: MessageContact) {
   }
 
   if (contact.interests.includes("prayer")) {
-    return `Good day ${firstName}, thank you for trusting ${churchName}${eventLine}. We have received your prayer request, and we will handle it with care. Would you like someone from our prayer team to check in with you?`;
+    return `Good day ${firstName}, thank you for sharing your prayer request with ${churchName}${eventLine}. Our prayer team will pray with care and respect. Would it be okay if someone checks in with you again in a few days?`;
   }
 
   if (contact.interests.includes("bible_study")) {

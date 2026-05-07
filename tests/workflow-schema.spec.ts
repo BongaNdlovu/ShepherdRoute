@@ -466,6 +466,14 @@ test.describe("workflow helpers", () => {
     expect(confirmForm).toContain("markFollowUpContactedAction");
   });
 
+  test("mark contacted creates a second touchpoint reminder", () => {
+    const followUpMutations = readFileSync("app/(dashboard)/_actions/follow-up-mutations.ts", "utf8");
+
+    expect(followUpMutations).toContain("Automatic second touchpoint after initial contact.");
+    expect(followUpMutations).toContain("secondTouchDueAt.setDate(secondTouchDueAt.getDate() + 5)");
+    expect(followUpMutations).toContain("confirm whether the prayer or care need has changed");
+  });
+
   test("WhatsApp phone helper rejects invalid numbers", () => {
     expect(normalizeWhatsappPhone("abc")).toBeNull();
     expect(normalizeWhatsappPhone("123")).toBeNull();
@@ -518,14 +526,26 @@ test.describe("workflow helpers", () => {
   test("contact detail page prefers saved suggested message over live generation", () => {
     const contactDetailPage = readFileSync("app/(dashboard)/contacts/[id]/page.tsx", "utf8");
     expect(contactDetailPage).toContain("item.purpose === \"suggested_whatsapp\"");
+    expect(contactDetailPage).toContain("CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION");
     expect(contactDetailPage).toContain("suggestedMessage ?? generateMessage");
   });
 
   test("generated message select includes new purpose and timestamp columns", () => {
     const dataContacts = readFileSync("lib/data-contacts.ts", "utf8");
     expect(dataContacts).toContain("purpose");
+    expect(dataContacts).toContain("prompt_version");
     expect(dataContacts).toContain("approved_at");
     expect(dataContacts).toContain("opened_at");
+  });
+
+  test("old suggested WhatsApp messages are regenerated before opening", () => {
+    const messagesActions = readFileSync("app/(dashboard)/_actions/messages.ts", "utf8");
+    const whatsapp = readFileSync("lib/whatsapp.ts", "utf8");
+
+    expect(whatsapp).toContain('CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION = "v2_suggested"');
+    expect(messagesActions).toContain("message.prompt_version !== CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION");
+    expect(messagesActions).toContain("generateMessage");
+    expect(messagesActions).toContain("prompt_version: CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION");
   });
 
   test("follow-up queue route and RPC exist with pagination filters", () => {
@@ -560,6 +580,17 @@ test.describe("workflow helpers", () => {
     expect(contactsExport).not.toContain("getContacts(");
     expect(eventExport).toContain("streamCsvResponse");
     expect(eventExport).toContain("getEventReportContactsPage");
+  });
+
+  test("CSV exports fall back to WhatsApp number for legacy contacts", () => {
+    const contactsExport = readFileSync("app/(dashboard)/contacts/export/route.ts", "utf8");
+    const eventExport = readFileSync("app/(dashboard)/events/[id]/reports/export/route.ts", "utf8");
+
+    expect(schema).toContain("whatsapp_number text");
+    expect(schema).toContain("contacts.whatsapp_number");
+    expect(schema).toContain("c.whatsapp_number");
+    expect(contactsExport).toContain("contact.phone ?? contact.whatsapp_number ??");
+    expect(eventExport).toContain("contact.phone ?? contact.whatsapp_number ??");
   });
 
   test("CSV escaping protects spreadsheet formula-like values", () => {
@@ -699,6 +730,11 @@ test.describe("workflow helpers", () => {
     expect(publicValidation).toContain("formConfig.show_interests");
     expect(publicValidation).toContain("formData.getAll(\"interests\").map(String)");
     expect(publicValidation).toContain(": []");
+  });
+
+  test("public form validation requires configured topic selection", () => {
+    expect(publicValidation).toContain("Please select the topic that best describes your request.");
+    expect(publicValidation).toContain("selected_topic: selectedTopic ?? null");
   });
 
   test("public form page includes area/suburb field controlled by formConfig.show_area", () => {

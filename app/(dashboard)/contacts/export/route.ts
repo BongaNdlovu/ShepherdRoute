@@ -280,7 +280,7 @@ function contactToCsvRow(contact: Awaited<ReturnType<typeof getContactsPage>>["c
 
   return [
     contact.full_name,
-    contact.phone ?? "",
+    contact.phone ?? contact.whatsapp_number ?? "",
     contact.email ?? "",
     contact.area ?? "",
     contact.language ?? "",

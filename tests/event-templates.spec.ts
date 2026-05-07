@@ -92,6 +92,14 @@ test.describe("event templates", () => {
     expect(getEventTemplate("health_seminar").name).toBe("Health Seminar");
   });
 
+  test("regular member workflow captures topic and engagement state", () => {
+    const template = getEventTemplate("regular_member");
+
+    expect(template.topicOptions).toContain("Prayer");
+    expect(template.topicOptions).toContain("Small group or Bible study");
+    expect(template.questions?.some((question) => question.name === "small_group_status" && question.required)).toBe(true);
+  });
+
   test("every event template includes a baptism interest option", () => {
     const templateTypes = Object.keys(eventTemplates) as Array<keyof typeof eventTemplates>;
 

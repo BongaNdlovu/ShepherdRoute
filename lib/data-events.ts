@@ -235,6 +235,7 @@ export type EventContactsPage = {
     person_id: string | null;
     full_name: string;
     phone: string | null;
+    whatsapp_number: string | null;
     email: string | null;
     area: string | null;
     language: string | null;
@@ -294,6 +295,7 @@ export async function getEventContactsPage(
     person_id: row.person_id,
     full_name: row.full_name,
     phone: row.phone,
+    whatsapp_number: row.whatsapp_number,
     email: row.email,
     area: row.area,
     language: row.language,

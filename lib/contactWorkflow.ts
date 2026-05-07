@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AssignmentRole } from "@/lib/constants";
 import type { Interest } from "@/lib/constants";
 import type { Database } from "@/lib/supabase/database.types";
-import { createWhatsappLink } from "@/lib/whatsapp";
+import { createWhatsappLink, CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION } from "@/lib/whatsapp";
 
 export type WorkflowTeamMember = {
   id: string;
@@ -14,6 +14,7 @@ export type SuggestedMessageContact = {
   id: string;
   church_id: string;
   phone: string | null;
+  whatsapp_number?: string | null;
 };
 
 const ownerRoleFallbacks: Record<AssignmentRole, string[]> = {
@@ -51,11 +52,13 @@ export async function saveSuggestedWhatsappMessage({
   generatedBy?: string | null;
 }) {
   // If no phone number, don't save a WhatsApp link
-  if (!contact.phone) {
+  const phone = contact.whatsapp_number ?? contact.phone;
+
+  if (!phone) {
     return { error: null };
   }
 
-  const link = createWhatsappLink(contact.phone, message);
+  const link = createWhatsappLink(phone, message);
 
   // If link cannot be created, don't save
   if (!link) {
@@ -82,7 +85,7 @@ export async function saveSuggestedWhatsappMessage({
         channel: "whatsapp",
         message_text: message,
         wa_link: link,
-        prompt_version: "v1_suggested",
+        prompt_version: CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION,
         purpose: "suggested_whatsapp"
       })
       .eq("church_id", contact.church_id)
@@ -98,7 +101,7 @@ export async function saveSuggestedWhatsappMessage({
     channel: "whatsapp",
     message_text: message,
     wa_link: link,
-    prompt_version: "v1_suggested",
+    prompt_version: CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION,
     purpose: "suggested_whatsapp"
   });
 

@@ -111,6 +111,13 @@ export async function validatePublicEventRegistration(
 
   const phone = formConfig.show_phone ? parsedData.phone?.trim() : undefined;
   const email = formConfig.show_email ? parsedData.email?.trim() : undefined;
+  const selectedTopic = formConfig.show_topic && template.topicOptions?.length
+    ? parsedData.topic?.trim()
+    : undefined;
+
+  if (formConfig.show_topic && template.topicOptions?.length && !selectedTopic) {
+    return { error: "Please select the topic that best describes your request." };
+  }
 
   const allowedContactMethods = new Set<ContactMethod>([
     ...(formConfig.show_phone ? (["whatsapp", "phone"] as ContactMethod[]) : []),
@@ -203,7 +210,7 @@ export async function validatePublicEventRegistration(
   const finalMessage = formConfig.show_message ? parsedData.message : null;
   const finalPrayerVisibility = formConfig.show_prayer_visibility ? (parsedData.prayerVisibility || "general_prayer") : "general_prayer";
 
-  const classifierMessage = [parsedData.topic ? `Selected topic: ${parsedData.topic}.` : "", finalMessage ?? ""]
+  const classifierMessage = [selectedTopic ? `Selected topic: ${selectedTopic}.` : "", finalMessage ?? ""]
     .filter(Boolean)
     .join(" ");
   const classification = classifyContact({
@@ -215,7 +222,7 @@ export async function validatePublicEventRegistration(
   const classificationPayload = {
     ...classification,
     template_type: serverTemplateType,
-    selected_topic: parsedData.topic ?? null,
+    selected_topic: selectedTopic ?? null,
     classification_version: "rule_v1",
     rule_based: true,
     ready_for_ai: false

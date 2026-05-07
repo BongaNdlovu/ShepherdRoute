@@ -69,6 +69,7 @@ export default async function EventContactsPage({
     person_id: contact.person_id,
     full_name: contact.full_name,
     phone: contact.phone,
+    whatsapp_number: contact.whatsapp_number,
     email: contact.email,
     area: contact.area,
     language: contact.language,

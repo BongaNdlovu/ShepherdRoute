@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getChurchContext, getContact } from "@/lib/data";
 import { canManageContacts } from "@/lib/permissions";
 import type { AppRole, TeamRole } from "@/lib/constants";
-import { generateMessage } from "@/lib/whatsapp";
+import { CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION, generateMessage } from "@/lib/whatsapp";
 
 export const metadata = {
   title: "Contact Detail"
@@ -32,10 +32,14 @@ export default async function ContactDetailPage({
   const { contact, prayer, journey, team, followUps, messages } = await getContact(context.churchId, id);
   const userCanManageContact = canManageContacts(context.role as TeamRole, context.appRole as AppRole | null);
   const interests = contact.contact_interests ?? [];
-  const suggestedMessage = messages.find((item) => item.channel === "whatsapp" && item.purpose === "suggested_whatsapp")?.message_text;
+  const suggestedMessage = messages.find((item) =>
+    item.channel === "whatsapp" &&
+    item.purpose === "suggested_whatsapp" &&
+    item.prompt_version === CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION
+  )?.message_text;
   const message = suggestedMessage ?? generateMessage({
     name: contact.full_name,
-    phone: contact.phone,
+    phone: contact.phone ?? contact.whatsapp_number,
     interests: interests.map((item) => item.interest),
     churchName: context.churchName,
     eventName: contact.events?.name,
@@ -49,7 +53,7 @@ export default async function ContactDetailPage({
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
               <CardTitle className="text-2xl">{contact.full_name}</CardTitle>
-              <CardDescription>{contact.events?.name ?? "Manual contact"}{contact.phone ? ` - ${contact.phone}` : ""}</CardDescription>
+              <CardDescription>{contact.events?.name ?? "Manual contact"}{contact.phone ?? contact.whatsapp_number ? ` - ${contact.phone ?? contact.whatsapp_number}` : ""}</CardDescription>
             </div>
             <div className="flex gap-2">
               <UrgencyBadge urgency={contact.urgency} />
@@ -63,7 +67,7 @@ export default async function ContactDetailPage({
           <ContactTemplateAnswersPanel churchId={context.churchId} contactId={contact.id} />
           <ContactJourneySection journey={journey} />
           {userCanManageContact ? (
-            <WhatsappFollowUpCard contactId={contact.id} phone={contact.phone} message={message} doNotContact={contact.do_not_contact} />
+            <WhatsappFollowUpCard contactId={contact.id} phone={contact.phone ?? contact.whatsapp_number} message={message} doNotContact={contact.do_not_contact} />
           ) : null}
           <PrayerRequestsSection prayer={prayer} />
           <FollowUpHistorySection followUps={followUps} />
