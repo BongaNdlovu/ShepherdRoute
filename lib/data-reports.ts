@@ -336,7 +336,7 @@ export async function getEventReportExportMeta(churchId: string, id: string) {
   const supabase = await createClient();
   const { data: event, error } = await supabase
     .from("events")
-    .select("id, name")
+    .select("id, name, form_config")
     .eq("church_id", churchId)
     .eq("id", id)
     .single();

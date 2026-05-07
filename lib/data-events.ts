@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import type { FollowUpStatus, Interest } from "@/lib/constants";
+import type { FollowUpChannel, FollowUpStatus, Interest } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 
 const EVENT_CONTACT_LIMIT = 100;
@@ -232,20 +232,35 @@ export type EventContactsParams = {
 export type EventContactsPage = {
   contacts: Array<{
     id: string;
+    person_id: string | null;
     full_name: string;
-    phone: string;
+    phone: string | null;
     email: string | null;
     area: string | null;
+    language: string | null;
+    best_time_to_contact: string | null;
     status: FollowUpStatus;
     urgency: "low" | "medium" | "high";
     assigned_to: string | null;
+    assigned_handling_role: string | null;
+    recommended_assigned_role: string | null;
+    do_not_contact: boolean;
+    preferred_contact_methods: string[] | null;
+    duplicate_of_contact_id: string | null;
+    duplicate_match_confidence: number | null;
+    duplicate_match_reason: string | null;
     assigned_name: string | null;
     created_at: string;
     interests: Interest[];
+    total_count: number;
   }>;
   totalCount: number;
   page: number;
   pageSize: number;
+};
+
+type EventContactRpcRow = EventContactsPage["contacts"][number] & {
+  total_count: number | string | bigint | null;
 };
 
 export async function getEventContactsPage(
@@ -274,18 +289,29 @@ export async function getEventContactsPage(
     throw new Error(error.message);
   }
 
-  const contacts = (data ?? []).map((row: { id: string; full_name: string; phone: string; email: string | null; area: string | null; status: FollowUpStatus; urgency: "low" | "medium" | "high"; assigned_to: string | null; assigned_name: string | null; created_at: string; interests: Interest[] }) => ({
+  const contacts = ((data ?? []) as EventContactRpcRow[]).map((row) => ({
     id: row.id,
+    person_id: row.person_id,
     full_name: row.full_name,
     phone: row.phone,
     email: row.email,
     area: row.area,
+    language: row.language,
+    best_time_to_contact: row.best_time_to_contact,
     status: row.status,
     urgency: row.urgency,
     assigned_to: row.assigned_to,
+    assigned_handling_role: row.assigned_handling_role,
+    recommended_assigned_role: row.recommended_assigned_role,
+    do_not_contact: row.do_not_contact,
+    preferred_contact_methods: row.preferred_contact_methods,
+    duplicate_of_contact_id: row.duplicate_of_contact_id,
+    duplicate_match_confidence: row.duplicate_match_confidence,
+    duplicate_match_reason: row.duplicate_match_reason,
     assigned_name: row.assigned_name,
     created_at: row.created_at,
-    interests: row.interests ?? []
+    interests: row.interests ?? [],
+    total_count: Number(row.total_count ?? 0)
   }));
 
   const totalCount = data[0]?.total_count ?? 0;
@@ -312,6 +338,7 @@ export type EventFollowUpsPage = {
     contact_id: string;
     contact_name: string;
     contact_phone: string;
+    contact_do_not_contact: boolean;
     contact_whatsapp: string | null;
     contact_email: string | null;
     contact_status: FollowUpStatus;
@@ -324,10 +351,41 @@ export type EventFollowUpsPage = {
     due_at: string | null;
     completed_at: string | null;
     created_at: string;
+    interests: Interest[];
+    suggested_message_id: string | null;
+    suggested_message_text: string | null;
+    suggested_wa_link: string | null;
+    suggested_opened_at: string | null;
   }>;
   totalCount: number;
   page: number;
   pageSize: number;
+};
+
+type EventFollowUpRpcRow = {
+  id: string;
+  contact_id: string;
+  contact_name: string;
+  contact_phone: string;
+  contact_do_not_contact: boolean;
+  contact_whatsapp: string | null;
+  contact_email: string | null;
+  contact_status: FollowUpStatus;
+  contact_urgency: "low" | "medium" | "high";
+  assigned_to: string | null;
+  assigned_name: string | null;
+  status: FollowUpStatus;
+  channel: FollowUpChannel | null;
+  next_action: string | null;
+  due_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  interests: Interest[] | null;
+  suggested_message_id: string | null;
+  suggested_message_text: string | null;
+  suggested_wa_link: string | null;
+  suggested_opened_at: string | null;
+  total_count: number | string | bigint | null;
 };
 
 export async function getEventFollowUpsPage(
@@ -354,29 +412,12 @@ export async function getEventFollowUpsPage(
     throw new Error(error.message);
   }
 
-  const followUps = (data ?? []).map((row: {
-    id: string;
-    contact_id: string;
-    contact_name: string;
-    contact_phone: string;
-    contact_whatsapp: string | null;
-    contact_email: string | null;
-    contact_status: FollowUpStatus;
-    contact_urgency: "low" | "medium" | "high";
-    assigned_to: string | null;
-    assigned_name: string | null;
-    status: FollowUpStatus;
-    channel: string | null;
-    next_action: string | null;
-    due_at: string | null;
-    completed_at: string | null;
-    created_at: string;
-    total_count: bigint;
-  }) => ({
+  const followUps = ((data ?? []) as EventFollowUpRpcRow[]).map((row) => ({
     id: row.id,
     contact_id: row.contact_id,
     contact_name: row.contact_name,
     contact_phone: row.contact_phone,
+    contact_do_not_contact: row.contact_do_not_contact,
     contact_whatsapp: row.contact_whatsapp,
     contact_email: row.contact_email,
     contact_status: row.contact_status,
@@ -388,7 +429,12 @@ export async function getEventFollowUpsPage(
     next_action: row.next_action,
     due_at: row.due_at,
     completed_at: row.completed_at,
-    created_at: row.created_at
+    created_at: row.created_at,
+    interests: row.interests ?? [],
+    suggested_message_id: row.suggested_message_id,
+    suggested_message_text: row.suggested_message_text,
+    suggested_wa_link: row.suggested_wa_link,
+    suggested_opened_at: row.suggested_opened_at
   }));
 
   const totalCount = Number(data?.[0]?.total_count ?? 0);

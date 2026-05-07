@@ -13,11 +13,14 @@ import { updateEventCustomizationAction } from "@/app/(dashboard)/actions";
 import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 
 export default async function EventCustomizePage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string; success?: string }>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
   const context = await getChurchContext();
 
   try {
@@ -61,6 +64,17 @@ export default async function EventCustomizePage({
         <h1 className="text-2xl font-black">Customize form: {event.event.name}</h1>
         <p className="text-muted-foreground">Customize the public form heading, description, and branding for this event.</p>
       </div>
+
+      {query.error ? (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+          {query.error}
+        </div>
+      ) : null}
+      {query.success ? (
+        <div className="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-sm font-medium text-success">
+          Event form saved.
+        </div>
+      ) : null}
 
       <form action={updateEventCustomizationAction} className="grid gap-6">
         <input type="hidden" name="eventId" value={event.event.id} />

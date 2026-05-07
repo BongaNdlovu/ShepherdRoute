@@ -9,6 +9,7 @@ import { getChurchContext } from "@/lib/data";
 import { canInviteRole, canManageTeam } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { gmailComposeUrl, mailtoUrl, workspaceInviteTemplate } from "@/lib/invite-email";
+import { absoluteRequestUrl } from "@/lib/server-url";
 
 const optionalEmailSchema = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -176,7 +177,7 @@ export async function getTeamInviteGmailUrlAction(formData: FormData) {
     return { error: "Invitation not found" };
   }
 
-  const inviteLink = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/invite/${parsed.data.token}`;
+  const inviteLink = await absoluteRequestUrl(`/invite/${parsed.data.token}`);
   const { subject, body } = workspaceInviteTemplate({
     workspaceName: invitation.churches.name,
     inviterName: context.fullName || "A team member",

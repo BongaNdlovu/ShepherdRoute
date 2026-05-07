@@ -5,6 +5,8 @@ import { CinematicSection } from "@/components/ui/cinematic-section";
 import { DashboardShell } from "@/components/app/dashboard-shell";
 import { StatCard } from "@/components/app/stat-card";
 import { getChurchContext, getOutreachReportSummary } from "@/lib/data";
+import { canViewEventReports } from "@/lib/permissions";
+import type { AppRole, TeamRole } from "@/lib/constants";
 
 export const metadata = {
   title: "Reports"
@@ -12,6 +14,26 @@ export const metadata = {
 
 export default async function ReportsPage() {
   const context = await getChurchContext();
+  if (!canViewEventReports(context.role as TeamRole, context.appRole as AppRole | null)) {
+    return (
+      <DashboardShell
+        title="Reports"
+        description="Board-ready reporting for your workspace."
+      >
+        <CinematicSection className="cinematic-fade-up">
+          <Card>
+            <CardContent className="p-6">
+              <h1 className="text-lg font-semibold">Access restricted</h1>
+              <p className="text-sm text-muted-foreground">
+                You do not have permission to view reports for this workspace.
+              </p>
+            </CardContent>
+          </Card>
+        </CinematicSection>
+      </DashboardShell>
+    );
+  }
+
   const summary = await getOutreachReportSummary(context.churchId);
   const isMinistryWorkspace = context.workspaceType === "ministry";
   const primaryTitle = isMinistryWorkspace ? "Ministry reports" : "Church reports";

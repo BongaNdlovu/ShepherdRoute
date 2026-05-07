@@ -13,6 +13,8 @@ export function DeleteContactConfirmModal({ contactId, contactName, onConfirm }:
   const [isPending, startTransition] = useTransition();
 
   const handleClick = () => {
+    if (isPending) return;
+
     const confirmed = window.confirm(
       `Delete this contact? This will remove ${contactName} from active records, follow-up views, reports, and exports. This action cannot be undone.`
     );
@@ -26,7 +28,7 @@ export function DeleteContactConfirmModal({ contactId, contactName, onConfirm }:
 
   return (
     <Button
-      type="submit"
+      type="button"
       size="sm"
       variant="destructive"
       onClick={handleClick}

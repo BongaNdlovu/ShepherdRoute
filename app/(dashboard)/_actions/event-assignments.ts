@@ -11,6 +11,7 @@ import { requireEventPermission } from '@/lib/data-event-assignments';
 import type { AppAdminRole } from '@/lib/permissions';
 import { gmailComposeUrl, mailtoUrl, eventInviteTemplate } from '@/lib/invite-email';
 import { friendlyInviteError } from '@/lib/app-errors';
+import { absoluteRequestUrl } from '@/lib/server-url';
 
 function hashToken(token: string) {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -301,7 +302,7 @@ export async function inviteToEventByEmail(input: {
     throw new Error('Could not create this event invitation.');
   }
 
-  const inviteLink = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/event-invitations/accept?token=${rawToken}`;
+  const inviteLink = await absoluteRequestUrl(`/event-invitations/accept?token=${rawToken}`);
   const { data: eventDetails } = await supabase
     .from('events')
     .select('name, churches(name)')
@@ -446,7 +447,7 @@ export async function getEventInviteGmailUrlAction(formData: FormData) {
     return { error: "You do not have permission to manage this event invitation." };
   }
 
-  const inviteLink = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/event-invitations/accept?token=${parsed.token}`;
+  const inviteLink = await absoluteRequestUrl(`/event-invitations/accept?token=${parsed.token}`);
   const { subject, body } = eventInviteTemplate({
     eventName: assignment.events.name,
     workspaceName: assignment.churches.name,

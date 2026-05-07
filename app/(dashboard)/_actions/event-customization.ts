@@ -6,12 +6,13 @@ import { getChurchContext, getEvent } from "@/lib/data";
 import { parseEventCustomizationFormData } from "@/lib/events/customization-form";
 import { createClient } from "@/lib/supabase/server";
 import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
-import { requireEventManager } from "./event-guards";
 
 export async function updateEventCustomizationAction(formData: FormData) {
   const context = await getChurchContext();
   const supabase = await createClient();
-  await requireEventManager(context, supabase);
+  if (context.workspaceStatus === "inactive" && !context.isAppAdmin) {
+    redirect("/events?error=This%20workspace%20is%20inactive.");
+  }
 
   const eventId = String(formData.get("eventId") || "");
   const event = await getEvent(context.churchId, eventId);
@@ -21,11 +22,15 @@ export async function updateEventCustomizationAction(formData: FormData) {
     redirect(`/events/${eventId}/customize?error=${encodeURIComponent(parsed.error)}`);
   }
 
-  await requireCurrentUserEventPermission({
-    churchId: context.churchId,
-    eventId: eventId,
-    permission: "can_edit_event_settings"
-  });
+  try {
+    await requireCurrentUserEventPermission({
+      churchId: context.churchId,
+      eventId,
+      permission: "can_edit_event_settings"
+    });
+  } catch {
+    redirect(`/events/${eventId}/customize?error=You%20do%20not%20have%20permission%20to%20customize%20this%20event.`);
+  }
 
   const { error } = await supabase
     .from("events")

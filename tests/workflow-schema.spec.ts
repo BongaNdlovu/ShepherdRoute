@@ -158,7 +158,7 @@ test.describe("workflow helpers", () => {
     expect(eventCrud).toContain("parseBulkEventIds");
     expect(eventCrud).toContain('permission: "can_edit_event_settings"');
     expect(eventCrud).toContain('permission: "can_delete_event"');
-    expect(eventCrud).not.toContain("contact history and cannot be deleted");
+    expect(eventCrud).toContain("Archive%20it%20instead%20so%20contact%20history%20is%20preserved");
     expect(eventCrud).toContain(".delete()");
     expect(eventsPage).toContain("EventBulkActions");
     expect(eventBulkActions).toContain("Select all events");
@@ -169,8 +169,7 @@ test.describe("workflow helpers", () => {
     expect(eventBulkActions).toContain("bulkDeleteEventsAction");
     expect(eventDetailPage).toContain("Archive event");
     expect(eventDetailPage).toContain("Restore event");
-    expect(eventDetailPage).toContain("Delete event");
-    expect(eventDetailPage).toContain("Type the event name to delete");
+    expect(eventDetailPage).not.toContain("Delete event");
   });
 
   test("QR public URLs use the request origin instead of a stale deployment URL", () => {
@@ -189,7 +188,8 @@ test.describe("workflow helpers", () => {
 
   test("public form rate-limit table has explicit RLS policies", () => {
     expect(schema).toContain("alter table public.public_form_submissions enable row level security");
-    expect(schema).toContain('create policy "Public can read rate limit submissions"');
+    expect(schema).toContain('drop policy if exists "Public can read rate limit submissions"');
+    expect(schema).not.toContain('create policy "Public can read rate limit submissions"');
     expect(schema).toContain('create policy "Public can create rate limit submissions"');
     expect(publicActions).toContain("DEFAULT_PUBLIC_FORM_HOURLY_LIMIT = 50");
     expect(publicActions).toContain("DEFAULT_PUBLIC_FORM_DAILY_LIMIT = 200");

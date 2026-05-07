@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { getChurchContext, getTeamMembers } from "@/lib/data";
 import { getEventFollowUpsPage, type EventFollowUpsParams } from "@/lib/data-events";
+import type { FollowUpQueueItem } from "@/lib/data-follow-ups";
+import type { FollowUpChannel } from "@/lib/constants";
 import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 import { EventFollowUpFilters } from "@/components/app/event-follow-up-filters";
 import { CinematicSection } from "@/components/ui/cinematic-section";
 import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
-import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
+import { FollowUpsQueueList } from "@/components/app/follow-ups-queue-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -50,6 +52,40 @@ export default async function EventFollowUpsPage({
 
   const team = await getTeamMembers(context.churchId);
   const { followUps, totalCount, page, pageSize } = await getEventFollowUpsPage(context.churchId, id, query);
+  const followUpItems = followUps.map((followUp) => ({
+    id: followUp.id,
+    contact_id: followUp.contact_id,
+    assigned_to: followUp.assigned_to,
+    status: followUp.status,
+    channel: (followUp.channel ?? "note") as FollowUpChannel,
+    next_action: followUp.next_action,
+    notes: null,
+    due_at: followUp.due_at,
+    completed_at: followUp.completed_at,
+    created_at: followUp.created_at,
+    contact: {
+      full_name: followUp.contact_name,
+      phone: followUp.contact_phone,
+      email: followUp.contact_email,
+      area: null,
+      status: followUp.contact_status,
+      urgency: followUp.contact_urgency,
+      do_not_contact: followUp.contact_do_not_contact,
+      interests: followUp.interests,
+      event_id: id,
+      event_name: "This event"
+    },
+    assigned_name: followUp.assigned_name,
+    suggested_message: followUp.suggested_message_id
+      ? {
+        id: followUp.suggested_message_id,
+        message_text: followUp.suggested_message_text ?? "",
+        wa_link: followUp.suggested_wa_link,
+        opened_at: followUp.suggested_opened_at
+      }
+      : null,
+    total_count: totalCount
+  })) satisfies FollowUpQueueItem[];
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
@@ -76,42 +112,7 @@ export default async function EventFollowUpsPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-hidden rounded-lg border">
-            <div className="hidden grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr] bg-muted px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground md:grid">
-              <span>Contact</span>
-              <span>Status</span>
-              <span>Channel</span>
-              <span>Due Date</span>
-              <span>Assigned</span>
-              <span>Contact Status</span>
-            </div>
-            <div className="divide-y">
-              {followUps.map((followUp) => (
-                <div key={followUp.id} className="grid gap-3 px-4 py-4 md:grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr] md:items-center items-start">
-                  <Link href={`/contacts/${followUp.contact_id}`} className="hover:underline">
-                    <p className="font-bold">{followUp.contact_name}</p>
-                    <p className="text-sm text-muted-foreground">{followUp.contact_phone}</p>
-                  </Link>
-                  <StatusBadge status={followUp.status} />
-                  <p className="text-sm text-muted-foreground">{followUp.channel ?? "None"}</p>
-                  <p className="text-sm">
-                    {followUp.due_at ? new Date(followUp.due_at).toLocaleDateString() : "Not set"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{followUp.assigned_name ?? "Unassigned"}</p>
-                  <div className="flex items-center gap-2">
-                    <StatusBadge status={followUp.contact_status} />
-                    <UrgencyBadge urgency={followUp.contact_urgency} />
-                  </div>
-                </div>
-              ))}
-              {!followUps.length ? (
-                <div className="p-8 text-center">
-                  <p className="font-bold">No follow-ups yet</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Follow-ups will appear here as contacts are assigned.</p>
-                </div>
-              ) : null}
-            </div>
-          </div>
+          <FollowUpsQueueList items={followUpItems} returnTo={`/events/${id}/follow-ups`} />
 
           {totalPages > 1 && (
             <div className="mt-4 flex items-center justify-between">

@@ -141,16 +141,12 @@ export function ContactSummaryPanel({ contact, error, canManageContact = true }:
             <input type="hidden" name="intent" value="archive" />
             <Button type="submit" size="sm" variant="outline">Archive</Button>
           </form>
-          <form action={updateContactLifecycleAction}>
-            <input type="hidden" name="contactId" value={contact.id} />
-            <input type="hidden" name="intent" value="delete" />
-            <DeleteContactConfirmModal contactId={contact.id} contactName={contact.full_name} onConfirm={(contactId) => {
+          <DeleteContactConfirmModal contactId={contact.id} contactName={contact.full_name} onConfirm={(contactId) => {
               const formData = new FormData();
               formData.append("contactId", contactId);
               formData.append("intent", "delete");
               updateContactLifecycleAction(formData);
             }} />
-          </form>
         </div>
       ) : null}
     </>

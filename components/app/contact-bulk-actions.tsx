@@ -15,6 +15,7 @@ type ContactBulkActionsProps = {
   team: Array<{ id: string; display_name: string; role: string }>;
   compactLists?: boolean;
   canManageContacts: boolean;
+  canBulkAssignContacts?: boolean;
   returnTo?: string;
 };
 
@@ -24,6 +25,7 @@ export function ContactBulkActions({
   team,
   compactLists = false,
   canManageContacts,
+  canBulkAssignContacts = canManageContacts,
   returnTo = "/contacts"
 }: ContactBulkActionsProps) {
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
@@ -69,7 +71,7 @@ export function ContactBulkActions({
 
   return (
     <div className="space-y-4">
-      {canManageContacts ? (
+      {canBulkAssignContacts || canManageContacts ? (
         <div className="rounded-2xl border border-border/70 bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <label className="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -90,13 +92,16 @@ export function ContactBulkActions({
 
           {selectedCount > 0 ? (
             <div className="mt-4 space-y-3">
-              <BulkContactAssignmentForm
-                selectedContactIds={selectedContactIds}
-                team={team}
-                onClearSelection={clearSelection}
-                returnTo={returnTo}
-              />
+              {canBulkAssignContacts ? (
+                <BulkContactAssignmentForm
+                  selectedContactIds={selectedContactIds}
+                  team={team}
+                  onClearSelection={clearSelection}
+                  returnTo={returnTo}
+                />
+              ) : null}
 
+              {canManageContacts ? (
               <div className="grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-3">
                 <form action={bulkUpdateContactsLifecycleAction} onSubmit={(event) => {
                   if (!confirmLifecycle("do_not_contact")) event.preventDefault();
@@ -140,6 +145,7 @@ export function ContactBulkActions({
                   </Button>
                 </form>
               </div>
+              ) : null}
             </div>
           ) : (
             <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
@@ -157,7 +163,7 @@ export function ContactBulkActions({
         compactLists={compactLists}
         canManageContacts={canManageContacts}
         selectedContactIds={selectedContactIds}
-        onToggleSelection={canManageContacts ? toggleContact : undefined}
+        onToggleSelection={canBulkAssignContacts || canManageContacts ? toggleContact : undefined}
       />
     </div>
   );

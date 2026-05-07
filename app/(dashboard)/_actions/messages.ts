@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getChurchContext } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
+import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 import { createWhatsappLink } from "@/lib/whatsapp";
 import { requireContactManager, requireFollowUpAssigner } from "./contact-guards";
 
@@ -80,7 +81,31 @@ export async function openSuggestedWhatsappAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  await requireFollowUpAssigner(context, supabase, "/follow-ups");
+  const returnTo = safeReturnTo(parsed.data.returnTo, "/follow-ups");
+  try {
+    await requireFollowUpAssigner(context, supabase, returnTo);
+  } catch (error) {
+    const { data: contactForPermission } = await supabase
+      .from("contacts")
+      .select("event_id")
+      .eq("church_id", context.churchId)
+      .eq("id", parsed.data.contactId)
+      .maybeSingle();
+
+    if (!contactForPermission?.event_id) {
+      throw error;
+    }
+
+    try {
+      await requireCurrentUserEventPermission({
+        churchId: context.churchId,
+        eventId: contactForPermission.event_id,
+        permission: "can_view_contacts"
+      });
+    } catch {
+      throw error;
+    }
+  }
   const { data: followUp, error: followUpError } = await supabase
     .from("follow_ups")
     .select("id, contact_id, completed_at")
@@ -103,8 +128,6 @@ export async function openSuggestedWhatsappAction(formData: FormData) {
   if (!contact || contact.do_not_contact) {
     redirect(`/contacts/${parsed.data.contactId}?error=This%20contact%20has%20opted%20out%20of%20follow-up.`);
   }
-
-  const returnTo = safeReturnTo(parsed.data.returnTo, "/follow-ups");
 
   let messageText = "";
 

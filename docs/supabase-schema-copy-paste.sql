@@ -666,9 +666,6 @@ on public.public_form_submissions(slug, ip_hash, created_at desc);
 alter table public.public_form_submissions enable row level security;
 
 drop policy if exists "Public can read rate limit submissions" on public.public_form_submissions;
-create policy "Public can read rate limit submissions"
-on public.public_form_submissions for select
-using (true);
 
 drop policy if exists "Public can create rate limit submissions" on public.public_form_submissions;
 create policy "Public can create rate limit submissions"

@@ -11,6 +11,9 @@ import { defaultDueDate, prayerVisibilityOptions } from "@/lib/followUp";
 import { createClient } from "@/lib/supabase/server";
 import { generateMessage } from "@/lib/whatsapp";
 import { requireActiveTeamMemberInChurch, requireContactManager, actionError } from "./contact-guards";
+import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
+import { canManageContacts } from "@/lib/permissions";
+import type { AppRole, TeamRole } from "@/lib/constants";
 
 const contactUpdateSchema = z.object({
   contactId: z.string().uuid(),
@@ -485,9 +488,6 @@ export async function bulkAssignContactsAction(formData: FormData) {
         : parsed.data.assignedHandlingRole;
 
   const supabase = await createClient();
-  await requireContactManager(context, supabase);
-  await requireActiveTeamMemberInChurch(supabase, context.churchId, assignedTo);
-
   const { data: validContacts } = await supabase
     .from("contacts")
     .select("id, event_id")
@@ -499,6 +499,29 @@ export async function bulkAssignContactsAction(formData: FormData) {
   if (!validContacts || validContacts.length === 0) {
     redirect(`${returnTo}?error=No%20valid%20contacts%20found%20to%20assign.`);
   }
+
+  const eventIds = Array.from(new Set(validContacts.map((contact) => contact.event_id).filter(Boolean)));
+  const hasChurchContactManagement = canManageContacts(context.role as TeamRole, context.appRole as AppRole | null);
+
+  if (!hasChurchContactManagement) {
+    if (eventIds.length !== 1 || validContacts.some((contact) => contact.event_id !== eventIds[0])) {
+      redirect(`${returnTo}?error=You%20do%20not%20have%20permission%20to%20assign%20these%20contacts.`);
+    }
+
+    try {
+      await requireCurrentUserEventPermission({
+        churchId: context.churchId,
+        eventId: eventIds[0]!,
+        permission: "can_assign_contacts"
+      });
+    } catch {
+      redirect(`${returnTo}?error=You%20do%20not%20have%20permission%20to%20assign%20contacts%20for%20this%20event.`);
+    }
+  } else {
+    await requireContactManager(context, supabase);
+  }
+
+  await requireActiveTeamMemberInChurch(supabase, context.churchId, assignedTo);
 
   const validContactIds = validContacts.map((c) => c.id);
 
@@ -562,8 +585,6 @@ export async function bulkAssignContactsAction(formData: FormData) {
   if (followUpError) {
     redirect(`${returnTo}?error=${actionError(followUpError, "Contacts updated, but follow-up history could not be saved.")}`);
   }
-
-  const eventIds = Array.from(new Set(validContacts.map((contact) => contact.event_id).filter(Boolean)));
 
   revalidatePath("/contacts");
   revalidatePath("/dashboard");

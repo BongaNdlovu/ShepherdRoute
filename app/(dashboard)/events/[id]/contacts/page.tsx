@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getChurchContext, getTeamMembers } from "@/lib/data";
 import { getEventContactsPage, type EventContactsParams } from "@/lib/data-events";
-import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
+import { getResolvedEventPermissions, requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 import { ContactBulkActions } from "@/components/app/contact-bulk-actions";
 import { EventContactsFilters } from "@/components/app/event-contacts-filters";
 import { CinematicSection } from "@/components/ui/cinematic-section";
@@ -9,7 +9,9 @@ import { EventWorkspaceTabs } from "@/components/app/event-workspace-tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { canManageContacts } from "@/lib/permissions";
+import type { AppAdminRole } from "@/lib/permissions";
 import type { AppRole } from "@/lib/constants";
+import type { TeamRole } from "@/lib/constants";
 
 export const metadata = {
   title: "Event Contacts"
@@ -56,30 +58,36 @@ export default async function EventContactsPage({
     context.role as "admin" | "pastor" | "elder" | "bible_worker" | "health_leader" | "prayer_team" | "youth_leader" | "viewer",
     context.appRole as AppRole | null
   );
+  const permissions = await getResolvedEventPermissions({
+    userId: context.userId,
+    eventId: id,
+    appRole: context.appAdminRole as AppAdminRole | null,
+    teamRole: context.role as TeamRole
+  });
   const contactItems = contacts.map((contact) => ({
     id: contact.id,
-    person_id: null,
+    person_id: contact.person_id,
     full_name: contact.full_name,
     phone: contact.phone,
     email: contact.email,
     area: contact.area,
-    language: null,
-    best_time_to_contact: null,
+    language: contact.language,
+    best_time_to_contact: contact.best_time_to_contact,
     status: contact.status,
     urgency: contact.urgency,
     assigned_to: contact.assigned_to,
-    assigned_handling_role: null,
-    recommended_assigned_role: null,
-    do_not_contact: false,
-    duplicate_of_contact_id: null,
-    duplicate_match_confidence: null,
-    duplicate_match_reason: null,
+    assigned_handling_role: contact.assigned_handling_role,
+    recommended_assigned_role: contact.recommended_assigned_role,
+    do_not_contact: contact.do_not_contact,
+    duplicate_of_contact_id: contact.duplicate_of_contact_id,
+    duplicate_match_confidence: contact.duplicate_match_confidence,
+    duplicate_match_reason: contact.duplicate_match_reason,
     created_at: contact.created_at,
     event_id: id,
     event_name: "This event",
     assigned_name: contact.assigned_name,
     interests: contact.interests,
-    preferred_contact_methods: null,
+    preferred_contact_methods: contact.preferred_contact_methods,
     total_count: totalCount
   }));
 
@@ -125,6 +133,7 @@ export default async function EventContactsPage({
               contacts={contactItems}
               team={team}
               canManageContacts={userCanManageContacts}
+              canBulkAssignContacts={userCanManageContacts || permissions.can_assign_contacts}
               returnTo={`/events/${id}/contacts`}
             />
           </div>

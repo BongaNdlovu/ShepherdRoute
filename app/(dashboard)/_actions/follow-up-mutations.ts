@@ -7,6 +7,7 @@ import { followUpChannelOptions, statusOptions, assignmentRoleOptions } from "@/
 import { getChurchContext } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveTeamMemberInChurch, requireFollowUpAssigner, actionError, safeReturnTo } from "./contact-guards";
+import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 
 const followUpNoteSchema = z.object({
   contactId: z.string().uuid(),
@@ -17,7 +18,8 @@ const followUpNoteSchema = z.object({
   notes: z.string().max(2000).optional(),
   nextAction: z.string().max(500).optional(),
   dueAt: z.string().optional(),
-  markComplete: z.literal("on").optional()
+  markComplete: z.literal("on").optional(),
+  returnTo: z.string().optional()
 });
 
 const markContactedSchema = z.object({
@@ -36,6 +38,39 @@ const escalateOverdueSchema = z.object({
   returnTo: z.string().optional()
 });
 
+async function requireFollowUpMutationPermission(params: {
+  context: Awaited<ReturnType<typeof getChurchContext>>;
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  contactId: string;
+  returnTo: string;
+}) {
+  try {
+    await requireFollowUpAssigner(params.context, params.supabase, params.returnTo);
+    return;
+  } catch (error) {
+    const { data: contact } = await params.supabase
+      .from("contacts")
+      .select("event_id")
+      .eq("church_id", params.context.churchId)
+      .eq("id", params.contactId)
+      .maybeSingle();
+
+    if (!contact?.event_id) {
+      throw error;
+    }
+
+    try {
+      await requireCurrentUserEventPermission({
+        churchId: params.context.churchId,
+        eventId: contact.event_id,
+        permission: "can_assign_contacts"
+      });
+    } catch {
+      throw error;
+    }
+  }
+}
+
 export async function addFollowUpNoteAction(formData: FormData) {
   const context = await getChurchContext();
   const parsed = followUpNoteSchema.safeParse({
@@ -49,7 +84,8 @@ export async function addFollowUpNoteAction(formData: FormData) {
     notes: formData.get("notes") || undefined,
     nextAction: formData.get("nextAction") || undefined,
     dueAt: formData.get("dueAt") || undefined,
-    markComplete: formData.get("markComplete") || undefined
+    markComplete: formData.get("markComplete") || undefined,
+    returnTo: formData.get("returnTo") || undefined
   });
 
   if (!parsed.success) {
@@ -57,6 +93,7 @@ export async function addFollowUpNoteAction(formData: FormData) {
   }
 
   const assignedTo = parsed.data.assignedTo === "unassigned" ? null : parsed.data.assignedTo;
+  const returnTo = safeReturnTo(parsed.data.returnTo, `/contacts/${parsed.data.contactId}`);
   const assignedHandlingRole =
     parsed.data.assignedHandlingRole === undefined
       ? undefined
@@ -65,7 +102,7 @@ export async function addFollowUpNoteAction(formData: FormData) {
         : parsed.data.assignedHandlingRole;
   const completedAt = parsed.data.markComplete ? new Date().toISOString() : null;
   const supabase = await createClient();
-  await requireFollowUpAssigner(context, supabase, "/contacts");
+  await requireFollowUpMutationPermission({ context, supabase, contactId: parsed.data.contactId, returnTo });
   await requireActiveTeamMemberInChurch(supabase, context.churchId, assignedTo, `/contacts/${parsed.data.contactId}`);
 
   const { data: currentContact } = await supabase
@@ -93,7 +130,7 @@ export async function addFollowUpNoteAction(formData: FormData) {
 
   if (error) {
     console.error("Follow-up note creation error:", error);
-    redirect(`/contacts/${parsed.data.contactId}?error=Could%20not%20save%20the%20follow-up%20note.`);
+    redirect(`${returnTo}?error=Could%20not%20save%20the%20follow-up%20note.`);
   }
 
   const { error: contactUpdateError } = await supabase
@@ -107,12 +144,13 @@ export async function addFollowUpNoteAction(formData: FormData) {
     .eq("id", parsed.data.contactId);
 
   if (contactUpdateError) {
-    redirect(`/contacts/${parsed.data.contactId}?error=${actionError(contactUpdateError, "Follow-up note saved, but contact status could not be updated.")}`);
+    redirect(`${returnTo}?error=${actionError(contactUpdateError, "Follow-up note saved, but contact status could not be updated.")}`);
   }
 
   revalidatePath("/contacts");
   revalidatePath(`/contacts/${parsed.data.contactId}`);
-  redirect(`/contacts/${parsed.data.contactId}`);
+  revalidatePath("/follow-ups");
+  redirect(returnTo);
 }
 
 export async function markFollowUpContactedAction(formData: FormData) {
@@ -129,7 +167,7 @@ export async function markFollowUpContactedAction(formData: FormData) {
 
   const returnTo = safeReturnTo(parsed.data.returnTo, "/follow-ups");
   const supabase = await createClient();
-  await requireFollowUpAssigner(context, supabase);
+  await requireFollowUpMutationPermission({ context, supabase, contactId: parsed.data.contactId, returnTo });
   const { data: followUp, error: followUpLookupError } = await supabase
     .from("follow_ups")
     .select("id")
@@ -186,7 +224,7 @@ export async function markFollowUpWaitingAction(formData: FormData) {
 
   const returnTo = safeReturnTo(parsed.data.returnTo, "/follow-ups");
   const supabase = await createClient();
-  await requireFollowUpAssigner(context, supabase);
+  await requireFollowUpMutationPermission({ context, supabase, contactId: parsed.data.contactId, returnTo });
 
   const { data: followUp, error: followUpLookupError } = await supabase
     .from("follow_ups")

@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { MessageCircle } from "lucide-react";
-import { openSuggestedWhatsappAction } from "@/app/(dashboard)/actions";
+import { MessageCircle, PlusCircle } from "lucide-react";
+import { addFollowUpNoteAction, openSuggestedWhatsappAction } from "@/app/(dashboard)/actions";
 import { ConversationOngoingConfirmForm } from "@/components/app/conversation-ongoing-confirm-form";
 import { MarkContactedConfirmForm } from "@/components/app/mark-contacted-confirm-form";
 import { InterestPills } from "@/components/app/interest-pills";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import type { FollowUpQueueItem } from "@/lib/data-follow-ups";
 import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/followUp";
@@ -88,6 +89,25 @@ export function FollowUpsQueueList({
                 returnTo={returnTo}
                 disabled={Boolean(item.completed_at)}
               />
+              <form action={addFollowUpNoteAction} className="grid gap-2">
+                <input type="hidden" name="contactId" value={item.contact_id} />
+                <input type="hidden" name="assignedTo" value={item.assigned_to ?? "unassigned"} />
+                <input type="hidden" name="channel" value="note" />
+                <input type="hidden" name="status" value={item.contact.status} />
+                <input type="hidden" name="returnTo" value={returnTo} />
+                <Textarea
+                  name="notes"
+                  rows={2}
+                  placeholder="Add a note"
+                  className="min-h-16 resize-none text-sm"
+                  maxLength={2000}
+                  disabled={Boolean(item.completed_at)}
+                />
+                <Button type="submit" variant="outline" size="sm" className="w-full" disabled={Boolean(item.completed_at)}>
+                  <PlusCircle className="h-4 w-4" />
+                  Add note
+                </Button>
+              </form>
             </div>
           </div>
         ))}

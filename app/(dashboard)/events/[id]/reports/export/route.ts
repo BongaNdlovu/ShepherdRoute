@@ -20,6 +20,38 @@ const EVENT_EXPORT_HEADERS = [
   "Created At"
 ];
 
+type EventFormConfig = {
+  show_phone?: boolean;
+  show_email?: boolean;
+  show_area?: boolean;
+  show_language?: boolean;
+  show_best_time?: boolean;
+  show_message?: boolean;
+  show_prayer_visibility?: boolean;
+  questions?: Array<{ name?: string; label?: string; enabled?: boolean }>;
+};
+
+function currentFormQuestionNames(formConfig: unknown) {
+  const config = (formConfig ?? {}) as EventFormConfig;
+  const names = new Set<string>();
+
+  if (config.show_phone !== false) names.add("phone");
+  if (config.show_email !== false) names.add("email");
+  if (config.show_area !== false) names.add("area");
+  if (config.show_language !== false) names.add("language");
+  if (config.show_best_time !== false) names.add("best_time");
+  if (config.show_message !== false) names.add("message");
+  if (config.show_prayer_visibility !== false) names.add("prayer_visibility");
+
+  for (const question of config.questions ?? []) {
+    if (question.name && question.enabled !== false) {
+      names.add(question.name);
+    }
+  }
+
+  return names;
+}
+
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const context = await getChurchContext();
@@ -48,11 +80,12 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     .eq("church_id", context.churchId)
     .eq("event_id", id);
 
+  const currentQuestionNames = currentFormQuestionNames(event.form_config);
   const uniqueQuestions = Array.from(
     new Map(
       (questionRows ?? []).map((row) => [row.question_name, row.question_label])
     ).entries()
-  );
+  ).filter(([name]) => currentQuestionNames.has(name));
 
   const dynamicHeaders = uniqueQuestions.map(([name, label]) => label || name);
   const headers = [...EVENT_EXPORT_HEADERS, ...dynamicHeaders];
