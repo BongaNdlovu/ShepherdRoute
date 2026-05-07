@@ -270,9 +270,6 @@ export async function deleteEventAction(formData: FormData) {
   if (context.workspaceStatus === "inactive" && !context.isAppAdmin) {
     redirect("/events?error=This%20workspace%20is%20inactive.");
   }
-  if (!context.isAppAdmin) {
-    redirect("/events?error=Hard%20delete%20is%20restricted%20to%20app%20admins.%20Archive%20the%20event%20instead.");
-  }
   const parsed = deleteEventSchema.safeParse({
     eventId: formData.get("eventId"),
     eventName: formData.get("eventName"),
@@ -294,19 +291,27 @@ export async function deleteEventAction(formData: FormData) {
     redirect(`/events/${parsed.data.eventId}/settings?error=You%20do%20not%20have%20permission%20to%20delete%20this%20event.`);
   }
 
-  const { count: contactCount, error: contactCountError } = await supabase
+  const { data: contactsToDetach, error: contactsToDetachError } = await supabase
     .from("contacts")
-    .select("id", { count: "exact", head: true })
+    .select("id")
     .eq("church_id", context.churchId)
-    .eq("event_id", parsed.data.eventId)
-    .is("deleted_at", null);
+    .eq("event_id", parsed.data.eventId);
 
-  if (contactCountError) {
+  if (contactsToDetachError) {
     redirect(`/events/${parsed.data.eventId}/settings?error=Could%20not%20verify%20event%20contacts%20before%20deletion.`);
   }
 
-  if ((contactCount ?? 0) > 0) {
-    redirect(`/events/${parsed.data.eventId}/settings?error=This%20event%20has%20contacts.%20Archive%20it%20instead%20so%20contact%20history%20is%20preserved.`);
+  if ((contactsToDetach?.length ?? 0) > 0) {
+    const { error: detachError } = await supabase
+      .from("contacts")
+      .update({ event_id: null })
+      .eq("church_id", context.churchId)
+      .eq("event_id", parsed.data.eventId);
+
+    if (detachError) {
+      console.error("Event contact detach error:", detachError);
+      redirect(`/events/${parsed.data.eventId}/settings?error=Could%20not%20detach%20contacts%20before%20deleting%20the%20event.`);
+    }
   }
 
   const { data: deletedEvents, error } = await supabase
@@ -319,12 +324,38 @@ export async function deleteEventAction(formData: FormData) {
 
   if (error) {
     console.error("Event deletion error:", error);
+    if ((contactsToDetach?.length ?? 0) > 0) {
+      await supabase
+        .from("contacts")
+        .update({ event_id: parsed.data.eventId })
+        .eq("church_id", context.churchId)
+        .in("id", contactsToDetach!.map((contact) => contact.id));
+    }
     redirect(`/events/${parsed.data.eventId}?error=Could%20not%20delete%20the%20event.`);
   }
 
   if (!deletedEvents?.length) {
+    if ((contactsToDetach?.length ?? 0) > 0) {
+      await supabase
+        .from("contacts")
+        .update({ event_id: parsed.data.eventId })
+        .eq("church_id", context.churchId)
+        .in("id", contactsToDetach!.map((contact) => contact.id));
+    }
     redirect(`/events/${parsed.data.eventId}/settings?error=Event%20was%20not%20deleted.%20Please%20refresh%20and%20try%20again.`);
   }
+
+  await supabase.from("audit_logs").insert({
+    church_id: context.churchId,
+    actor_user_id: context.userId,
+    target_type: "event",
+    target_id: parsed.data.eventId,
+    action: "event.deleted",
+    metadata: {
+      event_name: parsed.data.eventName,
+      detached_contact_count: contactsToDetach?.length ?? 0
+    }
+  });
 
   revalidatePath("/dashboard");
   revalidatePath("/events");
@@ -387,9 +418,6 @@ export async function bulkDeleteEventsAction(formData: FormData) {
   if (context.workspaceStatus === "inactive" && !context.isAppAdmin) {
     redirect("/events?error=This%20workspace%20is%20inactive.");
   }
-  if (!context.isAppAdmin) {
-    redirect("/events?error=Hard%20delete%20is%20restricted%20to%20app%20admins.%20Archive%20events%20instead.");
-  }
 
   const parsed = parseBulkEventIds(formData);
   if (!parsed.success) {
@@ -410,19 +438,27 @@ export async function bulkDeleteEventsAction(formData: FormData) {
     }
   }
 
-  const { count: contactCount, error: contactCountError } = await supabase
+  const { data: contactsToDetach, error: contactsToDetachError } = await supabase
     .from("contacts")
-    .select("id", { count: "exact", head: true })
+    .select("id, event_id")
     .eq("church_id", context.churchId)
-    .in("event_id", parsed.data.eventIds)
-    .is("deleted_at", null);
+    .in("event_id", parsed.data.eventIds);
 
-  if (contactCountError) {
+  if (contactsToDetachError) {
     redirect("/events?error=Could%20not%20verify%20event%20contacts%20before%20deletion.");
   }
 
-  if ((contactCount ?? 0) > 0) {
-    redirect("/events?error=One%20or%20more%20selected%20events%20has%20contacts.%20Archive%20instead%20so%20contact%20history%20is%20preserved.");
+  if ((contactsToDetach?.length ?? 0) > 0) {
+    const { error: detachError } = await supabase
+      .from("contacts")
+      .update({ event_id: null })
+      .eq("church_id", context.churchId)
+      .in("event_id", parsed.data.eventIds);
+
+    if (detachError) {
+      console.error("Bulk event contact detach error:", detachError);
+      redirect("/events?error=Could%20not%20detach%20contacts%20before%20deleting%20the%20selected%20events.");
+    }
   }
 
   const { data: deletedEvents, error } = await supabase
@@ -434,16 +470,54 @@ export async function bulkDeleteEventsAction(formData: FormData) {
 
   if (error) {
     console.error("Bulk event deletion error:", error);
+    await restoreDetachedContacts(supabase, context.churchId, contactsToDetach ?? []);
     redirect("/events?error=Could%20not%20delete%20the%20selected%20events.");
   }
 
   if ((deletedEvents?.length ?? 0) !== parsed.data.eventIds.length) {
+    await restoreDetachedContacts(supabase, context.churchId, contactsToDetach ?? []);
     redirect("/events?error=Some%20selected%20events%20were%20not%20deleted.%20Please%20refresh%20and%20try%20again.");
   }
+
+  await supabase.from("audit_logs").insert({
+    church_id: context.churchId,
+    actor_user_id: context.userId,
+    target_type: "events",
+    target_id: null,
+    action: "events.deleted",
+    metadata: {
+      event_ids: parsed.data.eventIds,
+      deleted_event_count: deletedEvents?.length ?? 0,
+      detached_contact_count: contactsToDetach?.length ?? 0
+    }
+  });
 
   revalidatePath("/dashboard");
   revalidatePath("/events");
   revalidatePath("/contacts");
 
   redirect(`/events?success=${encodeURIComponent(`Deleted ${parsed.data.eventIds.length} selected event${parsed.data.eventIds.length === 1 ? "" : "s"}.`)}`);
+}
+
+async function restoreDetachedContacts(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  churchId: string,
+  contacts: Array<{ id: string; event_id: string | null }>
+) {
+  const contactsByEvent = new Map<string, string[]>();
+
+  for (const contact of contacts) {
+    if (!contact.event_id) continue;
+    const ids = contactsByEvent.get(contact.event_id) ?? [];
+    ids.push(contact.id);
+    contactsByEvent.set(contact.event_id, ids);
+  }
+
+  for (const [eventId, contactIds] of contactsByEvent.entries()) {
+    await supabase
+      .from("contacts")
+      .update({ event_id: eventId })
+      .eq("church_id", churchId)
+      .in("id", contactIds);
+  }
 }

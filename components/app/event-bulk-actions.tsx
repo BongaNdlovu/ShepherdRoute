@@ -56,7 +56,7 @@ export function EventBulkActions({ events, origin, canManageEvents }: EventBulkA
 
   function confirmDelete() {
     const contactLine = selectedContactCount > 0
-      ? ` This will also delete ${selectedContactCount} saved contact${selectedContactCount === 1 ? "" : "s"} captured by those events.`
+      ? ` ${selectedContactCount} attached contact${selectedContactCount === 1 ? "" : "s"} will be preserved and detached from the deleted event${selectedEventIds.length === 1 ? "" : "s"}.`
       : "";
 
     return window.confirm(

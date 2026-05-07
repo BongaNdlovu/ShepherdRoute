@@ -57,7 +57,34 @@ export type EventReportExportContact = {
   urgency: "low" | "medium" | "high";
   assigned_name: string | null;
   created_at: string;
+  archived_at: string | null;
   contact_interests: Array<{ interest: Interest }>;
+};
+
+export type EventReportDocumentContact = EventReportExportContact & {
+  do_not_contact: boolean;
+  consent_given: boolean;
+  preferred_contact_methods: string[] | null;
+  follow_ups: Array<{
+    status: FollowUpStatus;
+    channel: string | null;
+    next_action: string | null;
+    notes: string | null;
+    due_at: string | null;
+    completed_at: string | null;
+    created_at: string;
+    assigned_name: string | null;
+  }>;
+  prayer_requests: Array<{
+    request_text: string;
+    visibility: string;
+    created_at: string;
+  }>;
+  form_answers: Array<{
+    question_name: string;
+    question_label: string;
+    answer_display: unknown;
+  }>;
 };
 
 export type TodayFollowUpItem = {
@@ -322,7 +349,6 @@ export async function getEventReportContacts(churchId: string, id: string) {
     .eq("church_id", churchId)
     .eq("event_id", id)
     .is("deleted_at", null)
-    .is("archived_at", null)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -352,11 +378,10 @@ export async function getEventReportContactsPage(churchId: string, id: string, o
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("contacts")
-    .select("id, full_name, phone, email, area, language, best_time_to_contact, status, urgency, created_at, team_members(display_name), contact_interests(interest)")
+    .select("id, full_name, phone, email, area, language, best_time_to_contact, status, urgency, created_at, archived_at, team_members(display_name), contact_interests(interest)")
     .eq("church_id", churchId)
     .eq("event_id", id)
     .is("deleted_at", null)
-    .is("archived_at", null)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -372,4 +397,105 @@ export async function getEventReportContactsPage(churchId: string, id: string, o
       assigned_name: teamMember?.display_name ?? null
     };
   }) as unknown as EventReportExportContact[];
+}
+
+export async function getEventReportDocumentContacts(churchId: string, id: string): Promise<EventReportDocumentContact[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("contacts")
+    .select("id, full_name, phone, email, area, language, best_time_to_contact, status, urgency, created_at, archived_at, do_not_contact, consent_given, preferred_contact_methods, team_members(display_name), contact_interests(interest)")
+    .eq("church_id", churchId)
+    .eq("event_id", id)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const contacts = (data ?? []).map((contact) => {
+    const teamMember = Array.isArray(contact.team_members) ? contact.team_members[0] ?? null : contact.team_members;
+
+    return {
+      ...contact,
+      assigned_name: teamMember?.display_name ?? null
+    };
+  }) as unknown as Array<Omit<EventReportDocumentContact, "follow_ups" | "prayer_requests" | "form_answers">>;
+
+  if (!contacts.length) {
+    return [];
+  }
+
+  const contactIds = contacts.map((contact) => contact.id);
+  const [{ data: followUps, error: followUpsError }, { data: prayerRequests, error: prayerError }, { data: formAnswers, error: answersError }] = await Promise.all([
+    supabase
+      .from("follow_ups")
+      .select("contact_id, status, channel, next_action, notes, due_at, completed_at, created_at, team_members(display_name)")
+      .eq("church_id", churchId)
+      .in("contact_id", contactIds)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("prayer_requests")
+      .select("contact_id, request_text, visibility, created_at")
+      .eq("church_id", churchId)
+      .in("contact_id", contactIds)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("contact_form_answers")
+      .select("contact_id, question_name, question_label, answer_display")
+      .eq("church_id", churchId)
+      .eq("event_id", id)
+      .in("contact_id", contactIds)
+      .order("created_at", { ascending: true })
+  ]);
+
+  if (followUpsError) throw new Error(followUpsError.message);
+  if (prayerError) throw new Error(prayerError.message);
+  if (answersError) throw new Error(answersError.message);
+
+  const followUpsByContact = new Map<string, EventReportDocumentContact["follow_ups"]>();
+  for (const followUp of followUps ?? []) {
+    const teamMember = Array.isArray(followUp.team_members) ? followUp.team_members[0] ?? null : followUp.team_members;
+    const rows = followUpsByContact.get(followUp.contact_id) ?? [];
+    rows.push({
+      status: followUp.status as FollowUpStatus,
+      channel: followUp.channel,
+      next_action: followUp.next_action,
+      notes: followUp.notes,
+      due_at: followUp.due_at,
+      completed_at: followUp.completed_at,
+      created_at: followUp.created_at,
+      assigned_name: teamMember?.display_name ?? null
+    });
+    followUpsByContact.set(followUp.contact_id, rows);
+  }
+
+  const prayerByContact = new Map<string, EventReportDocumentContact["prayer_requests"]>();
+  for (const request of prayerRequests ?? []) {
+    const rows = prayerByContact.get(request.contact_id) ?? [];
+    rows.push({
+      request_text: request.request_text,
+      visibility: request.visibility,
+      created_at: request.created_at
+    });
+    prayerByContact.set(request.contact_id, rows);
+  }
+
+  const answersByContact = new Map<string, EventReportDocumentContact["form_answers"]>();
+  for (const answer of formAnswers ?? []) {
+    const rows = answersByContact.get(answer.contact_id) ?? [];
+    rows.push({
+      question_name: answer.question_name,
+      question_label: answer.question_label,
+      answer_display: answer.answer_display
+    });
+    answersByContact.set(answer.contact_id, rows);
+  }
+
+  return contacts.map((contact) => ({
+    ...contact,
+    follow_ups: followUpsByContact.get(contact.id) ?? [],
+    prayer_requests: prayerByContact.get(contact.id) ?? [],
+    form_answers: answersByContact.get(contact.id) ?? []
+  }));
 }

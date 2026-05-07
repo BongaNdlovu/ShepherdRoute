@@ -86,6 +86,15 @@ export async function GET(request: Request) {
 
   const exportShape = await inspectContactExportShape(context.churchId, filters);
 
+  if (exportShape.rowCount === 0) {
+    return new NextResponse("No contacts match the current export filters.", {
+      status: 404,
+      headers: {
+        "content-type": "text/plain; charset=utf-8"
+      }
+    });
+  }
+
   // Build dynamic headers
   const headers = [...BASE_CONTACT_HEADERS, ...exportShape.questionLabels];
 

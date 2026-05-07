@@ -435,7 +435,7 @@ create table if not exists public.contacts (
   id uuid primary key default gen_random_uuid(),
   church_id uuid not null references public.churches(id) on delete cascade,
   person_id uuid references public.people(id) on delete set null,
-  event_id uuid references public.events(id) on delete cascade,
+  event_id uuid references public.events(id) on delete set null,
   full_name text not null,
   phone text,
   email text,
@@ -473,6 +473,11 @@ create table if not exists public.contacts (
 
 alter table if exists public.contacts
   add column if not exists best_time_to_contact text;
+alter table if exists public.contacts
+  drop constraint if exists contacts_event_id_fkey;
+alter table if exists public.contacts
+  add constraint contacts_event_id_fkey
+  foreign key (event_id) references public.events(id) on delete set null;
 alter table if exists public.contacts
   add column if not exists person_id uuid references public.people(id) on delete set null,
   add column if not exists whatsapp_number text,
@@ -4810,7 +4815,6 @@ as $$
     where contacts.church_id = p_church_id
       and contacts.event_id = p_event_id
       and contacts.deleted_at is null
-      and contacts.archived_at is null
   ),
   event_form_config as (
     select form_config
@@ -6718,7 +6722,6 @@ as $$
     where contacts.church_id = p_church_id
       and contacts.event_id = p_event_id
       and contacts.deleted_at is null
-      and contacts.archived_at is null
   ),
   event_form_config as (
     select form_config

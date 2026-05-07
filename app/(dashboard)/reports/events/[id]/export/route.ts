@@ -1,4 +1,4 @@
-import { getChurchContext, getEventReportSummary } from "@/lib/data";
+import { getChurchContext, getEventReportDocumentContacts, getEventReportSummary } from "@/lib/data";
 import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 import { getEventTemplate } from "@/lib/eventTemplates";
 import { buildEventReportDocument, wordDocumentResponse } from "@/lib/report-document";
@@ -20,6 +20,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   }
 
   const { event, summary } = await getEventReportSummary(context.churchId, id);
+  const contacts = await getEventReportDocumentContacts(context.churchId, id);
   const template = getEventTemplate(event.event_type);
 
   await supabase
@@ -37,6 +38,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     event,
     summary,
     template,
+    contacts,
     workspace: {
       churchName: context.churchName,
       workspaceLabel: context.workspaceLabel,

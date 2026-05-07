@@ -166,12 +166,12 @@ export default async function EventSettingsPage({
         </CardContent>
       </Card>
 
-      {permissions.can_delete_event && context.isAppAdmin ? (
+      {permissions.can_delete_event ? (
         <Card className="border-rose-200">
           <CardHeader>
             <CardTitle className="text-rose-700">Delete event</CardTitle>
             <CardDescription>
-              Permanently deletes this event only when it has no active contacts. Archive is the safe default for events with captured contact history.
+              Permanently deletes this event. Attached contacts, follow-ups, prayer requests, and messages are preserved, but contacts will become manual contacts without this event link.
             </CardDescription>
           </CardHeader>
           <CardContent>
