@@ -1,4 +1,4 @@
-import { streamCsvResponse } from "@/lib/csv";
+import { csvResponse, toCsv } from "@/lib/csv";
 import { interestLabels, statusLabels, type FollowUpStatus, type Interest } from "@/lib/constants";
 import { getChurchContext, getEventReportContactsPage, getEventReportExportMeta } from "@/lib/data";
 import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
@@ -52,6 +52,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     });
   }
 
+
   // Fetch all unique question names for this event
   const { data: questionRows } = await supabase
     .from("contact_form_answers")
@@ -59,11 +60,33 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     .eq("church_id", context.churchId)
     .eq("event_id", id);
 
-  const uniqueQuestions = Array.from(
+  const configuredQuestions =
+    extractQuestionOrderFromFormConfig(event.form_config);
+
+  const answerQuestions = Array.from(
     new Map(
-      (questionRows ?? []).map((row) => [row.question_name, row.question_label])
+      (questionRows ?? []).map((row) => [
+        row.question_name,
+        row.question_label || row.question_name
+      ])
     ).entries()
   );
+
+  const questionMap = new Map<string, string>();
+
+  for (const [name, label] of configuredQuestions) {
+    if (name && !questionMap.has(name)) {
+      questionMap.set(name, label || name);
+    }
+  }
+
+  for (const [name, label] of answerQuestions) {
+    if (name && !questionMap.has(name)) {
+      questionMap.set(name, label || name);
+    }
+  }
+
+  const uniqueQuestions = Array.from(questionMap.entries());
 
   const dynamicHeaders = uniqueQuestions.map(([name, label]) => label || name);
   const headers = [...EVENT_EXPORT_HEADERS, ...dynamicHeaders];
@@ -80,12 +103,93 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       metadata: { event_name: event.name }
     });
 
-  return streamCsvResponse(`${slugify(event.name)}-${new Date().toISOString().split("T")[0]}-contacts.csv`, headers, eventRows(context.churchId, id, uniqueQuestions));
+  const rows = await collectEventRows(context.churchId, id, uniqueQuestions);
+
+  if (rows.length === 0) {
+    return new Response("CSV export failed: contacts were found, but no CSV rows were generated.", {
+      status: 500,
+      headers: {
+        "content-type": "text/plain; charset=utf-8"
+      }
+    });
+  }
+
+  if (process.env.SHEPHERDROUTE_DEBUG_EXPORTS === "true") {
+    console.log("Event CSV export rows", {
+      churchId: context.churchId,
+      eventId: id,
+      firstContactPageCount: firstContactPage.length,
+      rowCount: rows.length,
+      dynamicQuestionCount: uniqueQuestions.length
+    });
+  }
+
+  const csv = toCsv(headers, rows);
+
+  return csvResponse(
+    `${slugify(event.name)}-${new Date().toISOString().split("T")[0]}-contacts.csv`,
+    csv
+  );
 }
 
-async function* eventRows(churchId: string, eventId: string, uniqueQuestions: Array<[string, string]>) {
+function extractQuestionOrderFromFormConfig(formConfig: unknown): Array<[string, string]> {
+  if (!formConfig || typeof formConfig !== "object" || Array.isArray(formConfig)) {
+    return [];
+  }
+
+  const config = formConfig as Record<string, unknown>;
+  const questions = config.questions;
+
+  if (!Array.isArray(questions)) {
+    return [];
+  }
+
+  const orderedQuestions: Array<[string, string]> = [];
+  const seen = new Set<string>();
+
+  for (const item of questions) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      continue;
+    }
+
+    const question = item as Record<string, unknown>;
+
+    const nameCandidate =
+      typeof question.name === "string"
+        ? question.name
+        : typeof question.question_name === "string"
+          ? question.question_name
+          : typeof question.id === "string"
+            ? question.id
+            : "";
+
+    const labelCandidate =
+      typeof question.label === "string"
+        ? question.label
+        : typeof question.question_label === "string"
+          ? question.question_label
+          : typeof question.title === "string"
+            ? question.title
+            : nameCandidate;
+
+    const name = nameCandidate.trim();
+    const label = labelCandidate.trim() || name;
+
+    if (!name || seen.has(name)) {
+      continue;
+    }
+
+    seen.add(name);
+    orderedQuestions.push([name, label]);
+  }
+
+  return orderedQuestions;
+}
+
+async function collectEventRows(churchId: string, eventId: string, uniqueQuestions: Array<[string, string]>): Promise<Array<Array<unknown>>> {
   let offset = 0;
   const supabase = await createClient();
+  const rows: Array<Array<unknown>> = [];
 
   while (true) {
     const contacts = await getEventReportContactsPage(churchId, eventId, offset, EXPORT_BATCH_SIZE);
@@ -96,14 +200,18 @@ async function* eventRows(churchId: string, eventId: string, uniqueQuestions: Ar
 
     const contactIds = contacts.map((contact) => contact.id);
 
-    const { data: answers } = contactIds.length
+    const { data: answers, error: answersError } = contactIds.length
       ? await supabase
           .from("contact_form_answers")
           .select("contact_id, question_name, answer_display")
           .eq("church_id", churchId)
           .eq("event_id", eventId)
           .in("contact_id", contactIds)
-      : { data: [] };
+      : { data: [], error: null };
+
+    if (answersError) {
+      throw new Error(answersError.message);
+    }
 
     const answersByContact = new Map<string, Map<string, string>>();
 
@@ -123,7 +231,7 @@ async function* eventRows(churchId: string, eventId: string, uniqueQuestions: Ar
       const answerMap = answersByContact.get(contact.id) ?? new Map<string, string>();
       const dynamicValues = uniqueQuestions.map(([name]) => answerMap.get(name) ?? "");
 
-      yield [
+      rows.push([
         contact.full_name,
         contact.phone ?? contact.whatsapp_number ?? "",
         contact.email ?? "",
@@ -136,7 +244,7 @@ async function* eventRows(churchId: string, eventId: string, uniqueQuestions: Ar
         contact.assigned_name ?? "",
         contact.created_at,
         ...dynamicValues
-      ];
+      ]);
     }
 
     if (contacts.length < EXPORT_BATCH_SIZE) {
@@ -145,4 +253,6 @@ async function* eventRows(churchId: string, eventId: string, uniqueQuestions: Ar
 
     offset += EXPORT_BATCH_SIZE;
   }
+
+  return rows;
 }

@@ -1,5 +1,5 @@
 import { getChurchContext, getContactsPage } from "@/lib/data";
-import { streamCsvResponse } from "@/lib/csv";
+import { csvResponse, toCsv } from "@/lib/csv";
 import { assignmentRoleLabels, interestLabels, statusLabels, type FollowUpStatus } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
@@ -114,19 +114,33 @@ export async function GET(request: Request) {
 
   const fileName = createContactExportFileName();
 
-  if (process.env.SHEPHERDROUTE_DEBUG_EXPORTS === "true") {
-    console.log("CSV export rows", {
-      churchId: context.churchId,
-      filters,
-      rowCount: exportShape.rowCount
+  const rows = await collectContactRows(
+    context.churchId,
+    filters,
+    exportShape.questionNames
+  );
+
+  if (exportShape.rowCount > 0 && rows.length === 0) {
+    return new NextResponse("CSV export failed: contacts matched the filters, but no CSV rows were generated.", {
+      status: 500,
+      headers: {
+        "content-type": "text/plain; charset=utf-8"
+      }
     });
   }
 
-  return streamCsvResponse(
-    fileName,
-    headers,
-    streamContactRows(context.churchId, filters, exportShape.questionNames)
-  );
+  if (process.env.SHEPHERDROUTE_DEBUG_EXPORTS === "true") {
+    console.log("Contacts CSV export rows", {
+      churchId: context.churchId,
+      filters,
+      expectedRowCount: exportShape.rowCount,
+      rowCount: rows.length,
+      dynamicQuestionCount: exportShape.questionNames.length
+    });
+  }
+
+  const csv = toCsv(headers, rows);
+  return csvResponse(fileName, csv);
 }
 
 async function inspectContactExportShape(
@@ -195,13 +209,14 @@ async function collectQuestionOrderForContacts(
   }
 }
 
-async function* streamContactRows(
+async function collectContactRows(
   churchId: string,
   filters: ContactExportFilters,
   questionNames: string[]
-) {
+): Promise<Array<Array<unknown>>> {
   let page = 1;
   const supabase = await createClient();
+  const rows: Array<Array<unknown>> = [];
 
   while (true) {
     const result = await getContactsPage(churchId, {
@@ -218,10 +233,10 @@ async function* streamContactRows(
 
     for (const contact of result.contacts) {
       const contactAnswers = answersMap.get(contact.id) || new Map<string, unknown>();
-      yield [
+      rows.push([
         ...contactToCsvRow(contact),
         ...questionNames.map((name) => normalizeCsvAnswer(contactAnswers.get(name)))
-      ];
+      ]);
     }
 
     if (!result.contacts.length || page >= result.pageCount) {
@@ -230,6 +245,8 @@ async function* streamContactRows(
 
     page += 1;
   }
+
+  return rows;
 }
 
 async function getAnswerMapForContacts(

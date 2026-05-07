@@ -566,20 +566,25 @@ test.describe("workflow helpers", () => {
     expect(card).not.toContain("/contacts?status=assigned");
   });
 
-  test("contacts and event report exports use streaming", () => {
+  test("contacts and event report exports use eager CSV generation", () => {
     const contactsExport = readFileSync("app/(dashboard)/contacts/export/route.ts", "utf8");
     const eventExport = readFileSync("app/(dashboard)/events/[id]/reports/export/route.ts", "utf8");
     const csv = readFileSync("lib/csv.ts", "utf8");
-    expect(csv).toContain("streamCsvResponse");
-    expect(csv).toContain("ReadableStream");
-    expect(contactsExport).toContain("streamCsvResponse");
-    expect(contactsExport).toContain("streamContactRows");
-    expect(contactsExport).toContain("inspectContactExportShape");
-    expect(contactsExport).not.toContain("toCsv");
-    expect(contactsExport).toContain("getContactsPage");
-    expect(contactsExport).not.toContain("getContacts(");
-    expect(eventExport).toContain("streamCsvResponse");
-    expect(eventExport).toContain("getEventReportContactsPage");
+
+    expect(csv).toContain("csvResponse");
+    expect(csv).toContain("toCsv");
+
+    expect(contactsExport).toContain("csvResponse");
+    expect(contactsExport).toContain("toCsv");
+    expect(contactsExport).toContain("collectContactRows");
+    expect(contactsExport).not.toContain("streamContactRows");
+    expect(contactsExport).not.toContain("streamCsvResponse(");
+
+    expect(eventExport).toContain("csvResponse");
+    expect(eventExport).toContain("toCsv");
+    expect(eventExport).toContain("collectEventRows");
+    expect(eventExport).not.toContain("async function* eventRows");
+    expect(eventExport).not.toContain("streamCsvResponse(");
   });
 
   test("CSV exports fall back to WhatsApp number for legacy contacts", () => {
@@ -598,6 +603,42 @@ test.describe("workflow helpers", () => {
     expect(csv).toContain("escapeCsvValue");
     expect(csv).toContain("/^[=+\\-@]/");
     expect(csv).toContain("text = `'${text}`");
+  });
+
+  test("event CSV export orders dynamic questions from form config with answer fallback", () => {
+    const eventExport = readFileSync("app/(dashboard)/events/[id]/reports/export/route.ts", "utf8");
+
+    expect(eventExport).toContain("extractQuestionOrderFromFormConfig");
+    expect(eventExport).toContain("event.form_config");
+    expect(eventExport).toContain("configuredQuestions");
+    expect(eventExport).toContain("answerQuestions");
+    expect(eventExport).toContain("questionMap");
+  });
+
+  test("CSV exports include row-collection guards and safe debug logging", () => {
+    const contactsExport = readFileSync("app/(dashboard)/contacts/export/route.ts", "utf8");
+    const eventExport = readFileSync("app/(dashboard)/events/[id]/reports/export/route.ts", "utf8");
+
+    expect(eventExport).toContain("CSV export failed: contacts were found, but no CSV rows were generated.");
+    expect(eventExport).toContain("SHEPHERDROUTE_DEBUG_EXPORTS");
+    expect(eventExport).toContain("firstContactPageCount");
+    expect(eventExport).toContain("dynamicQuestionCount");
+
+    expect(contactsExport).toContain("CSV export failed: contacts matched the filters, but no CSV rows were generated.");
+    expect(contactsExport).toContain("SHEPHERDROUTE_DEBUG_EXPORTS");
+    expect(contactsExport).toContain("expectedRowCount");
+    expect(contactsExport).toContain("dynamicQuestionCount");
+  });
+
+  test("CSV export answer queries fail visibly instead of silently dropping answers", () => {
+    const contactsExport = readFileSync("app/(dashboard)/contacts/export/route.ts", "utf8");
+    const eventExport = readFileSync("app/(dashboard)/events/[id]/reports/export/route.ts", "utf8");
+
+    expect(eventExport).toContain("answersError");
+    expect(eventExport).toContain("throw new Error(answersError.message)");
+
+    expect(contactsExport).toContain("if (error)");
+    expect(contactsExport).toContain("throw new Error(error.message)");
   });
 
   test("scale scripts and package commands exist with seed guardrails", () => {
