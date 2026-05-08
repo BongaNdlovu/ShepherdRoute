@@ -11,6 +11,8 @@ type WhatsappFollowUpCardProps = {
 };
 
 export function WhatsappFollowUpCard({ contactId, phone, message, doNotContact }: WhatsappFollowUpCardProps) {
+  const hasDraft = message.trim().length > 0;
+
   if (!phone) {
     return (
       <Card className="border-slate-200 bg-slate-50">
@@ -42,15 +44,26 @@ export function WhatsappFollowUpCard({ contactId, phone, message, doNotContact }
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <p className={`text-sm leading-6 ${doNotContact ? "text-slate-700" : "text-emerald-950"}`}>{message}</p>
-        <form action={saveGeneratedMessageAction} className="mt-4">
-          <input type="hidden" name="contactId" value={contactId} />
-          <input type="hidden" name="phone" value={phone} />
-          <input type="hidden" name="message" value={message} />
-          <Button type="submit" variant={doNotContact ? "outline" : "success"} className="w-full" disabled={doNotContact}>
-            {doNotContact ? "Do not contact" : "Save and open in WhatsApp"}
-          </Button>
-        </form>
+        {hasDraft ? (
+          <>
+            <p className={`text-sm leading-6 ${doNotContact ? "text-slate-700" : "text-emerald-950"}`}>{message}</p>
+            <form action={saveGeneratedMessageAction} className="mt-4">
+              <input type="hidden" name="contactId" value={contactId} />
+              <input type="hidden" name="phone" value={phone} />
+              <input type="hidden" name="message" value={message} />
+              <Button type="submit" variant={doNotContact ? "outline" : "success"} className="w-full" disabled={doNotContact}>
+                {doNotContact ? "Do not contact" : "Save and open in WhatsApp"}
+              </Button>
+            </form>
+          </>
+        ) : (
+          <>
+            <p className="text-sm leading-6 text-slate-700">No WhatsApp draft should be sent for this contact right now.</p>
+            <Button type="button" variant="outline" className="mt-4 w-full" disabled>
+              No WhatsApp draft
+            </Button>
+          </>
+        )}
       </CardContent>
     </Card>
   );

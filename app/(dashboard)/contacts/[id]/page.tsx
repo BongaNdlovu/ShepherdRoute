@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getChurchContext, getContact } from "@/lib/data";
 import { canManageContacts } from "@/lib/permissions";
 import type { AppRole, TeamRole } from "@/lib/constants";
-import { CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION, generateMessage } from "@/lib/whatsapp";
+import { AI_TRIAGE_WHATSAPP_PROMPT_VERSION, CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION, generateMessage } from "@/lib/whatsapp";
 
 export const metadata = {
   title: "Contact Detail"
@@ -34,19 +34,26 @@ export default async function ContactDetailPage({
   const { contact, prayer, journey, team, followUps, messages } = await getContact(context.churchId, id);
   const userCanManageContact = canManageContacts(context.role as TeamRole, context.appRole as AppRole | null);
   const interests = contact.contact_interests ?? [];
-  const suggestedMessage = messages.find((item) =>
+  const suggestedMessages = messages.filter((item) =>
     item.channel === "whatsapp" &&
     item.purpose === "suggested_whatsapp" &&
-    item.prompt_version === CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION
-  )?.message_text;
-  const message = suggestedMessage ?? generateMessage({
-    name: contact.full_name,
-    phone: contact.phone ?? contact.whatsapp_number,
-    interests: interests.map((item) => item.interest),
-    churchName: context.churchName,
-    eventName: contact.events?.name,
-    templateType: contact.events?.event_type
-  });
+    item.message_text.trim().length > 0 &&
+    [AI_TRIAGE_WHATSAPP_PROMPT_VERSION, CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION].includes(item.prompt_version ?? "")
+  );
+  const suggestedMessage =
+    suggestedMessages.find((item) => item.prompt_version === AI_TRIAGE_WHATSAPP_PROMPT_VERSION)?.message_text ??
+    suggestedMessages.find((item) => item.prompt_version === CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION)?.message_text;
+  const aiExplicitlySkippedWhatsapp = contact.classification_payload?.suggested_whatsapp_message === "";
+  const message = suggestedMessage ?? (aiExplicitlySkippedWhatsapp
+    ? ""
+    : generateMessage({
+      name: contact.full_name,
+      phone: contact.phone ?? contact.whatsapp_number,
+      interests: interests.map((item) => item.interest),
+      churchName: context.churchName,
+      eventName: contact.events?.name,
+      templateType: contact.events?.event_type
+    }));
 
   return (
     <section className="grid gap-4 xl:grid-cols-[1fr_420px]">

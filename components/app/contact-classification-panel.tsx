@@ -38,13 +38,27 @@ export function ContactClassificationPanel({ classification }: ContactClassifica
     );
   }
 
+  const isAiAssisted = Boolean(
+    classification.needs_human_review !== undefined ||
+    classification.confidence !== undefined ||
+    classification.suggested_whatsapp_message !== undefined
+  );
+  const description = classification.rule_based === true && !isAiAssisted
+    ? "Rule-based classification for human follow-up."
+    : isAiAssisted
+      ? "AI-assisted follow-up recommendation."
+      : "Follow-up recommendation for human review.";
+  const confidencePercent = typeof classification.confidence === "number"
+    ? Math.round(classification.confidence * 100)
+    : null;
+
   return (
     <Card className="border-amber-200 bg-amber-50">
       <CardHeader>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <CardTitle>Suggested routing</CardTitle>
-            <CardDescription className="text-amber-900/75">Rule-based classification for human follow-up.</CardDescription>
+            <CardDescription className="text-amber-900/75">{description}</CardDescription>
           </div>
           <Badge variant={classification.urgency === "high" ? "destructive" : classification.urgency === "medium" ? "warning" : "muted"}>
             {classification.urgency} urgency
@@ -58,6 +72,18 @@ export function ContactClassificationPanel({ classification }: ContactClassifica
           ))}
         </div>
         <p className="leading-6 text-amber-950">{classification.summary}</p>
+        {isAiAssisted ? (
+          <div className="flex flex-wrap gap-2">
+            {classification.needs_human_review !== undefined ? (
+              <Badge variant={classification.needs_human_review ? "warning" : "success"}>
+                {classification.needs_human_review ? "Needs human review" : "No human review flagged"}
+              </Badge>
+            ) : null}
+            {confidencePercent !== null ? (
+              <Badge variant="secondary">Confidence {confidencePercent}%</Badge>
+            ) : null}
+          </div>
+        ) : null}
         <div className="grid gap-3 md:grid-cols-2">
           <div>
             <p className="text-xs font-bold uppercase tracking-wider text-amber-900/70">Recommended role</p>

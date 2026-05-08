@@ -49,6 +49,9 @@ export type ContactClassificationPayload = ClassificationResult & {
   classification_version?: string;
   rule_based?: boolean;
   ready_for_ai?: boolean;
+  needs_human_review?: boolean;
+  confidence?: number;
+  suggested_whatsapp_message?: string;
 };
 
 type ContactFilters = {

@@ -6,7 +6,7 @@ import { z } from "zod";
 import { getChurchContext } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
-import { createWhatsappLink, CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION, generateMessage } from "@/lib/whatsapp";
+import { AI_TRIAGE_WHATSAPP_PROMPT_VERSION, createWhatsappLink, CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION, generateMessage } from "@/lib/whatsapp";
 import { requireContactManager, requireFollowUpAssigner } from "./contact-guards";
 import type { Interest } from "@/lib/constants";
 
@@ -132,6 +132,7 @@ export async function openSuggestedWhatsappAction(formData: FormData) {
   }
 
   let messageText = "";
+  let promptVersion = CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION;
 
   if (parsed.data.messageId) {
     const { data: message, error } = await supabase
@@ -148,8 +149,25 @@ export async function openSuggestedWhatsappAction(formData: FormData) {
     }
 
     messageText = message?.message_text ?? "";
+    promptVersion = message?.prompt_version ?? CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION;
 
-    if (message && message.prompt_version !== CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION) {
+    if (message && !messageText.trim()) {
+      await supabase
+        .from("generated_messages")
+        .update({ wa_link: null })
+        .eq("church_id", context.churchId)
+        .eq("contact_id", parsed.data.contactId)
+        .eq("id", parsed.data.messageId)
+        .eq("purpose", "suggested_whatsapp");
+
+      redirect(`${returnTo}?error=No%20WhatsApp%20draft%20is%20available%20for%20this%20contact.`);
+    }
+
+    if (
+      message &&
+      message.prompt_version !== CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION &&
+      message.prompt_version !== AI_TRIAGE_WHATSAPP_PROMPT_VERSION
+    ) {
       const { data: contactForMessage } = await supabase
         .from("contacts")
         .select("full_name, phone, whatsapp_number, events(name, event_type), contact_interests(interest)")
@@ -169,6 +187,7 @@ export async function openSuggestedWhatsappAction(formData: FormData) {
           eventName: event?.name,
           templateType: event?.event_type
         });
+        promptVersion = CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION;
       }
     }
   }
@@ -187,7 +206,7 @@ export async function openSuggestedWhatsappAction(formData: FormData) {
         opened_at: now,
         wa_link: link,
         message_text: messageText,
-        prompt_version: CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION
+        prompt_version: promptVersion
       })
       .eq("church_id", context.churchId)
       .eq("contact_id", parsed.data.contactId)

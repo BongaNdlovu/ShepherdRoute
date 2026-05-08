@@ -2,6 +2,7 @@ import type { Interest } from "@/lib/constants";
 import { getEventTemplate, type TemplateMessageKey } from "@/lib/eventTemplates";
 
 export const CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION = "v2_suggested";
+export const AI_TRIAGE_WHATSAPP_PROMPT_VERSION = "ai_triage_v1";
 
 type MessageContact = {
   name: string;

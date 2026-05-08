@@ -490,14 +490,16 @@ test.describe("workflow helpers", () => {
     expect(createWhatsappLink("082 000 0000")).toBe("https://wa.me/27820000000");
   });
 
-  test("follow-up queue allows opening WhatsApp without a generated message", () => {
+  test("follow-up queue only opens WhatsApp when a draft is available", () => {
     const queueList = readFileSync("components/app/follow-ups-queue-list.tsx", "utf8");
     const messagesActions = readFileSync("app/(dashboard)/_actions/messages.ts", "utf8");
 
-    expect(queueList).not.toContain("disabled={!item.suggested_message");
-    expect(queueList).toContain("disabled={item.contact.do_not_contact}");
+    expect(queueList).toContain("hasWhatsAppDraft");
+    expect(queueList).toContain("disabled={item.contact.do_not_contact || !hasWhatsAppDraft}");
+    expect(queueList).toContain("No WhatsApp draft");
     expect(messagesActions).toContain("messageId: formData.get(\"messageId\") || undefined");
     expect(messagesActions).toContain("messageText = \"\"");
+    expect(messagesActions).toContain("No%20WhatsApp%20draft%20is%20available%20for%20this%20contact.");
   });
 
   test("mark contacted returns to the calling queue instead of dashboard", () => {
@@ -527,8 +529,11 @@ test.describe("workflow helpers", () => {
   test("contact detail page prefers saved suggested message over live generation", () => {
     const contactDetailPage = readFileSync("app/(dashboard)/contacts/[id]/page.tsx", "utf8");
     expect(contactDetailPage).toContain("item.purpose === \"suggested_whatsapp\"");
+    expect(contactDetailPage).toContain("AI_TRIAGE_WHATSAPP_PROMPT_VERSION");
     expect(contactDetailPage).toContain("CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION");
-    expect(contactDetailPage).toContain("suggestedMessage ?? generateMessage");
+    expect(contactDetailPage).toContain("item.message_text.trim().length > 0");
+    expect(contactDetailPage).toContain("suggestedMessages.find((item) => item.prompt_version === AI_TRIAGE_WHATSAPP_PROMPT_VERSION)");
+    expect(contactDetailPage).toContain("contact.classification_payload?.suggested_whatsapp_message === \"\"");
   });
 
   test("generated message select includes new purpose and timestamp columns", () => {
@@ -544,9 +549,11 @@ test.describe("workflow helpers", () => {
     const whatsapp = readFileSync("lib/whatsapp.ts", "utf8");
 
     expect(whatsapp).toContain('CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION = "v2_suggested"');
+    expect(whatsapp).toContain('AI_TRIAGE_WHATSAPP_PROMPT_VERSION = "ai_triage_v1"');
     expect(messagesActions).toContain("message.prompt_version !== CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION");
+    expect(messagesActions).toContain("message.prompt_version !== AI_TRIAGE_WHATSAPP_PROMPT_VERSION");
     expect(messagesActions).toContain("generateMessage");
-    expect(messagesActions).toContain("prompt_version: CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION");
+    expect(messagesActions).toContain("prompt_version: promptVersion");
   });
 
   test("follow-up queue route and RPC exist with pagination filters", () => {
