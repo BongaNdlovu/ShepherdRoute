@@ -408,7 +408,7 @@ export default async function PublicEventPage({
                 
                 <ContactMethodConsent availableMethods={availableContactMethods} />
                 <PendingSubmitButton size="lg" pendingText="Submitting...">
-                  Submit visitor form
+                  Submit form
                 </PendingSubmitButton>
                 </form>
             )}
