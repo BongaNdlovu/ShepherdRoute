@@ -69,9 +69,9 @@ test.describe("authenticated smoke flow", () => {
     await page.getByRole("textbox", { name: "Email" }).fill(`smoke.visitor.${Date.now()}@example.com`);
     await page.getByLabel("Area / suburb").fill("Pinetown");
     await page.getByLabel(/Bible Study/i).first().check();
-    await page.getByLabel("Optional message / prayer request").fill("Please send Bible study information.");
+    await page.getByLabel("Tell us more about what you would like to share with us...").fill("Please send Bible study information.");
     await page.getByRole("checkbox", { name: "WhatsApp" }).check();
-    await page.getByRole("button", { name: "Submit visitor form" }).click();
+    await page.getByRole("button", { name: "Submit form" }).click();
     await expect(page.getByRole("heading", { name: "Thank you" })).toBeVisible();
 
     await page.goto("/contacts");
