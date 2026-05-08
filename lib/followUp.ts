@@ -73,6 +73,16 @@ export function formatDateTime(value?: string | null) {
 
   return new Intl.DateTimeFormat("en-ZA", {
     dateStyle: "medium",
-    timeStyle: "short"
+    timeStyle: "short",
+    timeZone: "Africa/Johannesburg"
+  }).format(new Date(value));
+}
+
+export function formatDate(value?: string | null) {
+  if (!value) return "Not set";
+
+  return new Intl.DateTimeFormat("en-ZA", {
+    dateStyle: "medium",
+    timeZone: "Africa/Johannesburg"
   }).format(new Date(value));
 }

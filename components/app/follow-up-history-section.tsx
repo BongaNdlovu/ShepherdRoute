@@ -1,5 +1,6 @@
 import { CalendarClock } from "lucide-react";
 import type { ContactDetailResult } from "@/lib/data";
+import { formatDate, formatDateTime } from "@/lib/followUp";
 
 type FollowUpHistorySectionProps = {
   followUps: ContactDetailResult["followUps"];
@@ -16,7 +17,7 @@ export function FollowUpHistorySection({ followUps }: FollowUpHistorySectionProp
             <div key={item.id} className="rounded-lg border bg-white p-3 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-bold">{item.channel} - {item.status}</p>
-                <p className="text-xs text-muted-foreground">{new Date(item.created_at).toLocaleDateString()}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(item.created_at)}</p>
               </div>
               {assigned?.display_name ? <p className="mt-1 text-muted-foreground">Assigned to {assigned.display_name}</p> : null}
               {item.notes ? <p className="mt-2 leading-6">{item.notes}</p> : null}
@@ -24,7 +25,7 @@ export function FollowUpHistorySection({ followUps }: FollowUpHistorySectionProp
               {item.due_at ? (
                 <p className="mt-2 flex items-center gap-1 text-muted-foreground">
                   <CalendarClock className="h-3.5 w-3.5" />
-                  Due {new Date(item.due_at).toLocaleString()}
+                  Due {formatDateTime(item.due_at)}
                 </p>
               ) : null}
               {item.completed_at ? <p className="mt-2 font-semibold text-emerald-700">Completed</p> : null}
