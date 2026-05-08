@@ -568,7 +568,6 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
         type: "select",
         required: true,
         options: [
-          { value: "yes_small_group", label: "Yes, in a small group" },
           { value: "yes_bible_study", label: "Yes, in a Bible study" },
           { value: "both", label: "Yes, both" },
           { value: "not_currently", label: "Not currently" },
