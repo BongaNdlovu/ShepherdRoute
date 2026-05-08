@@ -556,6 +556,9 @@ export const eventTemplates: Record<EventTemplateType, EventTemplateConfig> = {
         required: false,
         options: [
           { value: "theological_question", label: "Ask a theological question" },
+          { value: "prayer_request", label: "Prayer request" },
+          { value: "special_request", label: "Special request" },
+          { value: "program_suggestion", label: "Suggestions for a program" },
           { value: "gratitude_feedback", label: "Express gratitude or feedback" },
           { value: "suggestion", label: "Suggest church improvements" },
           { value: "team_involvement", label: "Request to get involved in a team" },
