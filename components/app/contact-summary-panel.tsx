@@ -13,15 +13,17 @@ import type { ContactDetailResult } from "@/lib/data";
 type ContactSummaryPanelProps = {
   contact: ContactDetailResult["contact"];
   error?: string;
+  success?: string;
   canManageContact?: boolean;
 };
 
-export function ContactSummaryPanel({ contact, error, canManageContact = true }: ContactSummaryPanelProps) {
+export function ContactSummaryPanel({ contact, error, success, canManageContact = true }: ContactSummaryPanelProps) {
   const assignedMember = Array.isArray(contact.team_members) ? contact.team_members[0] : contact.team_members;
 
   return (
     <>
       {error ? <p className="rounded-md bg-rose-50 p-3 text-sm text-rose-700">{error}</p> : null}
+      {success ? <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">{success}</p> : null}
       {contact.duplicate_of_contact_id ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <div className="flex items-start gap-2">

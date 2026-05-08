@@ -42,6 +42,10 @@ const contactLifecycleSchema = z.object({
   intent: z.enum(["do_not_contact", "archive", "delete"])
 });
 
+const aiFollowUpRecommendationSchema = z.object({
+  contactId: z.string().uuid()
+});
+
 const bulkAssignmentSchema = z.object({
   contactIds: z.array(z.string().uuid()).min(1),
   assignedTo: z.string().uuid().or(z.literal("unassigned")),
@@ -250,6 +254,86 @@ export async function updateContactLifecycleAction(formData: FormData) {
   if (parsed.data.intent === "archive" || parsed.data.intent === "delete") {
     redirect("/contacts");
   }
+}
+
+export async function generateAiFollowUpRecommendationAction(formData: FormData) {
+  const context = await getChurchContext();
+  const parsed = aiFollowUpRecommendationSchema.safeParse({
+    contactId: formData.get("contactId")
+  });
+
+  if (!parsed.success) {
+    redirect("/contacts?error=Could%20not%20generate%20AI%20follow-up%20recommendation.%20Please%20try%20again.");
+  }
+
+  const contactPath = `/contacts/${parsed.data.contactId}`;
+  const genericError = `${contactPath}?error=Could%20not%20generate%20AI%20follow-up%20recommendation.%20Please%20try%20again.`;
+  const supabase = await createClient();
+
+  const { data: contact, error: contactError } = await supabase
+    .from("contacts")
+    .select("id, event_id")
+    .eq("church_id", context.churchId)
+    .eq("id", parsed.data.contactId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (contactError || !contact) {
+    redirect(genericError);
+  }
+
+  const hasChurchContactManagement = canManageContacts(context.role as TeamRole, context.appRole as AppRole | null);
+  if (hasChurchContactManagement) {
+    await requireContactManager(context, supabase, contactPath);
+  } else if (contact.event_id) {
+    if (context.workspaceStatus === "inactive" && !context.isAppAdmin) {
+      redirect(`${contactPath}?error=This%20workspace%20is%20inactive.`);
+    }
+
+    try {
+      await requireCurrentUserEventPermission({
+        churchId: context.churchId,
+        eventId: contact.event_id,
+        permission: "can_assign_contacts"
+      });
+    } catch {
+      redirect(`${contactPath}?error=You%20do%20not%20have%20permission%20to%20manage%20follow-up%20for%20this%20contact.`);
+    }
+  } else {
+    redirect(`${contactPath}?error=You%20do%20not%20have%20permission%20to%20manage%20follow-up%20for%20this%20contact.`);
+  }
+
+  const webhookUrl = process.env.N8N_AI_TRIAGE_WEBHOOK_URL;
+  if (!webhookUrl) {
+    console.error("Missing N8N_AI_TRIAGE_WEBHOOK_URL for AI follow-up recommendation.");
+    redirect(genericError);
+  }
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        contact_id: parsed.data.contactId,
+        church_id: context.churchId
+      })
+    });
+
+    if (!response.ok) {
+      console.error("n8n AI follow-up recommendation failed:", response.status, response.statusText);
+      redirect(genericError);
+    }
+  } catch (error) {
+    console.error("n8n AI follow-up recommendation request error:", error);
+    redirect(genericError);
+  }
+
+  revalidatePath(contactPath);
+  revalidatePath("/contacts");
+  revalidatePath("/follow-ups");
+  redirect(`${contactPath}?success=AI%20follow-up%20recommendation%20generated.`);
 }
 
 export async function addQuickContactAction(formData: FormData) {

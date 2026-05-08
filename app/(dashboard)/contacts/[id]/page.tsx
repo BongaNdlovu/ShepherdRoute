@@ -1,3 +1,5 @@
+import { generateAiFollowUpRecommendationAction } from "@/app/(dashboard)/actions";
+import { PendingSubmitButton } from "@/components/app/pending-submit-button";
 import { ContactSummaryPanel } from "@/components/app/contact-summary-panel";
 import { ContactClassificationPanel } from "@/components/app/contact-classification-panel";
 import { ContactTemplateAnswersPanel } from "@/components/app/contact-template-answers-panel";
@@ -24,7 +26,7 @@ export default async function ContactDetailPage({
   searchParams
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; success?: string }>;
 }) {
   const { id } = await params;
   const query = await searchParams;
@@ -62,8 +64,16 @@ export default async function ContactDetailPage({
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
-          <ContactSummaryPanel contact={contact} error={query.error} canManageContact={userCanManageContact} />
+          <ContactSummaryPanel contact={contact} error={query.error} success={query.success} canManageContact={userCanManageContact} />
           <ContactClassificationPanel classification={contact.classification_payload} />
+          {userCanManageContact ? (
+            <form action={generateAiFollowUpRecommendationAction} className="flex justify-end rounded-lg border bg-white p-3">
+              <input type="hidden" name="contactId" value={contact.id} />
+              <PendingSubmitButton pendingText="Generating..." variant="outline">
+                Generate AI Follow-Up Recommendation
+              </PendingSubmitButton>
+            </form>
+          ) : null}
           <ContactTemplateAnswersPanel churchId={context.churchId} contactId={contact.id} />
           <ContactJourneySection journey={journey} />
           {userCanManageContact ? (

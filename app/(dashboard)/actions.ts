@@ -19,6 +19,7 @@ export {
   bulkAssignContactsAction,
   bulkUpdateContactsLifecycleAction,
   escalateOverdueFollowUpsAction,
+  generateAiFollowUpRecommendationAction,
   markFollowUpContactedAction,
   markFollowUpWaitingAction,
   updateContactAction,

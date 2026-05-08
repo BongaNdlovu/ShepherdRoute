@@ -2,6 +2,7 @@ export {
   addQuickContactAction,
   bulkAssignContactsAction,
   bulkUpdateContactsLifecycleAction,
+  generateAiFollowUpRecommendationAction,
   updateContactAction,
   updateContactLifecycleAction
 } from './contact-mutations';
