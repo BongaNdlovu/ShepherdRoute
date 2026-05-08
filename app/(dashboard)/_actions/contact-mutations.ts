@@ -46,6 +46,10 @@ const aiFollowUpRecommendationSchema = z.object({
   contactId: z.string().uuid()
 });
 
+const aiFollowUpGenericError = "Could not generate AI follow-up recommendation. Please try again.";
+const aiFollowUpConfigError = "AI follow-up recommendations are not configured. Add N8N_AI_TRIAGE_WEBHOOK_URL and restart the app.";
+const aiFollowUpServiceError = "AI follow-up service did not accept the request. Please check the n8n workflow and try again.";
+
 const bulkAssignmentSchema = z.object({
   contactIds: z.array(z.string().uuid()).min(1),
   assignedTo: z.string().uuid().or(z.literal("unassigned")),
@@ -70,6 +74,10 @@ function parseContactIds(formData: FormData) {
 function safeReturnTo(formData: FormData, fallback = "/contacts") {
   const value = String(formData.get("returnTo") ?? "");
   return value.startsWith("/") && !value.startsWith("//") ? value : fallback;
+}
+
+function withError(path: string, message: string) {
+  return `${path}?error=${encodeURIComponent(message)}`;
 }
 
 export async function updateContactAction(formData: FormData) {
@@ -263,11 +271,11 @@ export async function generateAiFollowUpRecommendationAction(formData: FormData)
   });
 
   if (!parsed.success) {
-    redirect("/contacts?error=Could%20not%20generate%20AI%20follow-up%20recommendation.%20Please%20try%20again.");
+    redirect(withError("/contacts", aiFollowUpGenericError));
   }
 
   const contactPath = `/contacts/${parsed.data.contactId}`;
-  const genericError = `${contactPath}?error=Could%20not%20generate%20AI%20follow-up%20recommendation.%20Please%20try%20again.`;
+  const genericError = withError(contactPath, aiFollowUpGenericError);
   const supabase = await createClient();
 
   const { data: contact, error: contactError } = await supabase
@@ -306,7 +314,7 @@ export async function generateAiFollowUpRecommendationAction(formData: FormData)
   const webhookUrl = process.env.N8N_AI_TRIAGE_WEBHOOK_URL;
   if (!webhookUrl) {
     console.error("Missing N8N_AI_TRIAGE_WEBHOOK_URL for AI follow-up recommendation.");
-    redirect(genericError);
+    redirect(withError(contactPath, aiFollowUpConfigError));
   }
 
   try {
@@ -323,11 +331,11 @@ export async function generateAiFollowUpRecommendationAction(formData: FormData)
 
     if (!response.ok) {
       console.error("n8n AI follow-up recommendation failed:", response.status, response.statusText);
-      redirect(genericError);
+      redirect(withError(contactPath, aiFollowUpServiceError));
     }
   } catch (error) {
     console.error("n8n AI follow-up recommendation request error:", error);
-    redirect(genericError);
+    redirect(withError(contactPath, aiFollowUpServiceError));
   }
 
   revalidatePath(contactPath);
