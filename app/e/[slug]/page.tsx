@@ -376,7 +376,7 @@ export default async function PublicEventPage({
 
                 {formConfig.show_message ? (
                   <div className="mobile-safe-container grid gap-2 w-full min-w-0">
-                    <Label htmlFor="message" className="mobile-safe-text">Optional message / prayer request</Label>
+                    <Label htmlFor="message" className="mobile-safe-text">Tell us more about what you would like to share with us...</Label>
                     <Textarea id="message" name="message" placeholder="Tell us how we can help..." className="mobile-safe-field text-base sm:text-sm" />
                     <p className="mobile-safe-text text-xs text-muted-foreground">Prayer requests are stored separately from your general contact details.</p>
                   </div>
