@@ -1,9 +1,10 @@
-import { getChurchContext, getContactsPage } from "@/lib/data";
+import { getChurchContext, getContactsPage, getMinistrySuggestionCandidates } from "@/lib/data";
 import { csvResponse, toCsv } from "@/lib/csv";
 import { formatExportDateTime, formatExportUrgency, formatSpreadsheetPhone } from "@/lib/exports/export-formatting";
 import { assignmentRoleLabels, interestLabels, statusLabels, type FollowUpStatus } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { createWorkbook, xlsxResponse, type XlsxCell } from "@/lib/xlsx";
+import { generateFollowUpSuggestion } from "@/lib/follow-up-suggestions";
 import { NextResponse } from "next/server";
 
 const EXPORT_BATCH_SIZE = 100;
@@ -25,7 +26,11 @@ const BASE_CONTACT_HEADERS = [
   "Do Not Contact",
   "Duplicate Match",
   "Best Time to Contact",
-  "Date Captured"
+  "Date Captured",
+  "Suggested Follow-Up Category",
+  "Suggested Follow-Up Team",
+  "Suggested Follow-Up Person",
+  "Suggested Next Action"
 ];
 
 function chunkArray<T>(items: T[], size: number) {
@@ -116,10 +121,13 @@ export async function GET(request: Request) {
     }
   });
 
+  const ministryCandidates = await getMinistrySuggestionCandidates(context.churchId);
+
   const rows = await collectContactRows(
     context.churchId,
     filters,
-    exportShape.questionNames
+    exportShape.questionNames,
+    ministryCandidates
   );
 
   if (exportShape.rowCount > 0 && rows.length === 0) {
@@ -260,7 +268,8 @@ async function collectQuestionOrderForContacts(
 async function collectContactRows(
   churchId: string,
   filters: ContactExportFilters,
-  questionNames: string[]
+  questionNames: string[],
+  ministryCandidates: Awaited<ReturnType<typeof getMinistrySuggestionCandidates>>
 ): Promise<Array<Array<unknown>>> {
   let page = 1;
   const supabase = await createClient();
@@ -282,7 +291,7 @@ async function collectContactRows(
     for (const contact of result.contacts) {
       const contactAnswers = answersMap.get(contact.id) || new Map<string, unknown>();
       rows.push([
-        ...contactToCsvRow(contact),
+        ...contactToCsvRow(contact, ministryCandidates, contactAnswers),
         ...questionNames.map((name) => normalizeCsvAnswer(contactAnswers.get(name)))
       ]);
     }
@@ -330,7 +339,11 @@ async function getAnswerMapForContacts(
   return answersMap;
 }
 
-function contactToCsvRow(contact: Awaited<ReturnType<typeof getContactsPage>>["contacts"][number]) {
+function contactToCsvRow(
+  contact: Awaited<ReturnType<typeof getContactsPage>>["contacts"][number],
+  ministryCandidates: Awaited<ReturnType<typeof getMinistrySuggestionCandidates>>,
+  contactAnswers: Map<string, unknown>
+) {
   const interests = (contact.interests ?? [])
     .map((interest) => interestLabels[interest] ?? interest)
     .join("; ");
@@ -342,6 +355,25 @@ function contactToCsvRow(contact: Awaited<ReturnType<typeof getContactsPage>>["c
   const recommendedRole = contact.recommended_assigned_role
     ? assignmentRoleLabels[contact.recommended_assigned_role as keyof typeof assignmentRoleLabels] ?? contact.recommended_assigned_role
     : "";
+
+  const formAnswers = Array.from(contactAnswers.entries()).map(([question_name, answer_display]) => ({
+    question_name,
+    question_label: question_name,
+    answer_display
+  }));
+
+  const suggestion = generateFollowUpSuggestion({
+    contact: {
+      full_name: contact.full_name,
+      status: contact.status,
+      urgency: contact.urgency,
+      recommended_assigned_role: contact.recommended_assigned_role,
+      contact_interests: (contact.interests ?? []).map((interest) => ({ interest })),
+      classification_payload: null
+    },
+    formAnswers,
+    teams: ministryCandidates
+  });
 
   return [
     contact.full_name,
@@ -359,7 +391,11 @@ function contactToCsvRow(contact: Awaited<ReturnType<typeof getContactsPage>>["c
     contact.do_not_contact ? "Yes" : "No",
     contact.duplicate_of_contact_id ? "Yes" : "No",
     contact.best_time_to_contact ?? "",
-    formatExportDateTime(contact.created_at)
+    formatExportDateTime(contact.created_at),
+    suggestion.categoryLabel ?? suggestion.category ?? "",
+    suggestion.team?.name ?? "",
+    suggestion.person ? `${suggestion.person.full_name}${suggestion.person.position_title ? ` (${suggestion.person.position_title})` : ""}` : "",
+    suggestion.suggested_action
   ];
 }
 

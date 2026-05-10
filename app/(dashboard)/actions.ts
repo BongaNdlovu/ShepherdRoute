@@ -39,3 +39,14 @@ export { openSuggestedWhatsappAction, saveGeneratedMessageAction } from "@/app/(
 export { dismissOnboardingGuideAction } from "@/app/(dashboard)/_actions/onboarding";
 export { addTeamMemberAction, revokeTeamInvitationAction } from "@/app/(dashboard)/_actions/team";
 export { updateAccountSettingsAction, updateProfileAction } from "@/app/(dashboard)/_actions/profile";
+export {
+  createMinistryTeamAction,
+  updateMinistryTeamAction,
+  archiveMinistryTeamAction,
+  createMinistryPersonAction,
+  updateMinistryPersonAction,
+  archiveMinistryPersonAction,
+  addMinistryTeamMembershipAction,
+  updateMinistryTeamMembershipAction,
+  archiveMinistryTeamMembershipAction
+} from "@/app/(dashboard)/_actions/ministry-teams";

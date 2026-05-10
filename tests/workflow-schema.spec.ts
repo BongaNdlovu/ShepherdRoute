@@ -97,6 +97,32 @@ test.describe("accountability and privacy workflow schema", () => {
     expect(schema).toContain("events.archived_at is null");
   });
 
+  test("schema includes ministry teams and follow-up roles tables", () => {
+    expect(schema).toContain("create table if not exists public.ministry_teams");
+    expect(schema).toContain("create table if not exists public.ministry_people");
+    expect(schema).toContain("create table if not exists public.ministry_team_memberships");
+    expect(schema).toContain("ministry_teams_church_name_unique");
+    expect(schema).toContain("ministry_team_memberships_team_person_unique");
+    expect(schema).toContain("ministry_teams_categories_gin_idx");
+    expect(schema).toContain("Members can view ministry teams");
+    expect(schema).toContain("Members can manage ministry teams");
+    expect(schema).toContain("Members can view ministry people");
+    expect(schema).toContain("Members can manage ministry people");
+    expect(schema).toContain("Members can view ministry memberships");
+    expect(schema).toContain("Members can manage ministry memberships");
+    expect(schema).toContain("ministry_teams_touch_updated_at");
+    expect(schema).toContain("ministry_people_touch_updated_at");
+    expect(schema).toContain("ministry_team_memberships_touch_updated_at");
+    expect(schema).toContain("follow_up_categories text[]");
+  });
+
+  test("schema copy-paste mirrors ministry teams additions", () => {
+    const docsSchema = readFileSync("docs/supabase-schema-copy-paste.sql", "utf8");
+    expect(docsSchema).toContain("create table if not exists public.ministry_teams");
+    expect(docsSchema).toContain("create table if not exists public.ministry_people");
+    expect(docsSchema).toContain("create table if not exists public.ministry_team_memberships");
+  });
+
   test("schema includes phase 1 account control guardrails", () => {
     expect(schema).toContain("create table if not exists public.audit_logs");
     expect(schema).toContain("owner_update_membership_status");
@@ -1056,6 +1082,53 @@ test.describe("workflow helpers", () => {
     expect(supabaseMiddleware).toContain("/profile");
     expect(supabaseMiddleware).toContain("/privacy-requests");
     expect(supabaseMiddleware).toContain("protectedPrefixes");
+  });
+
+  test("dashboard layout includes ministry teams navigation", () => {
+    expect(dashboardLayout).toContain('/ministry-teams"');
+    expect(dashboardLayout).toContain('label: "Ministry Teams"');
+    expect(dashboardLayout).toContain("Handshake");
+  });
+
+  test("contact detail page renders follow-up suggestion card", () => {
+    const contactDetail = readFileSync("app/(dashboard)/contacts/[id]/page.tsx", "utf8");
+    expect(contactDetail).toContain("FollowUpSuggestionCard");
+    expect(contactDetail).toContain("generateFollowUpSuggestion");
+    expect(contactDetail).toContain("getMinistrySuggestionCandidates");
+  });
+
+  test("contact export includes suggestion columns", () => {
+    const contactExport = readFileSync("app/(dashboard)/contacts/export/route.ts", "utf8");
+    expect(contactExport).toContain('"Suggested Follow-Up Category"');
+    expect(contactExport).toContain('"Suggested Follow-Up Team"');
+    expect(contactExport).toContain('"Suggested Follow-Up Person"');
+    expect(contactExport).toContain('"Suggested Next Action"');
+    expect(contactExport).toContain("generateFollowUpSuggestion");
+    expect(contactExport).toContain("getMinistrySuggestionCandidates");
+  });
+
+  test("event report export includes suggestion columns", () => {
+    const eventExport = readFileSync("app/(dashboard)/events/[id]/reports/export/route.ts", "utf8");
+    expect(eventExport).toContain('"Suggested Follow-Up Category"');
+    expect(eventExport).toContain('"Suggested Follow-Up Team"');
+    expect(eventExport).toContain('"Suggested Follow-Up Person"');
+    expect(eventExport).toContain('"Suggested Next Action"');
+    expect(eventExport).toContain("generateFollowUpSuggestion");
+    expect(eventExport).toContain("getMinistrySuggestionCandidates");
+  });
+
+  test("constants include follow-up category options and labels", () => {
+    const constants = readFileSync("lib/constants.ts", "utf8");
+    expect(constants).toContain("followUpCategoryOptions");
+    expect(constants).toContain("followUpCategoryLabels");
+    expect(constants).toContain("urgent_follow_up");
+    expect(constants).toContain("depression_recovery");
+  });
+
+  test("permissions include ministry teams helpers", () => {
+    const permissions = readFileSync("lib/permissions.ts", "utf8");
+    expect(permissions).toContain("canViewMinistryTeams");
+    expect(permissions).toContain("canManageMinistryTeams");
   });
 
   test("login page accepts and validates next parameter", () => {

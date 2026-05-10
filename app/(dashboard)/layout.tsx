@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, Church, ClipboardList, Home, LogOut, QrCode, Settings2, ShieldCheck, UserCog, UserRound, UsersRound } from "lucide-react";
+import { BarChart3, Church, ClipboardList, Handshake, Home, LogOut, QrCode, Settings2, ShieldCheck, UserCog, UserRound, UsersRound } from "lucide-react";
 import { logoutAction } from "@/app/(auth)/actions";
 import { switchChurchAction } from "@/app/(dashboard)/actions";
 import { BrandLogo } from "@/components/app/brand-logo";
@@ -17,6 +17,7 @@ const navItems: Array<{ href: string; label: string; description: string; icon: 
   { href: "/contacts", label: "Visitor contacts", description: "View and manage people", icon: UsersRound },
   { href: "/follow-ups", label: "Follow-up tasks", description: "Work due and completed", icon: ClipboardList },
   { href: "/reports", label: "Reports", description: "Ministry insights and data", icon: BarChart3 },
+  { href: "/ministry-teams", label: "Ministry Teams", description: "Organize follow-up roles", icon: Handshake },
   { href: "/profile", label: "My profile", description: "Personal settings", icon: UserRound },
   { href: "/settings", label: "Workspace settings", description: "Configure your church or ministry", icon: Settings2 },
   { href: "/settings/team", label: "Team members", description: "Manage roles and invites", icon: UserCog },

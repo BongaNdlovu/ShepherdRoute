@@ -120,6 +120,7 @@ export type ContactDetailResult = {
     team_members: { display_name: string } | { display_name: string }[] | null;
   }>;
   messages: Array<{ id: string; channel: string; message_text: string; wa_link: string | null; purpose: string; prompt_version: string | null; approved_at: string | null; opened_at: string | null; created_at: string }>;
+  formAnswers: Array<{ question_name: string; question_label: string; answer_display: unknown }>;
 };
 
 type ContactDetailRow = Omit<ContactDetailResult["contact"], "events"> & {
@@ -191,7 +192,7 @@ export async function getContact(churchId: string, id: string): Promise<ContactD
   const supabase = await createClient();
 
   // Primary query with security filter
-  const [{ data: contact, error: contactError }, { data: prayer }, { data: team }, { data: followUps }, { data: messages }] = await Promise.all([
+  const [{ data: contact, error: contactError }, { data: prayer }, { data: team }, { data: followUps }, { data: messages }, { data: formAnswers }] = await Promise.all([
     supabase
       .from("contacts")
       .select("id, person_id, full_name, phone, email, whatsapp_number, area, language, best_time_to_contact, status, urgency, assigned_to, assigned_handling_role, recommended_assigned_role, consent_given, consent_at, consent_source, consent_scope, preferred_contact_methods, consent_status, consent_text_snapshot, privacy_policy_version, consent_recorded_by, do_not_contact, do_not_contact_at, archived_at, duplicate_of_contact_id, duplicate_match_confidence, duplicate_match_reason, classification_payload, events(name, event_type), team_members(display_name), contact_interests(interest)")
@@ -222,7 +223,13 @@ export async function getContact(churchId: string, id: string): Promise<ContactD
       .eq("church_id", churchId)
       .eq("contact_id", id)
       .order("created_at", { ascending: false })
-      .limit(CONTACT_DETAIL_MESSAGE_LIMIT)
+      .limit(CONTACT_DETAIL_MESSAGE_LIMIT),
+    supabase
+      .from("contact_form_answers")
+      .select("question_name, question_label, answer_display")
+      .eq("church_id", churchId)
+      .eq("contact_id", id)
+      .order("created_at", { ascending: true })
   ]);
 
   // Development logging for diagnostics
@@ -295,6 +302,7 @@ export async function getContact(churchId: string, id: string): Promise<ContactD
     journey: (journey ?? []) as unknown as ContactDetailResult["journey"],
     team: team ?? [],
     followUps: followUps ?? [],
-    messages: messages ?? []
+    messages: messages ?? [],
+    formAnswers: (formAnswers ?? []) as unknown as ContactDetailResult["formAnswers"]
   };
 }

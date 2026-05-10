@@ -7026,3 +7026,110 @@ where fu.contact_id = c.id
   and fu.church_id = c.church_id
   and fu.assigned_handling_role is null
   and c.assigned_handling_role is not null;
+
+-- Ministry Teams & Follow-Up Roles
+
+create table if not exists public.ministry_teams (
+  id uuid primary key default gen_random_uuid(),
+  church_id uuid not null references public.churches(id) on delete cascade,
+  name text not null,
+  description text,
+  follow_up_categories text[] not null default '{}'::text[],
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+
+create table if not exists public.ministry_people (
+  id uuid primary key default gen_random_uuid(),
+  church_id uuid not null references public.churches(id) on delete cascade,
+  full_name text not null,
+  notes text,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+
+create table if not exists public.ministry_team_memberships (
+  id uuid primary key default gen_random_uuid(),
+  church_id uuid not null references public.churches(id) on delete cascade,
+  team_id uuid not null references public.ministry_teams(id) on delete cascade,
+  person_id uuid not null references public.ministry_people(id) on delete cascade,
+  position_title text,
+  notes text,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+
+-- Indexes
+
+create index if not exists ministry_teams_church_idx on public.ministry_teams(church_id);
+create index if not exists ministry_teams_categories_gin_idx on public.ministry_teams using gin (follow_up_categories);
+create index if not exists ministry_people_church_idx on public.ministry_people(church_id);
+create index if not exists ministry_team_memberships_church_idx on public.ministry_team_memberships(church_id);
+create index if not exists ministry_team_memberships_team_idx on public.ministry_team_memberships(team_id);
+create index if not exists ministry_team_memberships_person_idx on public.ministry_team_memberships(person_id);
+
+-- Prevent duplicate active team names within a church
+create unique index if not exists ministry_teams_church_name_unique
+on public.ministry_teams (lower(name), church_id)
+where deleted_at is null;
+
+-- Prevent duplicate active memberships
+create unique index if not exists ministry_team_memberships_team_person_unique
+on public.ministry_team_memberships (team_id, person_id)
+where deleted_at is null;
+
+-- RLS
+
+alter table public.ministry_teams enable row level security;
+alter table public.ministry_people enable row level security;
+alter table public.ministry_team_memberships enable row level security;
+
+drop policy if exists "Members can view ministry teams" on public.ministry_teams;
+create policy "Members can view ministry teams"
+on public.ministry_teams for select
+using (private.is_church_member(church_id) or private.is_app_admin());
+
+drop policy if exists "Members can manage ministry teams" on public.ministry_teams;
+create policy "Members can manage ministry teams"
+on public.ministry_teams for all
+using (private.has_church_role(church_id, array['admin','pastor','elder','bible_worker','health_leader','youth_leader']::public.team_role[]) or private.is_app_admin())
+with check (private.has_church_role(church_id, array['admin','pastor','elder','bible_worker','health_leader','youth_leader']::public.team_role[]) or private.is_app_admin());
+
+drop policy if exists "Members can view ministry people" on public.ministry_people;
+create policy "Members can view ministry people"
+on public.ministry_people for select
+using (private.is_church_member(church_id) or private.is_app_admin());
+
+drop policy if exists "Members can manage ministry people" on public.ministry_people;
+create policy "Members can manage ministry people"
+on public.ministry_people for all
+using (private.has_church_role(church_id, array['admin','pastor','elder','bible_worker','health_leader','youth_leader']::public.team_role[]) or private.is_app_admin())
+with check (private.has_church_role(church_id, array['admin','pastor','elder','bible_worker','health_leader','youth_leader']::public.team_role[]) or private.is_app_admin());
+
+drop policy if exists "Members can view ministry memberships" on public.ministry_team_memberships;
+create policy "Members can view ministry memberships"
+on public.ministry_team_memberships for select
+using (private.is_church_member(church_id) or private.is_app_admin());
+
+drop policy if exists "Members can manage ministry memberships" on public.ministry_team_memberships;
+create policy "Members can manage ministry memberships"
+on public.ministry_team_memberships for all
+using (private.has_church_role(church_id, array['admin','pastor','elder','bible_worker','health_leader','youth_leader']::public.team_role[]) or private.is_app_admin())
+with check (private.has_church_role(church_id, array['admin','pastor','elder','bible_worker','health_leader','youth_leader']::public.team_role[]) or private.is_app_admin());
+
+-- Updated at triggers
+
+drop trigger if exists ministry_teams_touch_updated_at on public.ministry_teams;
+create trigger ministry_teams_touch_updated_at before update on public.ministry_teams for each row execute function public.touch_updated_at();
+
+drop trigger if exists ministry_people_touch_updated_at on public.ministry_people;
+create trigger ministry_people_touch_updated_at before update on public.ministry_people for each row execute function public.touch_updated_at();
+
+drop trigger if exists ministry_team_memberships_touch_updated_at on public.ministry_team_memberships;
+create trigger ministry_team_memberships_touch_updated_at before update on public.ministry_team_memberships for each row execute function public.touch_updated_at();

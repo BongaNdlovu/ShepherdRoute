@@ -195,6 +195,16 @@ export function canAssignFollowUp(role: TeamRole, appRole?: AppRole | null) {
   return ["admin", "pastor", "elder", "bible_worker", "health_leader", "youth_leader"].includes(effectiveRole);
 }
 
+export function canViewMinistryTeams(role: TeamRole, appRole?: AppRole | null) {
+  const effectiveRole = getEffectiveRole(role, appRole);
+  return ["admin", "pastor", "elder", "bible_worker", "health_leader", "prayer_team", "youth_leader", "viewer"].includes(effectiveRole);
+}
+
+export function canManageMinistryTeams(role: TeamRole, appRole?: AppRole | null) {
+  const effectiveRole = getEffectiveRole(role, appRole);
+  return ["admin", "pastor", "elder", "bible_worker", "health_leader", "youth_leader"].includes(effectiveRole);
+}
+
 export function canViewPrayerRequest(role: TeamRole, visibility: PrayerVisibility, appRole?: AppRole | null) {
   const effectiveRole = getEffectiveRole(role, appRole);
 

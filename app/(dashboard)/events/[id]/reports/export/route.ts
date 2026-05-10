@@ -1,11 +1,12 @@
 import { csvResponse, toCsv } from "@/lib/csv";
 import { formatExportDateTime, formatExportUrgency, formatSpreadsheetPhone } from "@/lib/exports/export-formatting";
 import { interestLabels, statusLabels, type FollowUpStatus, type Interest } from "@/lib/constants";
-import { getChurchContext, getEventReportContactsPage, getEventReportExportMeta } from "@/lib/data";
+import { getChurchContext, getEventReportContactsPage, getEventReportExportMeta, getMinistrySuggestionCandidates } from "@/lib/data";
 import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 import { slugify } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import { createWorkbook, xlsxResponse, type XlsxCell } from "@/lib/xlsx";
+import { generateFollowUpSuggestion } from "@/lib/follow-up-suggestions";
 
 const EXPORT_BATCH_SIZE = 1000;
 const EVENT_EXPORT_HEADERS = [
@@ -19,7 +20,11 @@ const EVENT_EXPORT_HEADERS = [
   "Status",
   "Urgency",
   "Assigned To",
-  "Date Captured"
+  "Date Captured",
+  "Suggested Follow-Up Category",
+  "Suggested Follow-Up Team",
+  "Suggested Follow-Up Person",
+  "Suggested Next Action"
 ];
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -107,7 +112,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       metadata: { event_name: event.name, format }
     });
 
-  const rows = await collectEventRows(context.churchId, id, uniqueQuestions);
+  const ministryCandidates = await getMinistrySuggestionCandidates(context.churchId);
+
+  const rows = await collectEventRows(context.churchId, id, uniqueQuestions, ministryCandidates);
 
   if (rows.length === 0) {
     return new Response("CSV export failed: contacts were found, but no CSV rows were generated.", {
@@ -237,7 +244,12 @@ function extractQuestionOrderFromFormConfig(formConfig: unknown): Array<[string,
   return orderedQuestions;
 }
 
-async function collectEventRows(churchId: string, eventId: string, uniqueQuestions: Array<[string, string]>): Promise<Array<Array<unknown>>> {
+async function collectEventRows(
+  churchId: string,
+  eventId: string,
+  uniqueQuestions: Array<[string, string]>,
+  ministryCandidates: Awaited<ReturnType<typeof getMinistrySuggestionCandidates>>
+): Promise<Array<Array<unknown>>> {
   let offset = 0;
   const supabase = await createClient();
   const rows: Array<Array<unknown>> = [];
@@ -282,6 +294,24 @@ async function collectEventRows(churchId: string, eventId: string, uniqueQuestio
       const answerMap = answersByContact.get(contact.id) ?? new Map<string, string>();
       const dynamicValues = uniqueQuestions.map(([name]) => answerMap.get(name) ?? "");
 
+      const formAnswers = Array.from(answerMap.entries()).map(([question_name, answer_display]) => ({
+        question_name,
+        question_label: question_name,
+        answer_display
+      }));
+
+      const suggestion = generateFollowUpSuggestion({
+        contact: {
+          full_name: contact.full_name,
+          status: contact.status,
+          urgency: contact.urgency,
+          contact_interests: (contact.contact_interests ?? []).map((item: { interest: Interest }) => ({ interest: item.interest })),
+          classification_payload: null
+        },
+        formAnswers,
+        teams: ministryCandidates
+      });
+
       rows.push([
         contact.full_name,
         formatSpreadsheetPhone(contact.phone ?? contact.whatsapp_number ?? ""),
@@ -294,6 +324,10 @@ async function collectEventRows(churchId: string, eventId: string, uniqueQuestio
         formatExportUrgency(contact.urgency),
         contact.assigned_name ?? "",
         formatExportDateTime(contact.created_at),
+        suggestion.categoryLabel ?? suggestion.category ?? "",
+        suggestion.team?.name ?? "",
+        suggestion.person ? `${suggestion.person.full_name}${suggestion.person.position_title ? ` (${suggestion.person.position_title})` : ""}` : "",
+        suggestion.suggested_action,
         ...dynamicValues
       ]);
     }

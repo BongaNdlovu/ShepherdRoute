@@ -1291,6 +1291,152 @@ export type Database = {
           },
         ]
       }
+      ministry_teams: {
+        Row: {
+          church_id: string
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          follow_up_categories: string[]
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          church_id: string
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          follow_up_categories?: string[]
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          church_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          follow_up_categories?: string[]
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ministry_teams_church_id_fkey"
+            columns: ["church_id"]
+            isOneToOne: false
+            referencedRelation: "churches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ministry_people: {
+        Row: {
+          church_id: string
+          created_at: string
+          deleted_at: string | null
+          full_name: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          church_id: string
+          created_at?: string
+          deleted_at?: string | null
+          full_name: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          church_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ministry_people_church_id_fkey"
+            columns: ["church_id"]
+            isOneToOne: false
+            referencedRelation: "churches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ministry_team_memberships: {
+        Row: {
+          church_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          is_active: boolean
+          notes: string | null
+          person_id: string
+          position_title: string | null
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          church_id: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          person_id: string
+          position_title?: string | null
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          church_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          person_id?: string
+          position_title?: string | null
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ministry_team_memberships_church_id_fkey"
+            columns: ["church_id"]
+            isOneToOne: false
+            referencedRelation: "churches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ministry_team_memberships_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "ministry_people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ministry_team_memberships_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "ministry_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       public_events: {

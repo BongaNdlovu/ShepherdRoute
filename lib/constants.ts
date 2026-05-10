@@ -109,6 +109,36 @@ export const contactMethodLabels: Record<ContactMethod, string> = {
   email: "Email"
 };
 
+export const followUpCategoryOptions = [
+  "prayer",
+  "bible_study",
+  "baptism_interest",
+  "health_interest",
+  "depression_recovery",
+  "youth_interest",
+  "pastoral_care",
+  "visitation",
+  "general_visitor",
+  "event_updates",
+  "family_support",
+  "urgent_follow_up"
+] as const;
+
+export const followUpCategoryLabels: Record<FollowUpCategory, string> = {
+  prayer: "Prayer",
+  bible_study: "Bible Study",
+  baptism_interest: "Baptism Interest",
+  health_interest: "Health Interest",
+  depression_recovery: "Depression Recovery",
+  youth_interest: "Youth Interest",
+  pastoral_care: "Pastoral Care",
+  visitation: "Visitation",
+  general_visitor: "General Visitor",
+  event_updates: "Event Updates",
+  family_support: "Family Support",
+  urgent_follow_up: "Urgent Follow-Up"
+};
+
 export const assignmentRoleOptions = [
   "pastor",
   "elder",
@@ -154,5 +184,6 @@ export type EventType = (typeof eventTypeOptions)[number];
 export type TeamRole = keyof typeof roleLabels;
 export type FollowUpChannel = (typeof followUpChannelOptions)[number];
 export type ContactMethod = (typeof contactMethodOptions)[number];
+export type FollowUpCategory = (typeof followUpCategoryOptions)[number];
 export type AssignmentRole = (typeof assignmentRoleOptions)[number];
 export type AppRole = (typeof appRoleOptions)[number];

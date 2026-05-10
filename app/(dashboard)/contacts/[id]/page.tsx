@@ -11,11 +11,13 @@ import { GeneratedMessagesSection } from "@/components/app/generated-messages-se
 import { PrayerRequestsSection } from "@/components/app/prayer-requests-section";
 import { StatusBadge, UrgencyBadge } from "@/components/app/status-badge";
 import { WhatsappFollowUpCard } from "@/components/app/whatsapp-follow-up-card";
+import { FollowUpSuggestionCard } from "@/components/app/follow-up-suggestion-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getChurchContext, getContact } from "@/lib/data";
+import { getChurchContext, getContact, getMinistrySuggestionCandidates } from "@/lib/data";
 import { canManageContacts } from "@/lib/permissions";
 import type { AppRole, TeamRole } from "@/lib/constants";
 import { AI_TRIAGE_WHATSAPP_PROMPT_VERSION, CURRENT_SUGGESTED_WHATSAPP_PROMPT_VERSION, generateMessage } from "@/lib/whatsapp";
+import { generateFollowUpSuggestion } from "@/lib/follow-up-suggestions";
 
 export const metadata = {
   title: "Contact Detail"
@@ -31,9 +33,17 @@ export default async function ContactDetailPage({
   const { id } = await params;
   const query = await searchParams;
   const context = await getChurchContext();
-  const { contact, prayer, journey, team, followUps, messages } = await getContact(context.churchId, id);
+  const { contact, prayer, journey, team, followUps, messages, formAnswers } = await getContact(context.churchId, id);
   const userCanManageContact = canManageContacts(context.role as TeamRole, context.appRole as AppRole | null);
   const interests = contact.contact_interests ?? [];
+
+  const ministryCandidates = await getMinistrySuggestionCandidates(context.churchId);
+  const suggestion = generateFollowUpSuggestion({
+    contact,
+    prayerRequests: prayer,
+    formAnswers,
+    teams: ministryCandidates
+  });
   const suggestedMessages = messages.filter((item) =>
     item.channel === "whatsapp" &&
     item.purpose === "suggested_whatsapp" &&
@@ -82,6 +92,7 @@ export default async function ContactDetailPage({
             </form>
           ) : null}
           <ContactTemplateAnswersPanel churchId={context.churchId} contactId={contact.id} />
+          <FollowUpSuggestionCard suggestion={suggestion} canManage={userCanManageContact} />
           <ContactJourneySection journey={journey} />
           {userCanManageContact ? (
             <WhatsappFollowUpCard contactId={contact.id} phone={contact.phone ?? contact.whatsapp_number} message={message} doNotContact={contact.do_not_contact} />
