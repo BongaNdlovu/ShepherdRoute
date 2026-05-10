@@ -233,6 +233,71 @@ export type Database = {
           },
         ]
       }
+      contact_intake_responses: {
+        Row: {
+          id: string
+          church_id: string
+          contact_id: string
+          event_id: string
+          category: string
+          answers: Json
+          urgency: string | null
+          preferred_contact_method: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          church_id: string
+          contact_id: string
+          event_id: string
+          category: string
+          answers?: Json
+          urgency?: string | null
+          preferred_contact_method?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          church_id?: string
+          contact_id?: string
+          event_id?: string
+          category?: string
+          answers?: Json
+          urgency?: string | null
+          preferred_contact_method?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_intake_responses_church_id_fkey"
+            columns: ["church_id"]
+            isOneToOne: false
+            referencedRelation: "churches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_intake_responses_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_intake_responses_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_intake_responses_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "public_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_interests: {
         Row: {
           church_id: string

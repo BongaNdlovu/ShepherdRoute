@@ -19,6 +19,7 @@ type EventBulkListItem = {
   slug: string;
   is_active: boolean;
   archived_at: string | null;
+  form_config?: { intake_enabled?: boolean } | null;
   contact_count: number;
 };
 
@@ -152,7 +153,7 @@ export function EventBulkActions({ events, origin, canManageEvents }: EventBulkA
               <CardContent className="space-y-4">
                 <div className="rounded-lg bg-muted p-4">
                   <p className="text-sm text-muted-foreground">Public URL</p>
-                  <p className="mt-1 break-all text-sm font-medium text-foreground">{`${origin}/e/${event.slug}`}</p>
+                  <p className="mt-1 break-all text-sm font-medium text-foreground">{`${origin}/e/${event.slug}${event.form_config?.intake_enabled === true ? "/intake" : ""}`}</p>
                   <p className="mt-2 text-xs text-muted-foreground">{event.contact_count} contact{event.contact_count === 1 ? "" : "s"} captured</p>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">

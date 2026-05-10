@@ -37,7 +37,8 @@ export default async function EventDetailPage({
     appRole: context.appAdminRole as AppAdminRole | null,
     teamRole: context.role as TeamRole
   });
-  const publicUrl = await absoluteRequestUrl(`/e/${event.slug}`);
+  const eventFormConfig = (event as unknown as { form_config?: { intake_enabled?: boolean } | null }).form_config;
+  const publicUrl = await absoluteRequestUrl(eventFormConfig?.intake_enabled === true ? `/e/${event.slug}/intake` : `/e/${event.slug}`);
   const isArchived = Boolean(event.archived_at);
 
   return (

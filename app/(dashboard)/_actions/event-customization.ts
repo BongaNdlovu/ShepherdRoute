@@ -63,6 +63,8 @@ export async function updateEventCustomizationAction(formData: FormData) {
         require_phone: parsed.require_phone,
         require_email: parsed.require_email,
         require_at_least_one_contact_method: parsed.require_at_least_one_contact_method,
+        intake_enabled: parsed.intake_enabled,
+        intake_categories: parsed.intake_categories,
         interest_options: parsed.interest_options,
         questions: parsed.questions
       }

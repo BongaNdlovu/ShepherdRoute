@@ -33,7 +33,7 @@ export default async function ContactDetailPage({
   const { id } = await params;
   const query = await searchParams;
   const context = await getChurchContext();
-  const { contact, prayer, journey, team, followUps, messages, formAnswers } = await getContact(context.churchId, id);
+  const { contact, prayer, journey, team, followUps, messages, formAnswers, intakeResponses } = await getContact(context.churchId, id);
   const userCanManageContact = canManageContacts(context.role as TeamRole, context.appRole as AppRole | null);
   const interests = contact.contact_interests ?? [];
 
@@ -42,6 +42,7 @@ export default async function ContactDetailPage({
     contact,
     prayerRequests: prayer,
     formAnswers,
+    intakeResponses,
     teams: ministryCandidates
   });
   const suggestedMessages = messages.filter((item) =>

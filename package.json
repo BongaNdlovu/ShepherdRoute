@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test:contracts": "playwright test tests/workflow-schema.spec.ts tests/follow-up-suggestions.spec.ts tests/classify-contact.spec.ts tests/event-templates.spec.ts tests/team-invitations.spec.ts tests/owner-admin.spec.ts --project=chromium",
+    "test:contracts": "playwright test tests/workflow-schema.spec.ts tests/follow-up-suggestions.spec.ts tests/classify-contact.spec.ts tests/event-templates.spec.ts tests/team-invitations.spec.ts tests/owner-admin.spec.ts tests/intake-flow.spec.ts --project=chromium",
     "test:e2e": "playwright test tests",
     "test:e2e:smoke": "playwright test tests/workflow-schema.spec.ts --project=chromium",
     "test:e2e:ui": "playwright test --ui",

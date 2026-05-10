@@ -13,6 +13,7 @@ export type FollowUpSuggestionInput = {
   };
   prayerRequests?: Array<{ request_text: string; visibility: string }>;
   formAnswers?: Array<{ question_name: string; question_label: string; answer_display: unknown }>;
+  intakeResponses?: Array<{ category: string; answers: unknown; urgency: string | null }>;
   teams: MinistrySuggestionCandidate[];
 };
 
@@ -88,6 +89,23 @@ function gatherAllText(input: FollowUpSuggestionInput): string {
     }
   }
 
+  if (input.intakeResponses) {
+    for (const r of input.intakeResponses) {
+      parts.push(r.category);
+      if (typeof r.answers === "object" && r.answers !== null) {
+        for (const [key, value] of Object.entries(r.answers)) {
+          parts.push(key);
+          if (typeof value === "string") parts.push(value);
+          else if (Array.isArray(value)) {
+            for (const v of value) {
+              if (typeof v === "string") parts.push(v);
+            }
+          }
+        }
+      }
+    }
+  }
+
   return normalizeSearchText(parts.join(" "));
 }
 
@@ -95,6 +113,12 @@ export function detectFollowUpCategory(input: FollowUpSuggestionInput): FollowUp
   const text = gatherAllText(input);
   const interests = new Set((input.contact.contact_interests ?? []).map((i) => i.interest));
   const eventType = input.contact.events?.event_type ?? "";
+
+  // Intake category takes highest priority when available
+  const intakeCategory = input.intakeResponses?.[0]?.category;
+  if (intakeCategory && intakeCategory in followUpCategoryLabels) {
+    return intakeCategory as FollowUpCategory;
+  }
 
   // Prayer detection
   if (interests.has("prayer") || text.includes("prayer") || text.includes("pray")) {

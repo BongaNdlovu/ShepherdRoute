@@ -35,6 +35,7 @@ export default async function EventsPage({
     slug: event.slug,
     is_active: event.is_active,
     archived_at: event.archived_at,
+    form_config: event.form_config,
     contact_count: Number(event.contacts?.[0]?.count ?? 0)
   }));
 

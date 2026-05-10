@@ -10,6 +10,7 @@ import { getChurchContext, getEvent } from "@/lib/data";
 import { getEventTemplate } from "@/lib/eventTemplates";
 import { interestOptions, interestLabels } from "@/lib/constants";
 import { updateEventCustomizationAction } from "@/app/(dashboard)/actions";
+import { getDefaultIntakeCategories } from "@/lib/intake/intake-categories";
 import { requireCurrentUserEventPermission } from "@/lib/data-event-assignments";
 
 export default async function EventCustomizePage({
@@ -54,6 +55,7 @@ export default async function EventCustomizePage({
   }
 
   const template = getEventTemplate(event.event.event_type);
+  const intakeCategories = getDefaultIntakeCategories();
 
   return (
     <CinematicSection className="cinematic-fade-up">
@@ -314,6 +316,157 @@ export default async function EventCustomizePage({
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
               <p className="text-sm font-semibold text-amber-900">Required fields</p>
               <p className="text-sm text-amber-700">Name, phone/WhatsApp, and consent are required for reliable follow-up and cannot be hidden yet.</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Smart Intake */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Smart mobile intake</CardTitle>
+            <CardDescription>
+              Optional step-based intake for QR visitors. When enabled, QR links can point to /e/[slug]/intake.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                name="intake_enabled"
+                defaultChecked={event.event.form_config?.intake_enabled === true}
+              />
+              <span>Enable smart intake for this event</span>
+            </label>
+            <p className="text-xs text-muted-foreground">
+              Existing full forms remain available at the normal public form link. Smart intake uses preset categories with editable wording.
+            </p>
+
+            <div className="grid gap-4">
+              {intakeCategories.map((category) => {
+                const customCategory = event.event.form_config?.intake_categories?.find(
+                  (candidate: { id: string }) => candidate.id === category.id
+                );
+
+                return (
+                  <div key={category.id} className="grid gap-4 rounded-lg border p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="font-semibold">{category.label}</p>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          name={`intake_category_enabled_${category.id}`}
+                          defaultChecked={customCategory?.enabled !== false}
+                        />
+                        <span className="text-sm text-muted-foreground">Enable</span>
+                      </label>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor={`intake_category_label_${category.id}`}>Category label</Label>
+                      <Input
+                        id={`intake_category_label_${category.id}`}
+                        name={`intake_category_label_${category.id}`}
+                        defaultValue={customCategory?.label || category.label}
+                        maxLength={80}
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor={`intake_category_description_${category.id}`}>Category description</Label>
+                      <Input
+                        id={`intake_category_description_${category.id}`}
+                        name={`intake_category_description_${category.id}`}
+                        defaultValue={customCategory?.description || category.description}
+                        maxLength={160}
+                      />
+                    </div>
+
+                    <div className="grid gap-3">
+                      <p className="text-sm font-medium">Questions</p>
+                      {category.questions.map((question) => {
+                        const customQuestion = customCategory?.questions?.find(
+                          (candidate: { id: string }) => candidate.id === question.id
+                        );
+
+                        return (
+                          <div key={question.id} className="grid gap-3 rounded-md border p-3">
+                            <div className="flex items-center justify-between gap-4">
+                              <p className="text-sm font-semibold">{question.label}</p>
+                              <label className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  name={`intake_question_enabled_${category.id}_${question.id}`}
+                                  defaultChecked={customQuestion?.enabled !== false}
+                                />
+                                <span className="text-xs text-muted-foreground">Show</span>
+                              </label>
+                            </div>
+
+                            <div className="grid gap-2">
+                              <Label htmlFor={`intake_question_label_${category.id}_${question.id}`}>Question label</Label>
+                              <Input
+                                id={`intake_question_label_${category.id}_${question.id}`}
+                                name={`intake_question_label_${category.id}_${question.id}`}
+                                defaultValue={customQuestion?.label || question.label}
+                                maxLength={140}
+                              />
+                            </div>
+
+                            <div className="grid gap-2">
+                              <Label htmlFor={`intake_question_description_${category.id}_${question.id}`}>Question description</Label>
+                              <Input
+                                id={`intake_question_description_${category.id}_${question.id}`}
+                                name={`intake_question_description_${category.id}_${question.id}`}
+                                defaultValue={customQuestion?.description || question.description || ""}
+                                maxLength={180}
+                              />
+                            </div>
+
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                name={`intake_question_required_${category.id}_${question.id}`}
+                                defaultChecked={customQuestion?.required ?? question.required}
+                              />
+                              <span className="text-sm">Required</span>
+                            </label>
+
+                            {question.options?.length ? (
+                              <div className="grid gap-2">
+                                <p className="text-sm font-medium">Options</p>
+                                {question.options.map((option) => {
+                                  const customOption = customQuestion?.options?.find(
+                                    (candidate: { value: string }) => candidate.value === option.value
+                                  );
+
+                                  return (
+                                    <div key={option.value} className="grid gap-2 rounded border p-2">
+                                      <label className="flex items-center gap-2">
+                                        <input
+                                          type="checkbox"
+                                          name={`intake_option_enabled_${category.id}_${question.id}_${option.value}`}
+                                          defaultChecked={customOption?.enabled !== false}
+                                        />
+                                        <span className="text-xs text-muted-foreground">Show option</span>
+                                      </label>
+                                      <Input
+                                        name={`intake_option_label_${category.id}_${question.id}_${option.value}`}
+                                        defaultValue={customOption?.label || option.label}
+                                        className="h-8"
+                                        maxLength={100}
+                                      />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>

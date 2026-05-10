@@ -1,5 +1,7 @@
 import { interestOptions } from "@/lib/constants";
 import type { EventTemplateConfig, TemplateQuestionField } from "@/lib/eventTemplates";
+import { getDefaultIntakeCategories } from "@/lib/intake/intake-categories";
+import type { IntakeCategory } from "@/lib/intake/intake-categories";
 
 export type EventPublicInfo = {
   heading: string;
@@ -31,6 +33,8 @@ export type EventFormConfig = {
   require_phone: boolean;
   require_email: boolean;
   require_at_least_one_contact_method: boolean;
+  intake_enabled: boolean;
+  intake_categories: IntakeCategory[];
   interest_options: Array<{
     value: string;
     label: string;
@@ -75,6 +79,45 @@ export function getEffectiveBrandingConfig(event: PublicEvent): EventBrandingCon
     primary_color: branding.primary_color || "#92400e",
     accent_color: branding.accent_color || "#f59e0b"
   };
+}
+
+function getEffectiveIntakeCategories(formConfig: Record<string, unknown>) {
+  const defaults = getDefaultIntakeCategories();
+  const customCategories = (formConfig.intake_categories as IntakeCategory[] | undefined) || [];
+
+  return defaults.map((category) => {
+    const custom = customCategories.find((candidate) => candidate.id === category.id);
+
+    if (!custom) return category;
+
+    return {
+      ...category,
+      label: typeof custom.label === "string" && custom.label.trim() ? custom.label.trim() : category.label,
+      description: typeof custom.description === "string" ? custom.description.trim() : category.description,
+      enabled: custom.enabled !== false,
+      questions: category.questions.map((question) => {
+        const customQuestion = custom.questions?.find((candidate) => candidate.id === question.id);
+
+        if (!customQuestion) return question;
+
+        return {
+          ...question,
+          label: typeof customQuestion.label === "string" && customQuestion.label.trim() ? customQuestion.label.trim() : question.label,
+          description: typeof customQuestion.description === "string" ? customQuestion.description.trim() : question.description,
+          required: customQuestion.required ?? question.required,
+          enabled: customQuestion.enabled !== false,
+          options: question.options?.map((option) => {
+            const customOption = customQuestion.options?.find((candidate) => candidate.value === option.value);
+            return {
+              ...option,
+              label: typeof customOption?.label === "string" && customOption.label.trim() ? customOption.label.trim() : option.label,
+              enabled: customOption?.enabled !== false
+            };
+          })
+        };
+      })
+    };
+  }).filter((category) => category.enabled !== false);
 }
 
 export function getEffectiveFormConfig(event: PublicEvent, template: EventTemplateConfig): EventFormConfig {
@@ -126,6 +169,8 @@ export function getEffectiveFormConfig(event: PublicEvent, template: EventTempla
     require_phone: formConfig.require_phone !== false,
     require_email: formConfig.require_email === true,
     require_at_least_one_contact_method: formConfig.require_at_least_one_contact_method !== false,
+    intake_enabled: formConfig.intake_enabled === true,
+    intake_categories: getEffectiveIntakeCategories(formConfig),
     interest_options: visibleInterestOptions,
     questions: visibleQuestions
   };

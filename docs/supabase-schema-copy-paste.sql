@@ -549,6 +549,31 @@ on public.contact_form_answers(church_id, question_name);
 create index if not exists contact_form_answers_event_question_idx
 on public.contact_form_answers(church_id, event_id, question_name);
 
+--- Contact intake responses table for smart intake submissions
+create table if not exists public.contact_intake_responses (
+  id uuid primary key default gen_random_uuid(),
+  church_id uuid not null references public.churches(id) on delete cascade,
+  contact_id uuid not null references public.contacts(id) on delete cascade,
+  event_id uuid not null references public.events(id) on delete cascade,
+  category text not null,
+  answers jsonb not null default '{}'::jsonb,
+  urgency text,
+  preferred_contact_method text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists contact_intake_responses_contact_idx
+on public.contact_intake_responses(contact_id);
+
+create index if not exists contact_intake_responses_church_contact_idx
+on public.contact_intake_responses(church_id, contact_id);
+
+create index if not exists contact_intake_responses_event_idx
+on public.contact_intake_responses(church_id, event_id, created_at desc);
+
+create index if not exists contact_intake_responses_category_idx
+on public.contact_intake_responses(church_id, category);
+
 -- Data requests table for privacy compliance tracking
 create table if not exists public.data_requests (
   id uuid primary key default gen_random_uuid(),
@@ -1831,6 +1856,7 @@ alter table public.follow_ups enable row level security;
 alter table public.prayer_requests enable row level security;
 alter table public.generated_messages enable row level security;
 alter table public.contact_form_answers enable row level security;
+alter table public.contact_intake_responses enable row level security;
 alter table public.data_requests enable row level security;
 
 revoke insert, update, delete on table public.church_memberships from anon, authenticated;
@@ -2281,6 +2307,25 @@ using (
 drop policy if exists "Members can create contact form answers" on public.contact_form_answers;
 create policy "Members can create contact form answers"
 on public.contact_form_answers for insert
+with check (private.is_church_member(church_id));
+
+-- Contact intake responses RLS policies
+drop policy if exists "Members can view contact intake responses" on public.contact_intake_responses;
+create policy "Members can view contact intake responses"
+on public.contact_intake_responses for select
+using (
+  private.is_app_admin()
+  or exists (
+    select 1
+    from public.contacts
+    where contacts.id = contact_intake_responses.contact_id
+      and contacts.church_id = contact_intake_responses.church_id
+  )
+);
+
+drop policy if exists "Members can create contact intake responses" on public.contact_intake_responses;
+create policy "Members can create contact intake responses"
+on public.contact_intake_responses for insert
 with check (private.is_church_member(church_id));
 
 -- Data requests RLS policies
@@ -5216,7 +5261,8 @@ drop function if exists private.submit_event_registration_impl(
   text,
   uuid,
   text,
-  jsonb
+  jsonb,
+  text
 );
 
 create or replace function private.submit_event_registration_impl(
@@ -5241,7 +5287,8 @@ create or replace function private.submit_event_registration_impl(
   p_consent_status text,
   p_consent_recorded_by uuid,
   p_form_answers jsonb,
-  p_recommended_assigned_role text
+  p_recommended_assigned_role text,
+  p_intake_response jsonb default null
 )
 returns uuid
 language plpgsql
@@ -5423,6 +5470,28 @@ begin
     end loop;
   end if;
 
+  -- Insert intake response summary if provided
+  if p_intake_response is not null then
+    insert into public.contact_intake_responses (
+      church_id,
+      contact_id,
+      event_id,
+      category,
+      answers,
+      urgency,
+      preferred_contact_method
+    )
+    values (
+      target_event.church_id,
+      new_contact_id,
+      target_event.id,
+      coalesce(p_intake_response->>'category', 'general_visitor'),
+      coalesce(p_intake_response->'answers', '{}'::jsonb),
+      p_intake_response->>'urgency',
+      p_intake_response->>'preferred_contact_method'
+    );
+  end if;
+
   if nullif(trim(coalesce(p_message, '')), '') is not null then
     insert into public.prayer_requests (church_id, contact_id, request_text, visibility)
     values (target_event.church_id, new_contact_id, trim(p_message), coalesce(p_prayer_visibility, 'general_prayer'::public.prayer_visibility));
@@ -5537,7 +5606,8 @@ revoke all on function private.submit_event_registration_impl(
   text,
   uuid,
   jsonb,
-  text) from public, anon, authenticated;
+  text,
+  jsonb) from public, anon, authenticated;
 
 grant execute on function private.submit_event_registration_impl(
   text,
@@ -5561,7 +5631,33 @@ grant execute on function private.submit_event_registration_impl(
   text,
   uuid,
   jsonb,
-  text) to anon, authenticated;
+  text,
+  jsonb) to anon, authenticated;
+
+drop function if exists public.submit_event_registration(
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  public.interest_tag[],
+  text,
+  public.urgency_level,
+  jsonb,
+  public.prayer_visibility,
+  text[],
+  text[],
+  text,
+  boolean,
+  text,
+  text,
+  text,
+  uuid,
+  jsonb,
+  text
+);
 
 create or replace function public.submit_event_registration(
   p_slug text,
@@ -5585,7 +5681,8 @@ create or replace function public.submit_event_registration(
   p_consent_status text,
   p_consent_recorded_by uuid,
   p_form_answers jsonb,
-  p_recommended_assigned_role text
+  p_recommended_assigned_role text,
+  p_intake_response jsonb default null
 )
 returns uuid
 language sql
@@ -5614,7 +5711,8 @@ as $$
     p_consent_status,
     p_consent_recorded_by,
     p_form_answers,
-    p_recommended_assigned_role
+    p_recommended_assigned_role,
+    p_intake_response
   );
 $$;
 
@@ -5640,7 +5738,8 @@ grant execute on function public.submit_event_registration(
   text,
   uuid,
   jsonb,
-  text
+  text,
+  jsonb
 ) to anon, authenticated;
 
 -- Prayer privacy RPC with role-based visibility filtering

@@ -27,7 +27,10 @@ export default async function DashboardPage() {
   ]);
 
   const activeEvent = events.find((event) => event.is_active && !event.archived_at) ?? null;
-  const activeEventPublicUrl = activeEvent ? await absoluteRequestUrl(`/e/${activeEvent.slug}`) : null;
+  const activeEventFormConfig = (activeEvent as unknown as { form_config?: { intake_enabled?: boolean } | null })?.form_config;
+  const activeEventPublicUrl = activeEvent
+    ? await absoluteRequestUrl(activeEventFormConfig?.intake_enabled === true ? `/e/${activeEvent.slug}/intake` : `/e/${activeEvent.slug}`)
+    : null;
   const allContacts = contacts;
 
   const hasEvent = events.length > 0;

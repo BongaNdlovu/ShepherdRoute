@@ -1,5 +1,6 @@
 import { interestOptions, interestLabels } from "@/lib/constants";
 import { getEventTemplate } from "@/lib/eventTemplates";
+import { getDefaultIntakeCategories } from "@/lib/intake/intake-categories";
 import type { getEvent } from "@/lib/data";
 
 const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
@@ -29,6 +30,8 @@ export type CustomizationFormData = {
   require_phone: boolean;
   require_email: boolean;
   require_at_least_one_contact_method: boolean;
+  intake_enabled: boolean;
+  intake_categories: ReturnType<typeof getDefaultIntakeCategories>;
   interest_options: Array<{
     value: string;
     label: string;
@@ -150,6 +153,62 @@ export function parseEventCustomizationFormData(
     }
   }
 
+  const intakeEnabled = formData.get("intake_enabled") === "on";
+  const intakeCategories = getDefaultIntakeCategories().map((category) => {
+    const enabled = formData.get(`intake_category_enabled_${category.id}`) === "on";
+    const label = String(formData.get(`intake_category_label_${category.id}`) || category.label).trim();
+    const description = String(formData.get(`intake_category_description_${category.id}`) || category.description).trim();
+
+    const questions = category.questions.map((question) => {
+      const questionEnabled = formData.get(`intake_question_enabled_${category.id}_${question.id}`) === "on";
+      const questionLabel = String(formData.get(`intake_question_label_${category.id}_${question.id}`) || question.label).trim();
+      const questionDescription = String(formData.get(`intake_question_description_${category.id}_${question.id}`) || question.description || "").trim();
+      const questionRequired = formData.get(`intake_question_required_${category.id}_${question.id}`) === "on";
+
+      const options = question.options?.map((option) => ({
+        ...option,
+        label: String(formData.get(`intake_option_label_${category.id}_${question.id}_${option.value}`) || option.label).trim(),
+        enabled: formData.get(`intake_option_enabled_${category.id}_${question.id}_${option.value}`) === "on"
+      }));
+
+      return {
+        ...question,
+        enabled: questionEnabled,
+        label: questionLabel,
+        description: questionDescription || undefined,
+        required: questionRequired,
+        options
+      };
+    });
+
+    return {
+      ...category,
+      enabled,
+      label,
+      description,
+      questions
+    };
+  });
+
+  if (intakeEnabled && !intakeCategories.some((category) => category.enabled !== false)) {
+    return { error: "Enable at least one smart intake category, or turn off smart intake." };
+  }
+
+  for (const category of intakeCategories) {
+    if (category.enabled === false) continue;
+
+    for (const question of category.questions) {
+      if (question.enabled === false || question.type === "text") continue;
+      const visibleOptions = question.options?.filter((option) => option.enabled !== false) ?? [];
+      if (visibleOptions.length === 0) {
+        return { error: "Each enabled smart intake choice question must have at least one visible option." };
+      }
+      if (question.required && question.type === "single_choice" && visibleOptions.length < 2) {
+        return { error: "A required smart intake single-choice question must have at least two visible options." };
+      }
+    }
+  }
+
   const primaryColor = formData.get("primary_color") as string;
   const accentColor = formData.get("accent_color") as string;
 
@@ -184,6 +243,8 @@ export function parseEventCustomizationFormData(
     require_phone: requirePhone,
     require_email: requireEmail,
     require_at_least_one_contact_method: requireAtLeastOneContactMethod,
+    intake_enabled: intakeEnabled,
+    intake_categories: intakeCategories,
     interest_options: interestOptionsList,
     questions: questionOverrides
   };

@@ -21,6 +21,7 @@ const eventBulkActions = readFileSync("components/app/event-bulk-actions.tsx", "
 const contactBulkActions = readFileSync("components/app/contact-bulk-actions.tsx", "utf8");
 const publicValidation = readFileSync("lib/public-events/validation.ts", "utf8");
 const publicActions = readFileSync("app/e/[slug]/actions.ts", "utf8");
+const publicRateLimit = readFileSync("lib/public-events/rate-limit.ts", "utf8");
 const privacyRequestActions = readFileSync("app/privacy/request/actions.ts", "utf8");
 const eventCustomizationAction = readFileSync("app/(dashboard)/_actions/event-customization.ts", "utf8");
 const eventCustomizationForm = readFileSync("lib/events/customization-form.ts", "utf8");
@@ -219,13 +220,13 @@ test.describe("workflow helpers", () => {
     expect(schema).toContain('drop policy if exists "Public can read rate limit submissions"');
     expect(schema).not.toContain('create policy "Public can read rate limit submissions"');
     expect(schema).toContain('create policy "Public can create rate limit submissions"');
-    expect(publicActions).toContain("DEFAULT_PUBLIC_FORM_HOURLY_LIMIT = 50");
-    expect(publicActions).toContain("DEFAULT_PUBLIC_FORM_DAILY_LIMIT = 200");
-    expect(publicActions).toContain('publicFormLimit("PUBLIC_FORM_RATE_LIMIT_HOURLY"');
-    expect(publicActions).toContain('publicFormLimit("PUBLIC_FORM_RATE_LIMIT_DAILY"');
-    expect(publicActions).toContain('supabase.rpc("reserve_public_form_submission_slot"');
-    expect(publicActions).toContain("Falling back to app-derived public form rate-limit salt");
-    expect(publicActions).not.toContain("PUBLIC_FORM_RATE_LIMIT_SALT is required");
+    expect(publicRateLimit).toContain("DEFAULT_PUBLIC_FORM_HOURLY_LIMIT = 50");
+    expect(publicRateLimit).toContain("DEFAULT_PUBLIC_FORM_DAILY_LIMIT = 200");
+    expect(publicRateLimit).toContain('publicFormLimit("PUBLIC_FORM_RATE_LIMIT_HOURLY"');
+    expect(publicRateLimit).toContain('publicFormLimit("PUBLIC_FORM_RATE_LIMIT_DAILY"');
+    expect(publicRateLimit).toContain('supabase.rpc("reserve_public_form_submission_slot"');
+    expect(publicRateLimit).toContain("Falling back to app-derived public form rate-limit salt");
+    expect(publicRateLimit).not.toContain("PUBLIC_FORM_RATE_LIMIT_SALT is required");
     expect(schema).toContain("create or replace function public.reserve_public_form_submission_slot");
     expect(schema).toContain("create or replace function private.reserve_public_form_submission_slot_impl");
     expect(schema).toContain("security invoker\nset search_path = public, private\nas $$\n  select private.reserve_public_form_submission_slot_impl");
@@ -233,7 +234,7 @@ test.describe("workflow helpers", () => {
     expect(schema).toContain("p_hourly_limit integer default 50");
     expect(schema).toContain("p_daily_limit integer default 200");
     expect(publicActions.indexOf("const validation = await validatePublicEventRegistration")).toBeLessThan(
-      publicActions.indexOf("reserveRateLimitSlot(parsed.data.slug)")
+      publicActions.indexOf("reservePublicFormRateLimitSlot(parsed.data.slug)")
     );
   });
 
