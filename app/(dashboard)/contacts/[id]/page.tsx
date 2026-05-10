@@ -2,6 +2,7 @@ import { generateAiFollowUpRecommendationAction } from "@/app/(dashboard)/action
 import { PendingSubmitButton } from "@/components/app/pending-submit-button";
 import { ContactSummaryPanel } from "@/components/app/contact-summary-panel";
 import { ContactClassificationPanel } from "@/components/app/contact-classification-panel";
+import { ContactIntakeResponsesPanel } from "@/components/app/contact-intake-responses-panel";
 import { ContactTemplateAnswersPanel } from "@/components/app/contact-template-answers-panel";
 import { ContactJourneySection } from "@/components/app/contact-journey-section";
 import { FollowUpHistorySection } from "@/components/app/follow-up-history-section";
@@ -93,6 +94,7 @@ export default async function ContactDetailPage({
             </form>
           ) : null}
           <ContactTemplateAnswersPanel churchId={context.churchId} contactId={contact.id} />
+          <ContactIntakeResponsesPanel intakeResponses={intakeResponses} />
           <FollowUpSuggestionCard suggestion={suggestion} canManage={userCanManageContact} />
           <ContactJourneySection journey={journey} />
           {userCanManageContact ? (
