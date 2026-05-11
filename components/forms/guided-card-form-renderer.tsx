@@ -318,7 +318,7 @@ export function GuidedCardFormRenderer({
         return <input key={field.name} type="hidden" name={field.name} value={String(value)} />;
       })}
 
-      <div className="public-form-card-enter rounded-3xl border border-white/70 bg-white/95 p-5 shadow-xl">
+      <div className={`public-form-card-enter rounded-3xl border border-white/70 bg-white/95 p-5 shadow-xl ${isLeavingStep ? "public-form-step-exit-left" : ""}`}>
         <div className="mb-5 grid gap-2">
           <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <span>Question {Math.min(step + 1, fields.length)} of {fields.length}</span>
@@ -330,7 +330,7 @@ export function GuidedCardFormRenderer({
         </div>
 
         {current ? (
-          <div key={current.key} className={`public-form-step-enter grid gap-4 ${isLeavingStep ? "public-form-step-exit-left" : ""}`}>
+          <div key={current.key} className="public-form-step-enter grid gap-4">
             <div>
               <Label className="text-xl font-bold leading-tight">
                 {current.label}{current.required ? <span className="text-destructive"> *</span> : null}
