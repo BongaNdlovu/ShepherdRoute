@@ -62,6 +62,7 @@ export function GuidedCardFormRenderer({
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
   const [stepError, setStepError] = useState<string | null>(null);
+  const [isLeavingStep, setIsLeavingStep] = useState(false);
 
   const fields = useMemo<GuidedField[]>(() => {
     const result: GuidedField[] = [];
@@ -195,7 +196,23 @@ export function GuidedCardFormRenderer({
 
   function goNext() {
     if (!validateCurrentStep()) return;
-    setStep((currentStep) => Math.min(fields.length - 1, currentStep + 1));
+    if (step >= fields.length - 1) return;
+    setIsLeavingStep(true);
+    window.setTimeout(() => {
+      setStep((currentStep) => Math.min(fields.length - 1, currentStep + 1));
+      setIsLeavingStep(false);
+    }, 180);
+  }
+
+  function chooseSingleOption(key: string, value: string) {
+    setAnswer(key, value);
+    if (step < fields.length - 1) {
+      setIsLeavingStep(true);
+      window.setTimeout(() => {
+        setStep((currentStep) => Math.min(fields.length - 1, currentStep + 1));
+        setIsLeavingStep(false);
+      }, 180);
+    }
   }
 
   function renderField(field: GuidedField) {
@@ -236,8 +253,8 @@ export function GuidedCardFormRenderer({
               <button
                 key={option.value}
                 type="button"
-                onClick={() => setAnswer(field.key, option.value)}
-                className={`public-form-option-motion rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${selected ? "border-accent bg-accent/10" : "bg-white hover:bg-accent/5"}`}
+                onClick={() => chooseSingleOption(field.key, option.value)}
+                className={`public-form-option-motion rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${selected ? "border-slate-950 bg-slate-950 text-white shadow-lg" : "bg-white hover:bg-accent/5"}`}
               >
                 {option.label}
               </button>
@@ -264,7 +281,7 @@ export function GuidedCardFormRenderer({
                     : [...selectedValues, option.value]
                 );
               }}
-              className={`public-form-option-motion rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${selected ? "border-accent bg-accent/10" : "bg-white hover:bg-accent/5"}`}
+              className={`public-form-option-motion rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${selected ? "border-slate-950 bg-slate-950 text-white shadow-lg" : "bg-white hover:bg-accent/5"}`}
             >
               {option.label}
             </button>
@@ -313,7 +330,7 @@ export function GuidedCardFormRenderer({
         </div>
 
         {current ? (
-          <div key={current.key} className="public-form-step-enter grid gap-4">
+          <div key={current.key} className={`public-form-step-enter grid gap-4 ${isLeavingStep ? "public-form-step-exit-left" : ""}`}>
             <div>
               <Label className="text-xl font-bold leading-tight">
                 {current.label}{current.required ? <span className="text-destructive"> *</span> : null}
