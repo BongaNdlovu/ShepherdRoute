@@ -195,23 +195,25 @@ export function GuidedCardFormRenderer({
   }
 
   function goNext() {
+    if (isLeavingStep) return;
     if (!validateCurrentStep()) return;
     if (step >= fields.length - 1) return;
     setIsLeavingStep(true);
     window.setTimeout(() => {
       setStep((currentStep) => Math.min(fields.length - 1, currentStep + 1));
       setIsLeavingStep(false);
-    }, 180);
+    }, 320);
   }
 
   function chooseSingleOption(key: string, value: string) {
+    if (isLeavingStep) return;
     setAnswer(key, value);
     if (step < fields.length - 1) {
       setIsLeavingStep(true);
       window.setTimeout(() => {
         setStep((currentStep) => Math.min(fields.length - 1, currentStep + 1));
         setIsLeavingStep(false);
-      }, 180);
+      }, 320);
     }
   }
 
