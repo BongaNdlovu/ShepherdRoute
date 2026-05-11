@@ -20,7 +20,11 @@ export type EventBrandingConfig = {
   accent_color: string;
 };
 
+export type EventFormDisplayMode = "classic" | "guided_card";
+
 export type EventFormConfig = {
+  display_mode: EventFormDisplayMode;
+  guided_preset?: string | null;
   show_phone: boolean;
   show_email: boolean;
   show_area: boolean;
@@ -79,6 +83,10 @@ export function getEffectiveBrandingConfig(event: PublicEvent): EventBrandingCon
     primary_color: branding.primary_color || "#92400e",
     accent_color: branding.accent_color || "#f59e0b"
   };
+}
+
+function getDisplayMode(value: unknown): EventFormDisplayMode {
+  return value === "guided_card" ? "guided_card" : "classic";
 }
 
 function getEffectiveIntakeCategories(formConfig: Record<string, unknown>) {
@@ -157,6 +165,8 @@ export function getEffectiveFormConfig(event: PublicEvent, template: EventTempla
     .filter((question) => question.options.length > 0);
 
   return {
+    display_mode: getDisplayMode(formConfig.display_mode),
+    guided_preset: typeof formConfig.guided_preset === "string" ? formConfig.guided_preset : null,
     show_phone: formConfig.show_phone !== false,
     show_email: formConfig.show_email !== false,
     show_area: formConfig.show_area !== false,

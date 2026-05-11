@@ -26,6 +26,8 @@ const privacyRequestActions = readFileSync("app/privacy/request/actions.ts", "ut
 const eventCustomizationAction = readFileSync("app/(dashboard)/_actions/event-customization.ts", "utf8");
 const eventCustomizationForm = readFileSync("lib/events/customization-form.ts", "utf8");
 const dataEventAssignments = readFileSync("lib/data-event-assignments.ts", "utf8");
+const guidedCardRenderer = readFileSync("components/forms/guided-card-form-renderer.tsx", "utf8");
+const guidedPresets = readFileSync("lib/guided-forms/presets.ts", "utf8");
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -1207,5 +1209,36 @@ test.describe("workflow helpers", () => {
     expect(dataContacts).toContain("if (CONTACT_DIAGNOSTICS_ENABLED)");
     expect(contactsExport).toContain("SHEPHERDROUTE_DEBUG_EXPORTS");
     expect(contactsExport).toContain('process.env.SHEPHERDROUTE_DEBUG_EXPORTS === "true"');
+  });
+
+  test("event customization supports guided card display mode", () => {
+    expect(eventCustomizationForm).toContain("display_mode");
+    expect(eventCustomizationForm).toContain("guided_card");
+    expect(eventCustomizationAction).toContain("display_mode: parsed.display_mode");
+    expect(eventCustomizationAction).toContain("guided_preset: parsed.guided_preset");
+  });
+
+  test("public event page renders guided card form conditionally", () => {
+    expect(publicEventPage).toContain("GuidedCardFormRenderer");
+    expect(publicEventPage).toContain('formConfig.display_mode === "guided_card"');
+    expect(publicEventPage).toContain("availableContactMethods={availableContactMethods}");
+  });
+
+  test("guided card renderer preserves existing public submission workflow", () => {
+    expect(guidedCardRenderer).toContain("submitRegistrationAction");
+    expect(guidedCardRenderer).toContain('name="slug"');
+    expect(guidedCardRenderer).toContain('name="visitorType"');
+    expect(guidedCardRenderer).toContain('name="templateType"');
+    expect(guidedCardRenderer).toContain('key: "preferred_contact_methods"');
+    expect(guidedCardRenderer).toContain('name="website"');
+    expect(guidedCardRenderer).toContain("Question {Math.min(step + 1, fields.length)} of {fields.length}");
+  });
+
+  test("guided form presets are optional overlays", () => {
+    expect(guidedPresets).toContain("getGuidedPreset");
+    expect(guidedPresets).toContain("health_expo");
+    expect(guidedPresets).toContain("prayer_request");
+    expect(guidedPresets).toContain("bible_study_interest");
+    expect(guidedPresets).toContain("visitor_follow_up");
   });
 });

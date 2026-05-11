@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ContactMethodConsent } from "@/components/forms/contact-method-consent";
+import { GuidedCardFormRenderer } from "@/components/forms/guided-card-form-renderer";
 import { getPublicEvent } from "@/lib/data";
 import { getEventTemplate } from "@/lib/eventTemplates";
 import {
@@ -183,6 +184,17 @@ export default async function PublicEventPage({
                   {thankYouMessage}
                 </p>
               </div>
+            ) : formConfig.display_mode === "guided_card" ? (
+              <GuidedCardFormRenderer
+                slug={event.slug}
+                eventType={event.event_type}
+                template={template}
+                formConfig={formConfig}
+                consentText={consentText}
+                availableContactMethods={availableContactMethods}
+                shouldShowTopic={shouldShowTopic}
+                error={query.error}
+              />
             ) : (
               <form action={submitRegistrationAction} className="mobile-safe-container grid gap-5">
                 {query.error ? (

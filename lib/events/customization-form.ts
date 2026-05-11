@@ -6,6 +6,23 @@ import type { getEvent } from "@/lib/data";
 const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
 const httpsUrlRegex = /^https:\/\/.*/;
 
+const formDisplayModes = ["classic", "guided_card"] as const;
+type FormDisplayMode = (typeof formDisplayModes)[number];
+
+const guidedPresetKeys = [
+  "none",
+  "health_expo",
+  "evangelistic_meeting",
+  "bible_study_interest",
+  "prayer_request",
+  "visitor_follow_up",
+  "youth_event",
+  "community_outreach",
+  "medical_clinic",
+  "family_life_program"
+] as const;
+type GuidedPresetKey = (typeof guidedPresetKeys)[number];
+
 export type CustomizationFormData = {
   heading?: string;
   description?: string;
@@ -30,6 +47,8 @@ export type CustomizationFormData = {
   require_phone: boolean;
   require_email: boolean;
   require_at_least_one_contact_method: boolean;
+  display_mode: FormDisplayMode;
+  guided_preset: GuidedPresetKey;
   intake_enabled: boolean;
   intake_categories: ReturnType<typeof getDefaultIntakeCategories>;
   interest_options: Array<{
@@ -88,8 +107,22 @@ export function parseEventCustomizationFormData(
   const requireEmail = formData.get("require_email") === "on";
   const requireAtLeastOneContactMethod = formData.get("require_at_least_one_contact_method") === "on";
 
+  const rawDisplayMode = String(formData.get("display_mode") || "classic");
+  const displayMode: FormDisplayMode = formDisplayModes.includes(rawDisplayMode as FormDisplayMode)
+    ? rawDisplayMode as FormDisplayMode
+    : "classic";
+
+  const rawGuidedPreset = String(formData.get("guided_preset") || "none");
+  const guidedPreset: GuidedPresetKey = guidedPresetKeys.includes(rawGuidedPreset as GuidedPresetKey)
+    ? rawGuidedPreset as GuidedPresetKey
+    : "none";
+
   if (!showPhone && !showEmail) {
     return { error: "At least one contact field must be visible." };
+  }
+
+  if (displayMode === "guided_card" && !showPhone && !showEmail) {
+    return { error: "Guided Card Form requires at least one contact method field." };
   }
 
   if (requirePhone && !showPhone) {
@@ -243,6 +276,8 @@ export function parseEventCustomizationFormData(
     require_phone: requirePhone,
     require_email: requireEmail,
     require_at_least_one_contact_method: requireAtLeastOneContactMethod,
+    display_mode: displayMode,
+    guided_preset: guidedPreset,
     intake_enabled: intakeEnabled,
     intake_categories: intakeCategories,
     interest_options: interestOptionsList,

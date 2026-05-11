@@ -57,6 +57,9 @@ export default async function EventCustomizePage({
   const template = getEventTemplate(event.event.event_type);
   const intakeCategories = getDefaultIntakeCategories();
 
+  const displayMode = event.event.form_config?.display_mode === "guided_card" ? "guided_card" : "classic";
+  const guidedPreset = typeof event.event.form_config?.guided_preset === "string" ? event.event.form_config.guided_preset : "none";
+
   return (
     <CinematicSection className="cinematic-fade-up">
       <section className="space-y-6">
@@ -204,6 +207,79 @@ export default async function EventCustomizePage({
                   defaultValue={event.event.branding_config?.accent_color || "#f59e0b"}
                 />
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Form Display Style */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Form display style</CardTitle>
+            <CardDescription>
+              Choose how visitors experience the public event form.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="rounded-lg border p-4">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="display_mode"
+                    value="classic"
+                    defaultChecked={displayMode === "classic"}
+                    className="mt-1"
+                  />
+                  <div>
+                    <p className="font-semibold">Classic Form</p>
+                    <p className="text-sm text-muted-foreground">
+                      Shows all public form fields on one page. Best for desktop or detailed entry.
+                    </p>
+                  </div>
+                </div>
+              </label>
+
+              <label className="rounded-lg border p-4">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="display_mode"
+                    value="guided_card"
+                    defaultChecked={displayMode === "guided_card"}
+                    className="mt-1"
+                  />
+                  <div>
+                    <p className="font-semibold">Guided Card Form</p>
+                    <p className="text-sm text-muted-foreground">
+                      Shows one question at a time and works best for mobile visitors.
+                    </p>
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="guided_preset">Guided form preset</Label>
+              <select
+                id="guided_preset"
+                name="guided_preset"
+                defaultValue={guidedPreset}
+                className="h-10 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="none">Use current event form fields</option>
+                <option value="health_expo">Health Expo</option>
+                <option value="evangelistic_meeting">Evangelistic Meeting</option>
+                <option value="bible_study_interest">Bible Study Interest</option>
+                <option value="prayer_request">Prayer Request</option>
+                <option value="visitor_follow_up">Visitor Follow-Up</option>
+                <option value="youth_event">Youth Event</option>
+                <option value="community_outreach">Community Outreach</option>
+                <option value="medical_clinic">Medical Clinic</option>
+                <option value="family_life_program">Family Life Program</option>
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Presets provide suggested guided-card questions while still submitting through the normal contact workflow.
+              </p>
             </div>
           </CardContent>
         </Card>

@@ -51,6 +51,8 @@ export async function updateEventCustomizationAction(formData: FormData) {
         accent_color: parsed.accent_color
       },
       form_config: {
+        display_mode: parsed.display_mode,
+        guided_preset: parsed.guided_preset,
         show_phone: parsed.show_phone,
         show_email: parsed.show_email,
         show_area: parsed.show_area,
