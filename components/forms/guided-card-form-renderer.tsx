@@ -237,7 +237,7 @@ export function GuidedCardFormRenderer({
                 key={option.value}
                 type="button"
                 onClick={() => setAnswer(field.key, option.value)}
-                className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${selected ? "border-accent bg-accent/10" : "bg-white hover:bg-accent/5"}`}
+                className={`public-form-option-motion rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${selected ? "border-accent bg-accent/10" : "bg-white hover:bg-accent/5"}`}
               >
                 {option.label}
               </button>
@@ -264,7 +264,7 @@ export function GuidedCardFormRenderer({
                     : [...selectedValues, option.value]
                 );
               }}
-              className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${selected ? "border-accent bg-accent/10" : "bg-white hover:bg-accent/5"}`}
+              className={`public-form-option-motion rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${selected ? "border-accent bg-accent/10" : "bg-white hover:bg-accent/5"}`}
             >
               {option.label}
             </button>
@@ -301,7 +301,7 @@ export function GuidedCardFormRenderer({
         return <input key={field.name} type="hidden" name={field.name} value={String(value)} />;
       })}
 
-      <div className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-xl">
+      <div className="public-form-card-enter rounded-3xl border border-white/70 bg-white/95 p-5 shadow-xl">
         <div className="mb-5 grid gap-2">
           <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <span>Question {Math.min(step + 1, fields.length)} of {fields.length}</span>
@@ -313,7 +313,7 @@ export function GuidedCardFormRenderer({
         </div>
 
         {current ? (
-          <div className="grid gap-4">
+          <div key={current.key} className="public-form-step-enter grid gap-4">
             <div>
               <Label className="text-xl font-bold leading-tight">
                 {current.label}{current.required ? <span className="text-destructive"> *</span> : null}

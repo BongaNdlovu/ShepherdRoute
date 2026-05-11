@@ -177,7 +177,7 @@ export default async function PublicEventPage({
           </header>
           <div className="pb-6">
             {query.submitted ? (
-              <div className="rounded-2xl border border-success/20 bg-success/10 p-5 sm:p-6 text-center text-success">
+              <div className="public-form-success-enter rounded-2xl border border-success/20 bg-success/10 p-5 sm:p-6 text-center text-success">
                 <CheckCircle2 className="mx-auto h-12 w-12" />
                 <h2 className="mt-4 text-2xl font-semibold">{publicInfo.thank_you_heading}</h2>
                 <p className="mx-auto mt-2 max-w-xl text-sm leading-6">
@@ -196,7 +196,7 @@ export default async function PublicEventPage({
                 error={query.error}
               />
             ) : (
-              <form action={submitRegistrationAction} className="mobile-safe-container grid gap-5">
+              <form action={submitRegistrationAction} className="public-form-card-enter mobile-safe-container grid gap-5">
                 {query.error ? (
                   <div className="mobile-safe-text rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
                     {query.error}
