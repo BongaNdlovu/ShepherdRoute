@@ -13,8 +13,9 @@ import { roleLabels, roleOptions, appRoleLabels, appRoleOptions, type AppRole, t
 import { getChurchContext, getTeamInvitations, getTeamMembers } from "@/lib/data";
 import { gmailComposeUrl, mailtoUrl, workspaceInviteTemplate } from "@/lib/invite-email";
 import { canManageTeam } from "@/lib/permissions";
+import { absoluteRequestUrl } from "@/lib/server-url";
 import { createClient } from "@/lib/supabase/server";
-import { absoluteUrl, initials } from "@/lib/utils";
+import { initials } from "@/lib/utils";
 
 export const metadata = {
   title: "Team"
@@ -31,7 +32,7 @@ export default async function TeamPage({
     getTeamMembers(context.churchId),
     getTeamInvitations(context.churchId)
   ]);
-  const inviteUrl = params.invite ? absoluteUrl(`/invite/${params.invite}`) : null;
+  const inviteUrl = params.invite ? await absoluteRequestUrl(`/invite/${params.invite}`) : null;
   const inviteEmail = params.invite
     ? await getWorkspaceInviteEmailDraft(params.invite, context.fullName || "A team member")
     : null;
@@ -271,7 +272,7 @@ async function getWorkspaceInviteEmailDraft(token: string, inviterName: string) 
     return null;
   }
 
-  const inviteLink = absoluteUrl(`/invite/${token}`);
+  const inviteLink = await absoluteRequestUrl(`/invite/${token}`);
   const { subject, body } = workspaceInviteTemplate({
     workspaceName,
     inviterName,

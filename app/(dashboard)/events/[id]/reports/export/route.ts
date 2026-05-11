@@ -53,12 +53,46 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const firstContactPage = await getEventReportContactsPage(context.churchId, id, 0, 1);
 
   if (firstContactPage.length === 0) {
-    return new Response("No contacts have been captured for this event yet.", {
-      status: 404,
-      headers: {
-        "content-type": "text/plain; charset=utf-8"
-      }
-    });
+    if (format === "xlsx") {
+      const workbook = createWorkbook([
+        {
+          name: "Event Contacts",
+          rows: [
+            ["Event Contact Report"],
+            [`Export date: ${formatExportDateTime(new Date().toISOString())}`],
+            [`Event: ${event.name}`],
+            ["No contacts have been captured for this event yet."],
+            EVENT_EXPORT_HEADERS
+          ],
+          headerRow: 5,
+          freezePane: { ySplit: 5, topLeftCell: "A6" },
+          autoFilter: { from: "A5", to: `${columnName(EVENT_EXPORT_HEADERS.length)}5` },
+          columnWidths: eventColumnWidths(EVENT_EXPORT_HEADERS.length),
+          wrapColumns: eventWrapColumns(EVENT_EXPORT_HEADERS.length)
+        },
+        {
+          name: "Summary",
+          rows: [
+            ["Event Contact Report Summary"],
+            [`Export date: ${formatExportDateTime(new Date().toISOString())}`],
+            [`Event: ${event.name}`],
+            [],
+            ["Metric", "Value"],
+            ["Total contacts exported", 0]
+          ]
+        }
+      ]);
+
+      return xlsxResponse(
+        `${slugify(event.name)}-${new Date().toISOString().split("T")[0]}-contacts.xlsx`,
+        workbook
+      );
+    }
+
+    return csvResponse(
+      `${slugify(event.name)}-${new Date().toISOString().split("T")[0]}-contacts.csv`,
+      toCsv(EVENT_EXPORT_HEADERS, [])
+    );
   }
 
 

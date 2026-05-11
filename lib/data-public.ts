@@ -25,7 +25,7 @@ export const getPublicEvent = cache(async function getPublicEvent(slug: string) 
 export async function getPublicChurch(slug: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("churches")
+    .from("public_churches")
     .select("id, name, slug")
     .eq("slug", slug)
     .single();

@@ -13,7 +13,7 @@ export const metadata = {
 export default async function LoginPage({
   searchParams
 }: {
-  searchParams: Promise<{ error?: string; invite?: string; eventInvite?: string; next?: string }>;
+  searchParams: Promise<{ error?: string; invite?: string; eventInvite?: string; next?: string; reset?: string }>;
 }) {
   const params = await searchParams;
   const inviteQuery = params.invite
@@ -48,6 +48,11 @@ export default async function LoginPage({
               {params.error}
             </div>
           ) : null}
+          {params.reset === "success" ? (
+            <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              Password updated. You can now log in.
+            </div>
+          ) : null}
           <form action={loginAction} className="grid gap-4">
             {params.invite ? <input type="hidden" name="inviteToken" value={params.invite} /> : null}
             {params.eventInvite ? <input type="hidden" name="eventInviteToken" value={params.eventInvite} /> : null}
@@ -62,6 +67,11 @@ export default async function LoginPage({
             </div>
             <Button size="lg" type="submit">Login</Button>
           </form>
+          <p className="mt-3 text-center text-sm">
+            <Link className="font-semibold text-foreground underline-offset-4 hover:underline" href="/forgot-password">
+              Forgot your password?
+            </Link>
+          </p>
           <p className="mt-5 text-center text-sm text-muted-foreground">
             {isInviteLogin ? "Need an account?" : "New church?"}{" "}
             <Link className="font-semibold text-foreground underline-offset-4 hover:underline" href={`/signup${inviteQuery}`}>

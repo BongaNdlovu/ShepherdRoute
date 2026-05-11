@@ -6,7 +6,7 @@ import { z } from "zod";
 import { timingSafeEqual } from "node:crypto";
 import { friendlyAuthError, friendlyInviteError } from "@/lib/app-errors";
 import { createClient } from "@/lib/supabase/server";
-import { absoluteUrl } from "@/lib/utils";
+import { absoluteRequestUrl } from "@/lib/server-url";
 import { getPreferredDashboardPathForUser } from "@/lib/data-profile";
 import { normalizeWorkspaceType } from "@/lib/workspace-type";
 
@@ -28,6 +28,18 @@ const loginSchema = z.object({
   inviteToken: optionalInviteTokenSchema,
   eventInviteToken: optionalEventInviteTokenSchema,
   next: z.string().optional()
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email()
+});
+
+const resetPasswordSchema = z.object({
+  password: z.string().min(8),
+  confirmPassword: z.string().min(8)
+}).refine((value) => value.password === value.confirmPassword, {
+  message: "Passwords must match.",
+  path: ["confirmPassword"]
 });
 
 const signupSchema = loginSchema.extend({
@@ -149,7 +161,7 @@ export async function signupAction(formData: FormData) {
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
-      emailRedirectTo: absoluteUrl(
+      emailRedirectTo: await absoluteRequestUrl(
         parsed.data.inviteToken
           ? `/invite/${parsed.data.inviteToken}`
           : parsed.data.eventInviteToken
@@ -192,6 +204,49 @@ export async function logoutAction() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/login");
+}
+
+export async function requestPasswordResetAction(formData: FormData) {
+  const parsed = forgotPasswordSchema.safeParse({
+    email: formData.get("email")
+  });
+
+  if (!parsed.success) {
+    redirect("/forgot-password?error=Enter%20a%20valid%20email%20address.");
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+    redirectTo: await absoluteRequestUrl("/reset-password")
+  });
+
+  if (error) {
+    redirect(`/forgot-password?error=${encodeURIComponent(friendlyAuthError(error.message))}`);
+  }
+
+  redirect("/forgot-password?sent=true");
+}
+
+export async function resetPasswordAction(formData: FormData) {
+  const parsed = resetPasswordSchema.safeParse({
+    password: formData.get("password"),
+    confirmPassword: formData.get("confirmPassword")
+  });
+
+  if (!parsed.success) {
+    redirect(`/reset-password?error=${encodeURIComponent(parsed.error.errors[0].message)}`);
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({
+    password: parsed.data.password
+  });
+
+  if (error) {
+    redirect(`/reset-password?error=${encodeURIComponent(friendlyAuthError(error.message))}`);
+  }
+
+  redirect("/login?reset=success");
 }
 
 function normalizeInviteToken(value: FormDataEntryValue | null) {

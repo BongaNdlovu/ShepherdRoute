@@ -2523,7 +2523,6 @@ grant execute on function public.accept_event_invitation(text) to authenticated;
 
 drop view if exists public.public_events;
 create view public.public_events
-with (security_invoker = true)
 as
 select
   events.id,
@@ -2542,6 +2541,17 @@ where events.is_active = true
   and events.archived_at is null;
 
 grant select on public.public_events to anon, authenticated;
+drop view if exists public.public_churches;
+create view public.public_churches
+as
+select
+  churches.id,
+  churches.name,
+  churches.slug
+from public.churches
+where churches.workspace_status = 'active';
+
+grant select on public.public_churches to anon, authenticated;
 revoke select on public.churches from anon;
 revoke select on public.events from anon;
 grant select (id, name) on public.churches to anon;

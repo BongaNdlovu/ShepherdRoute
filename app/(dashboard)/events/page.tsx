@@ -67,7 +67,12 @@ export default async function EventsPage({
         />
       )}
 
-      {currentEvent ? <QrCard eventName={currentEvent.name} url={`${origin}/e/${currentEvent.slug}`} /> : null}
+      {currentEvent ? (
+        <QrCard
+          eventName={currentEvent.name}
+          url={`${origin}/e/${currentEvent.slug}${currentEvent.form_config?.intake_enabled === true ? "/intake" : ""}`}
+        />
+      ) : null}
       </section>
       </CinematicSection>
     </DashboardShell>

@@ -22,6 +22,7 @@ const contactBulkActions = readFileSync("components/app/contact-bulk-actions.tsx
 const publicValidation = readFileSync("lib/public-events/validation.ts", "utf8");
 const publicActions = readFileSync("app/e/[slug]/actions.ts", "utf8");
 const publicRateLimit = readFileSync("lib/public-events/rate-limit.ts", "utf8");
+const publicData = readFileSync("lib/data-public.ts", "utf8");
 const privacyRequestActions = readFileSync("app/privacy/request/actions.ts", "utf8");
 const eventCustomizationAction = readFileSync("app/(dashboard)/_actions/event-customization.ts", "utf8");
 const eventCustomizationForm = readFileSync("lib/events/customization-form.ts", "utf8");
@@ -213,8 +214,15 @@ test.describe("workflow helpers", () => {
   });
 
   test("public event QR pages are available to anonymous visitors", () => {
-    expect(schema).toContain("create view public.public_events\nwith (security_invoker = true)\nas");
+    expect(schema).toContain("create view public.public_events\nas");
+    expect(schema).not.toContain("create view public.public_events\nwith (security_invoker = true)\nas");
     expect(schema).toContain("grant select on public.public_events to anon, authenticated");
+  });
+
+  test("public privacy requests use a narrow public church lookup view", () => {
+    expect(schema).toContain("create view public.public_churches\nas");
+    expect(schema).toContain("grant select on public.public_churches to anon, authenticated");
+    expect(publicData).toContain('.from("public_churches")');
   });
 
   test("public form rate-limit table has explicit RLS policies", () => {
